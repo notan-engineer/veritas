@@ -93,7 +93,7 @@ export default function HomePage() {
 
       {/* Topic Filter */}
       {loading ? <TopicSkeleton /> : (
-        <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 px-4 sm:px-0 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+        <div className="flex gap-2 overflow-x-auto whitespace-nowrap sm:overflow-visible sm:whitespace-normal sm:flex-wrap sm:justify-center pb-2 sm:pb-0 px-4 sm:px-0 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
           {topics.map((topic) => (
             <Button
               key={topic}
