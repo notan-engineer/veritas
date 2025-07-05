@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Calendar, ThumbsUp, ThumbsDown, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
-import { mockArticles, topics } from "@/lib/mock-data";
+import { getAllArticles, getArticlesByTopic, getUniqueTags, type Article } from "@/lib/data-service";
 import { getRTLClasses, getRTLContainerClasses, getRTLFlexDirection } from "@/lib/rtl-utils";
 import * as React from "react";
 
@@ -39,12 +39,14 @@ function TopicSkeleton() {
 export default function HomePage() {
   const [selectedTopic, setSelectedTopic] = React.useState("All");
   const [expandedArticles, setExpandedArticles] = React.useState<Set<string>>(new Set());
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   const [articleReactions, setArticleReactions] = React.useState<Record<string, 'like' | 'dislike' | null>>({});
+  const [articles, setArticles] = React.useState<Article[]>([]);
+  const [topics, setTopics] = React.useState<string[]>([]);
 
   const filteredArticles = selectedTopic === "All" 
-    ? mockArticles 
-    : mockArticles.filter(article => article.tags.includes(selectedTopic));
+    ? articles 
+    : articles.filter(article => article.tags.includes(selectedTopic));
 
   const toggleArticleExpansion = (articleId: string) => {
     const newExpanded = new Set(expandedArticles);
@@ -74,12 +76,35 @@ export default function HomePage() {
     });
   };
 
+  // Fetch articles and topics on component mount
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [articlesData, topicsData] = await Promise.all([
+          getAllArticles(),
+          getUniqueTags()
+        ]);
+        setArticles(articlesData);
+        setTopics(topicsData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   // Simulate loading on topic change
   React.useEffect(() => {
-    setLoading(true);
-    const timeout = setTimeout(() => setLoading(false), 400);
-    return () => clearTimeout(timeout);
-  }, [selectedTopic]);
+    if (articles.length > 0) {
+      setLoading(true);
+      const timeout = setTimeout(() => setLoading(false), 400);
+      return () => clearTimeout(timeout);
+    }
+  }, [selectedTopic, articles.length]);
 
   return (
     <div className="space-y-6 sm:space-y-8">

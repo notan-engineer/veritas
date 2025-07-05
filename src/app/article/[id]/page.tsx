@@ -4,12 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Calendar, CheckCircle, ThumbsUp, ThumbsDown, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
-import { getArticleById } from "@/lib/mock-data";
+import { getArticleById } from "@/lib/data-service";
 import { getRTLClasses, getRTLContainerClasses, getRTLFlexDirection } from "@/lib/rtl-utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function ArticlePage({ params }: any) {
-  const article = getArticleById(params.id);
+  const article = await getArticleById(params.id);
 
   if (!article) {
     notFound();
