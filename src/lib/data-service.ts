@@ -18,6 +18,7 @@ async function getTagsForArticle(article_id: string): Promise<string[]> {
     .select('tags(name)')
     .eq('article_id', article_id)
   if (error) return []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data?.map((row: any) => row.tags.name) || []
 }
 
@@ -29,6 +30,7 @@ async function getSourceUrlsForArticle(scraped_article_id: string | null): Promi
     .select('source_url')
     .eq('id', scraped_article_id)
   if (error) return []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data?.map((row: any) => row.source_url) || []
 }
 
@@ -43,6 +45,7 @@ export async function getAllArticles(): Promise<Article[]> {
   }
   // Fetch tags and source URLs for each article
   const articles: Article[] = await Promise.all(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data || []).map(async (row: any) => {
       const tags = await getTagsForArticle(row.id)
       const source_urls = await getSourceUrlsForArticle(row.scraped_article_id)
@@ -75,6 +78,7 @@ export async function getArticlesByTopic(topic: string): Promise<Article[]> {
     .select('article_id')
     .eq('tag_id', tagData.id)
   if (atError) return []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const articleIds = articleTags.map((row: any) => row.article_id)
   // Fetch articles by ids
   const { data, error } = await supabase
@@ -84,6 +88,7 @@ export async function getArticlesByTopic(topic: string): Promise<Article[]> {
     .order('created_at', { ascending: false })
   if (error) return []
   const articles: Article[] = await Promise.all(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data || []).map(async (row: any) => {
       const tags = await getTagsForArticle(row.id)
       const source_urls = await getSourceUrlsForArticle(row.scraped_article_id)
@@ -131,6 +136,7 @@ export async function getArticlesByLanguage(language: 'en' | 'he'): Promise<Arti
     .order('created_at', { ascending: false })
   if (error) return []
   const articles: Article[] = await Promise.all(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data || []).map(async (row: any) => {
       const tags = await getTagsForArticle(row.id)
       const source_urls = await getSourceUrlsForArticle(row.scraped_article_id)
@@ -157,6 +163,7 @@ export async function searchArticles(query: string): Promise<Article[]> {
     .order('created_at', { ascending: false })
   if (error) return []
   const articles: Article[] = await Promise.all(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data || []).map(async (row: any) => {
       const tags = await getTagsForArticle(row.id)
       const source_urls = await getSourceUrlsForArticle(row.scraped_article_id)
@@ -180,5 +187,6 @@ export async function getUniqueTags(): Promise<string[]> {
     .from('tags')
     .select('name')
   if (error) return []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data?.map((row: any) => row.name) || []
 } 

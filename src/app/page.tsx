@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Calendar, ThumbsUp, ThumbsDown, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
-import { getAllArticles, getArticlesByTopic, getUniqueTags, type Article } from "@/lib/data-service";
+import { getAllArticles, getUniqueTags, type Article } from "@/lib/data-service";
 import { getRTLClasses, getRTLContainerClasses, getRTLFlexDirection } from "@/lib/rtl-utils";
 import * as React from "react";
 
