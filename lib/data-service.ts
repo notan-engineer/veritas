@@ -646,8 +646,13 @@ export interface Article {
   language: 'en' | 'he'
 }
 
-// Convert factoid to legacy article format
-function factoidToArticle(factoid: Factoid): Article {
+// Convert factoid to legacy article format (only for supported languages)
+function factoidToArticle(factoid: Factoid): Article | null {
+  // Only convert factoids with supported languages for Article interface
+  if (factoid.language !== 'en' && factoid.language !== 'he') {
+    return null
+  }
+  
   return {
     id: factoid.id,
     title: factoid.title,
@@ -656,19 +661,23 @@ function factoidToArticle(factoid: Factoid): Article {
     bullet_summary: factoid.bullet_points,
     source_urls: factoid.sources.map(source => source.scraped_content?.source_url || source.url),
     created_at: factoid.created_at,
-    language: factoid.language as 'en' | 'he'
+    language: factoid.language // Safe to use directly since we checked above
   }
 }
 
 // Legacy functions that convert to new format
 export async function getAllArticles(): Promise<Article[]> {
   const factoids = await getAllFactoids()
-  return factoids.map(factoidToArticle)
+  return factoids
+    .map(factoidToArticle)
+    .filter((article): article is Article => article !== null)
 }
 
 export async function getArticlesByTopic(topic: string): Promise<Article[]> {
   const factoids = await getFactoidsByTag(topic)
-  return factoids.map(factoidToArticle)
+  return factoids
+    .map(factoidToArticle)
+    .filter((article): article is Article => article !== null)
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
@@ -678,12 +687,16 @@ export async function getArticleById(id: string): Promise<Article | null> {
 
 export async function getArticlesByLanguage(language: 'en' | 'he'): Promise<Article[]> {
   const factoids = await getFactoidsByLanguage(language)
-  return factoids.map(factoidToArticle)
+  return factoids
+    .map(factoidToArticle)
+    .filter((article): article is Article => article !== null)
 }
 
 export async function searchArticles(query: string): Promise<Article[]> {
   const factoids = await searchFactoids(query)
-  return factoids.map(factoidToArticle)
+  return factoids
+    .map(factoidToArticle)
+    .filter((article): article is Article => article !== null)
 }
 
 export async function getUniqueTags(): Promise<string[]> {
