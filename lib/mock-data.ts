@@ -355,16 +355,19 @@ export const mockSources: Source[] = [
 ]
 
 // Legacy compatibility functions
-export const mockArticles = mockFactoids.map(factoid => ({
-  id: factoid.id,
-  title: factoid.title,
-  short_summary: factoid.description,
-  tags: factoid.tags.map(tag => tag.name),
-  bullet_summary: factoid.bullet_points,
-  source_urls: factoid.sources.map(source => source.url),
-  created_at: factoid.created_at,
-  language: factoid.language as 'en' | 'he'
-}))
+// Filter factoids to only include supported languages ('en' | 'he') for Article interface
+export const mockArticles = mockFactoids
+  .filter(factoid => factoid.language === 'en' || factoid.language === 'he')
+  .map(factoid => ({
+    id: factoid.id,
+    title: factoid.title,
+    short_summary: factoid.description,
+    tags: factoid.tags.map(tag => tag.name),
+    bullet_summary: factoid.bullet_points,
+    source_urls: factoid.sources.map(source => source.url),
+    created_at: factoid.created_at,
+    language: factoid.language as 'en' | 'he' // Safe assertion since we filtered above
+  }))
 
 // Helper functions for filtering
 export function getFactoidsByTopic(topic: string): Factoid[] {
