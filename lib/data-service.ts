@@ -397,29 +397,7 @@ export async function getFactoidsByTag(tagSlug: string): Promise<Factoid[]> {
     return []
   }
   
-  // Fetch tags and sources for each factoid
-  const factoids: Factoid[] = await Promise.all(
-    (data as FactoidDbRow[] || []).map(async (row) => {
-      const tags = await getTagsForFactoid(row.id)
-      const sources = await getSourcesForFactoid(row.id)
-      
-      return {
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        bullet_points: row.bullet_points,
-        language: row.language,
-        confidence_score: row.confidence_score,
-        status: row.status,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        tags,
-        sources
-      }
-    })
-  )
-  
-  return factoids
+  return await processFactoidRows(data as FactoidDbRow[] || [])
 }
 
 // Get factoid by ID
@@ -436,23 +414,8 @@ export async function getFactoidById(id: string): Promise<Factoid | null> {
     return null
   }
   
-  const factoidData = data as FactoidDbRow
-  const tags = await getTagsForFactoid(factoidData.id)
-  const sources = await getSourcesForFactoid(factoidData.id)
-  
-  return {
-    id: factoidData.id,
-    title: factoidData.title,
-    description: factoidData.description,
-    bullet_points: factoidData.bullet_points,
-    language: factoidData.language,
-    confidence_score: factoidData.confidence_score,
-    status: factoidData.status,
-    created_at: factoidData.created_at,
-    updated_at: factoidData.updated_at,
-    tags,
-    sources
-  }
+  const factoids = await processFactoidRows([data as FactoidDbRow])
+  return factoids.length > 0 ? factoids[0] : null
 }
 
 // Helper function to process factoid rows with batch fetching of tags and sources
