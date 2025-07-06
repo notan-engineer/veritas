@@ -63,19 +63,6 @@ export interface ScrapedContent {
 }
 
 // Database response types
-interface FactoidTagResponse {
-  confidence_score: number
-  tags: {
-    id: string
-    name: string
-    slug: string
-    description?: string
-    parent_id?: string
-    level: number
-    is_active: boolean
-  }
-}
-
 interface FactoidSourceResponse {
   relevance_score: number
   scraped_content: {
@@ -117,91 +104,7 @@ interface FactoidIdRow {
   factoid_id: string
 }
 
-// Helper to fetch tags for a factoid
-async function getTagsForFactoid(factoid_id: string): Promise<Tag[]> {
-  const { data, error } = await supabase
-    .from('factoid_tags')
-    .select(`
-      confidence_score,
-      tags (
-        id,
-        name,
-        slug,
-        description,
-        parent_id,
-        level,
-        is_active
-      )
-    `)
-    .eq('factoid_id', factoid_id)
-  
-  if (error) {
-    console.error('Error fetching tags for factoid:', error)
-    return []
-  }
-  
-  return data?.map((row: unknown) => {
-    const typedRow = row as FactoidTagResponse
-    return {
-      ...typedRow.tags,
-      confidence_score: typedRow.confidence_score
-    }
-  }) || []
-}
 
-// Helper to fetch sources for a factoid
-async function getSourcesForFactoid(factoid_id: string): Promise<Source[]> {
-  const { data, error } = await supabase
-    .from('factoid_sources')
-    .select(`
-      relevance_score,
-      scraped_content (
-        id,
-        source_url,
-        title,
-        content,
-        author,
-        publication_date,
-        content_type,
-        language,
-        sources (
-          id,
-          name,
-          domain,
-          url,
-          description,
-          icon_url,
-          twitter_handle,
-          profile_photo_url,
-          is_active
-        )
-      )
-    `)
-    .eq('factoid_id', factoid_id)
-  
-  if (error) {
-    console.error('Error fetching sources for factoid:', error)
-    return []
-  }
-  
-  return data?.map((row: unknown) => {
-    const typedRow = row as FactoidSourceResponse
-    return {
-      ...typedRow.scraped_content.sources,
-      relevance_score: typedRow.relevance_score,
-      scraped_content: {
-        id: typedRow.scraped_content.id,
-        source_url: typedRow.scraped_content.source_url,
-        title: typedRow.scraped_content.title,
-        content: typedRow.scraped_content.content,
-        author: typedRow.scraped_content.author,
-        publication_date: typedRow.scraped_content.publication_date,
-        content_type: typedRow.scraped_content.content_type,
-        language: typedRow.scraped_content.language
-      }
-    }
-  }) || []
-}
 
 // Batch helper to fetch tags for multiple factoids
 async function getBatchTagsForFactoids(factoidIds: string[]): Promise<Record<string, Tag[]>> {
