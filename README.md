@@ -50,6 +50,11 @@ The database consists of several interconnected tables:
    psql -d your_database -f database/improve-tag-linking.sql
    ```
 
+3. **Fix existing database issues (if needed):**
+   ```bash
+   psql -d your_database -f database/fix-existing-database.sql
+   ```
+
 #### Tag Linking System
 
 The project uses an **improved tag linking system** that replaces hardcoded ILIKE conditions with a maintainable mapping approach:
@@ -79,13 +84,17 @@ The project uses an **improved tag linking system** that replaces hardcoded ILIK
 
 | Script | Purpose | Safe to Re-run |
 |--------|---------|----------------|
-| `veritas-migration.sql` | Initial database setup with sample data | ⚠️ Destructive |
+| `veritas-migration.sql` | Initial database setup with sample data | ⚠️ Destructive (with backup) |
 | `improve-tag-linking.sql` | Upgrade tag linking to improved system | ✅ Yes (idempotent) |
+| `fix-existing-database.sql` | Fix security and performance issues in existing databases | ✅ Yes (idempotent) |
 
 **Script Features:**
 - **Transaction Safety**: All changes wrapped in transactions
+- **Automatic Backup**: Creates timestamped backup tables before destructive operations
+- **Security Hardening**: Proper row-level security policies with user authentication
+- **NULL-Safe Indexes**: Full-text search indexes handle NULL values correctly
+- **Robust Linking**: Fuzzy matching for factoid-source relationships
 - **Validation**: Checks for required tables and valid mappings
-- **Backup**: Creates backup tables before making changes
 - **Rollback Instructions**: Clear rollback procedures included
 - **Progress Reporting**: Detailed status messages during execution
 

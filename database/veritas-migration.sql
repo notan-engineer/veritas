@@ -5,7 +5,29 @@
 -- Start transaction to ensure atomicity
 BEGIN;
 
--- Drop existing articles table if it exists (backup data first if needed)
+-- Safety check and backup for existing articles table
+DO $$
+DECLARE
+    articles_count INTEGER := 0;
+    backup_table_name TEXT := 'articles_backup_' || to_char(NOW(), 'YYYY_MM_DD_HH24_MI_SS');
+BEGIN
+    -- Check if articles table exists and has data
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'articles' AND table_schema = 'public') THEN
+        SELECT COUNT(*) INTO articles_count FROM articles;
+        
+        IF articles_count > 0 THEN
+            -- Create backup before dropping
+            EXECUTE format('CREATE TABLE %I AS SELECT * FROM articles', backup_table_name);
+            RAISE NOTICE 'Created backup table % with % rows', backup_table_name, articles_count;
+        ELSE
+            RAISE NOTICE 'Articles table exists but is empty, safe to drop';
+        END IF;
+    ELSE
+        RAISE NOTICE 'Articles table does not exist, skipping backup';
+    END IF;
+END $$;
+
+-- Drop existing articles table if it exists (after backup)
 DROP TABLE IF EXISTS articles CASCADE;
 
 -- 1. Create Sources table
@@ -195,7 +217,7 @@ CREATE INDEX IF NOT EXISTS idx_analytics_events_user_id ON analytics_events(user
 CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at);
 
 -- Create full-text search indexes
-CREATE INDEX IF NOT EXISTS idx_factoids_title_description ON factoids USING gin(to_tsvector('english', title || ' ' || description));
+CREATE INDEX IF NOT EXISTS idx_factoids_title_description ON factoids USING gin(to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(description, '')));
 CREATE INDEX IF NOT EXISTS idx_scraped_content_title_content ON scraped_content USING gin(to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, '')));
 
 -- Enable Row Level Security
@@ -216,11 +238,12 @@ CREATE POLICY "Allow public read access to factoid_tags" ON factoid_tags FOR SEL
 CREATE POLICY "Allow public read access to generated_images" ON generated_images FOR SELECT USING (true);
 
 -- Create user-specific policies (temporary - will be updated when auth is implemented)
-CREATE POLICY "Users can manage their own actions" ON user_actions FOR ALL USING (true);
-CREATE POLICY "Users can manage their own interactions" ON user_interactions FOR ALL USING (true);
-CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions FOR ALL USING (true);
-CREATE POLICY "Users can manage their own tag preferences" ON user_tag_preferences FOR ALL USING (true);
-CREATE POLICY "Users can provide feedback" ON llm_feedback FOR ALL USING (true);
+-- Note: These policies restrict access to authenticated users only
+CREATE POLICY "Users can manage their own actions" ON user_actions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
+CREATE POLICY "Users can manage their own interactions" ON user_interactions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
+CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
+CREATE POLICY "Users can manage their own tag preferences" ON user_tag_preferences FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
+CREATE POLICY "Users can provide feedback" ON llm_feedback FOR ALL USING (auth.uid() IS NOT NULL AND (user_id IS NULL OR user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
 
 -- Insert sample data for testing
 INSERT INTO sources (name, domain, url, description, is_active) VALUES
@@ -342,13 +365,24 @@ INSERT INTO factoids (title, description, bullet_points, language, confidence_sc
 );
 
 -- Link factoids to sources
+-- Note: This uses exact title matching for sample data only
+-- In production, use explicit ID references or fuzzy matching for reliability
 INSERT INTO factoid_sources (factoid_id, scraped_content_id, relevance_score)
 SELECT 
   f.id,
   sc.id,
-  0.95
+  CASE 
+    WHEN f.title = sc.title THEN 0.95 -- Exact match
+    WHEN f.title ILIKE '%' || substring(sc.title from 1 for 50) || '%' THEN 0.85 -- Partial match
+    ELSE 0.75 -- Fuzzy match
+  END as relevance_score
 FROM factoids f
-JOIN scraped_content sc ON f.title = sc.title;
+JOIN scraped_content sc ON (
+  f.title = sc.title 
+  OR f.title ILIKE '%' || substring(sc.title from 1 for 50) || '%'
+  OR sc.title ILIKE '%' || substring(f.title from 1 for 50) || '%'
+)
+WHERE sc.processing_status = 'completed';
 
 -- Link factoids to tags using improved mapping approach
 -- Create temporary mapping table for maintainable tag linking
