@@ -1,4 +1,4 @@
-import { Factoid, Tag, Source } from './data-service'
+import { Factoid, Tag, Source, Article } from './data-service'
 
 export const mockFactoids: Factoid[] = [
   {
@@ -386,16 +386,7 @@ export function searchFactoids(query: string): Factoid[] {
   )
 }
 
-export interface Article {
-  id: string;
-  title: string;
-  short_summary: string;
-  tags: string[];
-  bullet_summary: string[];
-  source_urls: string[];
-  created_at: string;
-  language: 'en' | 'he';
-}
+
 
 // Dynamically derive topics from mockTags to ensure consistency
 export const topics = [
