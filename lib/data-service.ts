@@ -455,6 +455,44 @@ export async function getFactoidById(id: string): Promise<Factoid | null> {
   }
 }
 
+// Helper function to process factoid rows with batch fetching of tags and sources
+async function processFactoidRows(rows: FactoidDbRow[]): Promise<Factoid[]> {
+  if (!rows || rows.length === 0) {
+    return []
+  }
+  
+  // Get all factoid IDs for batch queries
+  const factoidIds = rows.map(row => row.id)
+  
+  // Batch fetch all tags and sources to avoid N+1 queries
+  const [allTags, allSources] = await Promise.all([
+    getBatchTagsForFactoids(factoidIds),
+    getBatchSourcesForFactoids(factoidIds)
+  ])
+  
+  // Assemble factoids with their tags and sources
+  const factoids: Factoid[] = rows.map(row => {
+    const tags = allTags[row.id] || []
+    const sources = allSources[row.id] || []
+    
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      bullet_points: row.bullet_points,
+      language: row.language,
+      confidence_score: row.confidence_score,
+      status: row.status,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      tags,
+      sources
+    }
+  })
+  
+  return factoids
+}
+
 // Get factoids by language
 export async function getFactoidsByLanguage(language: 'en' | 'he' | 'ar' | 'other'): Promise<Factoid[]> {
   const { data, error } = await supabase
@@ -469,29 +507,7 @@ export async function getFactoidsByLanguage(language: 'en' | 'he' | 'ar' | 'othe
     return []
   }
   
-  // Fetch tags and sources for each factoid
-  const factoids: Factoid[] = await Promise.all(
-    (data as FactoidDbRow[] || []).map(async (row) => {
-      const tags = await getTagsForFactoid(row.id)
-      const sources = await getSourcesForFactoid(row.id)
-      
-      return {
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        bullet_points: row.bullet_points,
-        language: row.language,
-        confidence_score: row.confidence_score,
-        status: row.status,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        tags,
-        sources
-      }
-    })
-  )
-  
-  return factoids
+  return await processFactoidRows(data as FactoidDbRow[] || [])
 }
 
 // Search factoids using full-text search
@@ -521,51 +537,10 @@ export async function searchFactoids(query: string): Promise<Factoid[]> {
       return []
     }
     
-    return await Promise.all(
-      (fallbackData as FactoidDbRow[] || []).map(async (row) => {
-        const tags = await getTagsForFactoid(row.id)
-        const sources = await getSourcesForFactoid(row.id)
-        
-        return {
-          id: row.id,
-          title: row.title,
-          description: row.description,
-          bullet_points: row.bullet_points,
-          language: row.language,
-          confidence_score: row.confidence_score,
-          status: row.status,
-          created_at: row.created_at,
-          updated_at: row.updated_at,
-          tags,
-          sources
-        }
-      })
-    )
+    return await processFactoidRows(fallbackData as FactoidDbRow[] || [])
   }
   
-  // Fetch tags and sources for each factoid
-  const factoids: Factoid[] = await Promise.all(
-    (data as FactoidDbRow[] || []).map(async (row) => {
-      const tags = await getTagsForFactoid(row.id)
-      const sources = await getSourcesForFactoid(row.id)
-      
-      return {
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        bullet_points: row.bullet_points,
-        language: row.language,
-        confidence_score: row.confidence_score,
-        status: row.status,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        tags,
-        sources
-      }
-    })
-  )
-  
-  return factoids
+  return await processFactoidRows(data as FactoidDbRow[] || [])
 }
 
 // Get all active tags
