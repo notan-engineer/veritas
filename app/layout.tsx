@@ -37,11 +37,6 @@ export default function RootLayout({
                 </Link>
                 
                 <nav className="flex items-center space-x-2 sm:space-x-4">
-                  <Link href="/login">
-                    <Button variant="outline" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
-                      <span className="hidden sm:inline">Sign In</span>
-                    </Button>
-                  </Link>
                   <Link href="/settings">
                     <Button variant="ghost" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
                       <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
