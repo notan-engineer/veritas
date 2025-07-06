@@ -23,12 +23,12 @@ export default function SettingsPage() {
 
       {/* Settings Grid */}
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-        {/* User Preferences */}
+        {/* Display Preferences */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              User Preferences
+              Display Preferences
             </CardTitle>
             <CardDescription>
               Customize your news reading experience
@@ -101,28 +101,28 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Privacy & Security */}
+        {/* App Configuration */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Privacy & Security
+              App Configuration
             </CardTitle>
             <CardDescription>
-              Manage your data and privacy settings
+              Manage app settings and preferences
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <p className="text-sm font-medium">Coming Soon</p>
               <p className="text-sm text-muted-foreground">
-                Control data collection, export your information, and manage account security.
+                Configure app behavior, data preferences, and system settings.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
-              <Badge variant="outline">Data Export</Badge>
-              <Badge variant="outline">Privacy Controls</Badge>
-              <Badge variant="outline">Account Security</Badge>
+              <Badge variant="outline">Data Preferences</Badge>
+              <Badge variant="outline">System Settings</Badge>
+              <Badge variant="outline">App Behavior</Badge>
             </div>
           </CardContent>
         </Card>
@@ -156,7 +156,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground text-center">
-              The settings functionality will be implemented in Phase 5 with real data integration and user account management.
+              The settings functionality will be implemented in Phase 5 with real data integration and app configuration.
             </p>
           </div>
         </CardContent>
