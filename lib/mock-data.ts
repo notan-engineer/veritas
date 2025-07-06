@@ -397,9 +397,13 @@ export interface Article {
   language: 'en' | 'he';
 }
 
+// Dynamically derive topics from mockTags to ensure consistency
 export const topics = [
-  "All", "Tech", "Finance", "Space", "Environment", "AI", "Economy", "Federal Reserve", "SpaceX", "Hardware", "Manufacturing", "Supply Chain", "Climate", "COP28",
-  "טכנולוגיה", "סטארט-אפים", "ישראל", "ארכיאולוגיה", "ירושלים", "היסטוריה", "אנרגיה", "סביבה", "כנס", "תל אביב", "רפואה", "סרטן"
+  "All", 
+  ...mockTags
+    .filter(tag => tag.is_active)
+    .map(tag => tag.name)
+    .sort() // Sort alphabetically for consistent ordering
 ];
 
 export function getArticlesByTopic(topic: string): Article[] {

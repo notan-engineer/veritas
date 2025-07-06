@@ -350,21 +350,89 @@ SELECT
 FROM factoids f
 JOIN scraped_content sc ON f.title = sc.title;
 
--- Link factoids to tags
+-- Link factoids to tags using improved mapping approach
+-- Create temporary mapping table for maintainable tag linking
+CREATE TEMP TABLE factoid_tag_mappings (
+    factoid_pattern TEXT NOT NULL,
+    tag_slug TEXT NOT NULL,
+    confidence_score DECIMAL(3,2) DEFAULT 0.9,
+    match_field TEXT DEFAULT 'title' CHECK (match_field IN ('title', 'description', 'content')),
+    notes TEXT -- for documentation
+);
+
+-- Insert mapping rules (organized by category for better maintainability)
+INSERT INTO factoid_tag_mappings (factoid_pattern, tag_slug, confidence_score, match_field, notes) VALUES
+-- AI and Technology patterns
+('%NVIDIA%', 'ai', 0.95, 'title', 'NVIDIA is primarily an AI hardware company'),
+('%NVIDIA%', 'technology', 0.9, 'title', 'NVIDIA is a technology company'),
+('%NVIDIA%', 'hardware', 0.85, 'title', 'NVIDIA makes hardware'),
+('%AI%', 'ai', 0.9, 'title', 'Direct AI mention'),
+('%artificial intelligence%', 'ai', 0.95, 'title', 'Full AI term'),
+('%machine learning%', 'ai', 0.85, 'title', 'ML is subset of AI'),
+('%chip%', 'hardware', 0.8, 'title', 'Chip indicates hardware'),
+('%processor%', 'hardware', 0.8, 'title', 'Processor indicates hardware'),
+('%GPU%', 'hardware', 0.85, 'title', 'GPU is hardware'),
+
+-- Finance and Economy patterns
+('%Federal Reserve%', 'finance', 0.95, 'title', 'Fed is financial institution'),
+('%Federal Reserve%', 'economy', 0.9, 'title', 'Fed affects economy'),
+('%interest rate%', 'finance', 0.9, 'title', 'Interest rates are financial'),
+('%interest rate%', 'economy', 0.85, 'title', 'Interest rates affect economy'),
+('%inflation%', 'economy', 0.9, 'title', 'Inflation is economic indicator'),
+('%monetary policy%', 'finance', 0.9, 'title', 'Monetary policy is financial'),
+('%stock market%', 'finance', 0.95, 'title', 'Stock market is financial'),
+('%S&P 500%', 'finance', 0.9, 'title', 'S&P 500 is financial index'),
+
+-- Israeli and Hebrew patterns
+('%ישראל%', 'israel', 0.95, 'title', 'Israel in Hebrew'),
+('%טכנולוגיה%', 'technology', 0.9, 'title', 'Technology in Hebrew'),
+('%סטארט-אפים%', 'startups', 0.95, 'title', 'Startups in Hebrew'),
+('%בינה מלאכותית%', 'ai', 0.95, 'title', 'AI in Hebrew'),
+('%סייבר%', 'technology', 0.85, 'title', 'Cyber in Hebrew'),
+('%הייטק%', 'technology', 0.9, 'title', 'Hi-tech in Hebrew'),
+
+-- Startup and business patterns
+('%startup%', 'startups', 0.9, 'title', 'Direct startup mention'),
+('%funding%', 'startups', 0.8, 'title', 'Funding often relates to startups'),
+('%venture capital%', 'startups', 0.85, 'title', 'VC relates to startups'),
+('%IPO%', 'finance', 0.9, 'title', 'IPO is financial event'),
+('%acquisition%', 'startups', 0.7, 'title', 'Acquisitions often involve startups'),
+
+-- Space and environment patterns (for future content)
+('%space%', 'space', 0.9, 'title', 'Direct space mention'),
+('%NASA%', 'space', 0.95, 'title', 'NASA is space agency'),
+('%satellite%', 'space', 0.85, 'title', 'Satellites are space technology'),
+('%climate%', 'environment', 0.9, 'title', 'Climate is environmental'),
+('%renewable energy%', 'environment', 0.85, 'title', 'Renewable energy is environmental');
+
+-- Apply the improved tag linking logic
 INSERT INTO factoid_tags (factoid_id, tag_id, confidence_score)
 SELECT 
-  f.id,
-  t.id,
-  0.9
-FROM factoids f
-CROSS JOIN tags t
-WHERE 
-  (f.title ILIKE '%AI%' OR f.title ILIKE '%chip%' OR f.title ILIKE '%NVIDIA%') AND t.slug = 'ai'
-  OR (f.title ILIKE '%AI%' OR f.title ILIKE '%chip%' OR f.title ILIKE '%NVIDIA%') AND t.slug = 'technology'
-  OR (f.title ILIKE '%Federal Reserve%' OR f.title ILIKE '%interest rate%') AND t.slug = 'finance'
-  OR (f.title ILIKE '%Federal Reserve%' OR f.title ILIKE '%interest rate%') AND t.slug = 'economy'
-  OR (f.title ILIKE '%ישראל%' OR f.title ILIKE '%טכנולוגיה%') AND t.slug = 'israel'
-  OR (f.title ILIKE '%ישראל%' OR f.title ILIKE '%טכנולוגיה%') AND t.slug = 'technology';
+    factoid_id,
+    tag_id,
+    MAX(confidence_score) as confidence_score  -- Take the highest confidence score for each factoid-tag pair
+FROM (
+    SELECT DISTINCT
+        f.id as factoid_id,
+        t.id as tag_id,
+        m.confidence_score
+    FROM factoids f
+    JOIN factoid_tag_mappings m ON 
+        CASE 
+            WHEN m.match_field = 'title' THEN f.title ILIKE m.factoid_pattern
+            WHEN m.match_field = 'description' THEN f.description ILIKE m.factoid_pattern
+            ELSE f.title ILIKE m.factoid_pattern OR f.description ILIKE m.factoid_pattern
+        END
+    JOIN tags t ON t.slug = m.tag_slug AND t.is_active = true
+    WHERE f.status = 'published'
+) matches
+GROUP BY factoid_id, tag_id
+ON CONFLICT (factoid_id, tag_id) DO UPDATE SET
+    confidence_score = EXCLUDED.confidence_score,
+    created_at = NOW();
+
+-- Clean up temporary table
+DROP TABLE factoid_tag_mappings;
 
 -- Commit the transaction
 COMMIT;

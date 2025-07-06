@@ -20,6 +20,114 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Database
+
+This project uses **Supabase** as the database backend with a comprehensive factoid-based schema designed for news aggregation and content management.
+
+### Database Schema
+
+The database consists of several interconnected tables:
+
+- **Sources** - News sources and publishers
+- **Scraped Content** - Raw content from various sources
+- **Factoids** - Processed news items (the central unit)
+- **Tags** - Hierarchical categorization system
+- **Factoid Tags** - Many-to-many relationship with confidence scores
+- **Users** - User management and preferences
+- **User Interactions** - Likes, comments, bookmarks
+
+### Database Migration
+
+#### Initial Setup
+
+1. **Run the main migration script:**
+   ```bash
+   psql -d your_database -f database/veritas-migration.sql
+   ```
+
+2. **Apply tag linking improvements (optional):**
+   ```bash
+   psql -d your_database -f database/improve-tag-linking.sql
+   ```
+
+#### Tag Linking System
+
+The project uses an **improved tag linking system** that replaces hardcoded ILIKE conditions with a maintainable mapping approach:
+
+**Features:**
+- ✅ **Maintainable**: Easy to add/modify tag patterns
+- ✅ **Multi-language**: Supports English and Hebrew content
+- ✅ **Confidence Scores**: Different confidence levels per mapping
+- ✅ **Flexible Matching**: Can match on title, description, or content
+- ✅ **Organized**: Patterns grouped by category (AI, Finance, Israeli, etc.)
+
+**Pattern Categories:**
+- **AI & Technology**: NVIDIA, artificial intelligence, machine learning, chips, hardware
+- **Finance & Economy**: Federal Reserve, interest rates, inflation, stock market
+- **Israeli Content**: Hebrew patterns for Israeli tech, startups, and news
+- **Startups**: Funding, venture capital, IPO, acquisitions
+- **Future Categories**: Space, environment (ready for expansion)
+
+**Example Mapping:**
+```sql
+('%NVIDIA%', 'ai', 0.95, 'title', 'NVIDIA is primarily an AI hardware company'),
+('%Federal Reserve%', 'finance', 0.95, 'title', 'Fed is financial institution'),
+('%ישראל%', 'israel', 0.95, 'title', 'Israel in Hebrew'),
+```
+
+#### Database Scripts
+
+| Script | Purpose | Safe to Re-run |
+|--------|---------|----------------|
+| `veritas-migration.sql` | Initial database setup with sample data | ⚠️ Destructive |
+| `improve-tag-linking.sql` | Upgrade tag linking to improved system | ✅ Yes (idempotent) |
+
+**Script Features:**
+- **Transaction Safety**: All changes wrapped in transactions
+- **Validation**: Checks for required tables and valid mappings
+- **Backup**: Creates backup tables before making changes
+- **Rollback Instructions**: Clear rollback procedures included
+- **Progress Reporting**: Detailed status messages during execution
+
+### Environment Setup
+
+1. **Create a `.env.local` file:**
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+2. **Configure Supabase:**
+   - Create a new Supabase project
+   - Run the migration scripts
+   - Set up Row Level Security policies
+   - Configure authentication (optional)
+
+### Data Service
+
+The project includes a comprehensive data service (`lib/data-service.ts`) with:
+
+- **Type-safe functions** for all database operations
+- **Error handling** with fallback mechanisms
+- **Batch operations** for performance optimization
+- **Full-text search** capabilities
+- **Multi-language support** (English, Hebrew, Arabic)
+
+**Key Functions:**
+```typescript
+// Fetch all factoids with pagination
+getAllFactoids(page?: number, limit?: number): Promise<Factoid[]>
+
+// Search factoids with full-text search
+searchFactoids(query: string): Promise<Factoid[]>
+
+// Get factoids by tag
+getFactoidsByTag(tagSlug: string): Promise<Factoid[]>
+
+// Get all tags with hierarchy
+getAllTags(): Promise<Tag[]>
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
