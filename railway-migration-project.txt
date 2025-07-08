@@ -227,6 +227,31 @@ cd services/ui && npm run dev
 
 ---
 
+## DEVELOPMENT WORKFLOW INSTRUCTIONS
+
+### **⚠️ CRITICAL: Branch Management Protocol**
+
+**Cursor should ONLY work with the railway-migration branch**
+
+#### For Cursor/AI Development:
+1. **Always work on railway-migration branch**
+2. **Never directly modify main branch**  
+3. **All development happens in railway-migration**
+4. **Regular commits to railway-migration branch**
+
+#### For Manual Pull Requests:
+1. **Pull requests are created manually by project owner only**
+2. **PRs from railway-migration → main**
+3. **Manual review and approval process**
+4. **No automated merging**
+
+#### Current Branch Status:
+- **Active Development Branch:** railway-migration ✅
+- **Production Branch:** main
+- **Deployment Source:** main branch (via Railway GitHub integration)
+
+---
+
 ## TESTING FRAMEWORK FOR LLM EXECUTION
 
 Each step includes specific testing commands and verification procedures:
