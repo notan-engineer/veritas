@@ -30,6 +30,142 @@ const config = {
 };
 
 /**
+ * Security: Whitelist of allowed table names
+ * This prevents SQL injection through table name interpolation
+ */
+const ALLOWED_TABLES = [
+  'sources',
+  'scraped_content', 
+  'tags',
+  'factoids',
+  'factoid_tags',
+  'factoid_sources'
+];
+
+/**
+ * Security: Whitelist of allowed column names for each table
+ * This prevents SQL injection through column name interpolation
+ */
+const ALLOWED_COLUMNS = {
+  sources: [
+    'id', 'name', 'domain', 'url', 'description', 'icon_url', 
+    'twitter_handle', 'profile_photo_url', 'is_active', 'created_at', 'updated_at'
+  ],
+  scraped_content: [
+    'id', 'source_id', 'source_url', 'title', 'content', 'author', 
+    'publication_date', 'content_type', 'language', 'processing_status', 'created_at'
+  ],
+  tags: [
+    'id', 'name', 'slug', 'description', 'parent_id', 'level', 
+    'is_active', 'created_at', 'updated_at'
+  ],
+  factoids: [
+    'id', 'title', 'description', 'bullet_points', 'language', 'confidence_score',
+    'status', 'search_vector', 'created_at', 'updated_at'
+  ],
+  factoid_tags: [
+    'id', 'factoid_id', 'tag_id', 'confidence_score', 'created_at'
+  ],
+  factoid_sources: [
+    'id', 'factoid_id', 'scraped_content_id', 'relevance_score', 'created_at'
+  ]
+};
+
+/**
+ * Security: Validate table name against whitelist
+ * @param {string} tableName - Table name to validate
+ * @throws {Error} If table name is not in whitelist
+ */
+function validateTableName(tableName) {
+  if (!tableName || typeof tableName !== 'string') {
+    throw new Error('Table name must be a non-empty string');
+  }
+  
+  if (!ALLOWED_TABLES.includes(tableName)) {
+    throw new Error(`Invalid table name: ${tableName}. Allowed tables: ${ALLOWED_TABLES.join(', ')}`);
+  }
+  
+  return tableName;
+}
+
+/**
+ * Security: Validate column names against whitelist for specific table
+ * @param {string} tableName - Table name (must be validated first)
+ * @param {string[]} columnNames - Column names to validate
+ * @throws {Error} If any column name is not in whitelist for the table
+ */
+function validateColumnNames(tableName, columnNames) {
+  if (!Array.isArray(columnNames)) {
+    throw new Error('Column names must be an array');
+  }
+  
+  const allowedColumns = ALLOWED_COLUMNS[tableName];
+  if (!allowedColumns) {
+    throw new Error(`No column whitelist defined for table: ${tableName}`);
+  }
+  
+  for (const columnName of columnNames) {
+    if (!columnName || typeof columnName !== 'string') {
+      throw new Error('Column name must be a non-empty string');
+    }
+    
+    if (!allowedColumns.includes(columnName)) {
+      throw new Error(`Invalid column name: ${columnName} for table: ${tableName}. Allowed columns: ${allowedColumns.join(', ')}`);
+    }
+  }
+  
+  return columnNames;
+}
+
+/**
+ * Security: Safely construct SELECT query with validated table name
+ * @param {string} tableName - Table name to query (will be validated)
+ * @param {string} orderBy - Optional ORDER BY column (will be validated)
+ * @returns {string} Safe SQL query string
+ */
+function buildSelectQuery(tableName, orderBy = null) {
+  const validatedTable = validateTableName(tableName);
+  
+  let query = `SELECT * FROM ${validatedTable}`;
+  
+  if (orderBy) {
+    validateColumnNames(validatedTable, [orderBy]);
+    query += ` ORDER BY ${orderBy}`;
+  }
+  
+  return query;
+}
+
+/**
+ * Security: Safely construct INSERT query with validated table and column names
+ * @param {string} tableName - Table name (will be validated)
+ * @param {string[]} columnNames - Column names (will be validated)
+ * @returns {Object} Object containing query string and metadata
+ */
+function buildInsertQuery(tableName, columnNames) {
+  const validatedTable = validateTableName(tableName);
+  const validatedColumns = validateColumnNames(validatedTable, columnNames);
+  
+  const columnsList = validatedColumns.join(', ');
+  const placeholdersList = validatedColumns.map((_, index) => `$${index + 1}`).join(', ');
+  
+  return {
+    query: `INSERT INTO ${validatedTable} (${columnsList}) VALUES (${placeholdersList})`,
+    columns: validatedColumns
+  };
+}
+
+/**
+ * Security: Safely construct COUNT query with validated table name
+ * @param {string} tableName - Table name (will be validated)
+ * @returns {string} Safe SQL query string
+ */
+function buildCountQuery(tableName) {
+  const validatedTable = validateTableName(tableName);
+  return `SELECT COUNT(*) FROM ${validatedTable}`;
+}
+
+/**
  * Create database connection
  */
 async function createConnection(dbConfig) {
@@ -69,13 +205,16 @@ async function applySchema(railwayPool) {
 async function exportSupabaseData(supabasePool) {
   console.log('\n📤 Exporting data from Supabase...');
   
-  const tables = ['sources', 'scraped_content', 'tags', 'factoids', 'factoid_tags', 'factoid_sources'];
   const exportedData = {};
   
-  for (const table of tables) {
+  for (const table of ALLOWED_TABLES) {
     try {
       console.log(`  📋 Exporting ${table}...`);
-      const result = await supabasePool.query(`SELECT * FROM ${table} ORDER BY created_at`);
+      
+      // Security: Use validated query builder instead of string interpolation
+      const query = buildSelectQuery(table, 'created_at');
+      const result = await supabasePool.query(query);
+      
       exportedData[table] = result.rows;
       console.log(`  ✅ Exported ${result.rows.length} rows from ${table}`);
     } catch (error) {
@@ -93,9 +232,7 @@ async function exportSupabaseData(supabasePool) {
 async function importRailwayData(railwayPool, exportedData) {
   console.log('\n📥 Importing data to Railway...');
   
-  const tableOrder = ['sources', 'scraped_content', 'tags', 'factoids', 'factoid_tags', 'factoid_sources'];
-  
-  for (const table of tableOrder) {
+  for (const table of ALLOWED_TABLES) {
     const data = exportedData[table];
     if (!data || data.length === 0) {
       console.log(`  ⏭️ Skipping empty table: ${table}`);
@@ -105,12 +242,11 @@ async function importRailwayData(railwayPool, exportedData) {
     try {
       console.log(`  📋 Importing ${data.length} rows to ${table}...`);
       
-      // Get column names from first row
+      // Security: Get column names from first row and validate them
       const columns = Object.keys(data[0]);
-      const columnsList = columns.join(', ');
-      const placeholdersList = columns.map((_, index) => `$${index + 1}`).join(', ');
       
-      const query = `INSERT INTO ${table} (${columnsList}) VALUES (${placeholdersList})`;
+      // Security: Use validated query builder instead of string interpolation
+      const { query, columns: validatedColumns } = buildInsertQuery(table, columns);
       
       // Import in batches to avoid memory issues
       const batchSize = 100;
@@ -118,7 +254,8 @@ async function importRailwayData(railwayPool, exportedData) {
         const batch = data.slice(i, i + batchSize);
         
         for (const row of batch) {
-          const values = columns.map(col => row[col]);
+          // Security: Only use validated columns to extract values
+          const values = validatedColumns.map(col => row[col]);
           await railwayPool.query(query, values);
         }
         
@@ -139,14 +276,15 @@ async function importRailwayData(railwayPool, exportedData) {
 async function validateDataIntegrity(railwayPool, supabasePool) {
   console.log('\n🔍 Validating data integrity...');
   
-  const tables = ['sources', 'scraped_content', 'tags', 'factoids', 'factoid_tags', 'factoid_sources'];
-  
-  for (const table of tables) {
+  for (const table of ALLOWED_TABLES) {
     try {
+      // Security: Use validated query builder instead of string interpolation
+      const countQuery = buildCountQuery(table);
+      
       // Count rows in both databases
       const [supabaseCount, railwayCount] = await Promise.all([
-        supabasePool.query(`SELECT COUNT(*) FROM ${table}`),
-        railwayPool.query(`SELECT COUNT(*) FROM ${table}`)
+        supabasePool.query(countQuery),
+        railwayPool.query(countQuery)
       ]);
       
       const supabaseRows = parseInt(supabaseCount.rows[0].count);
@@ -328,5 +466,11 @@ module.exports = {
   exportSupabaseData,
   importRailwayData,
   validateDataIntegrity,
-  testRailwayFunctionality
+  testRailwayFunctionality,
+  // Export security functions for testing
+  validateTableName,
+  validateColumnNames,
+  buildSelectQuery,
+  buildInsertQuery,
+  buildCountQuery
 }; 

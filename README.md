@@ -30,9 +30,35 @@ cp .env.example .env.local
 ### Environment Setup
 
 Create a `.env.local` file:
+
+**Railway PostgreSQL (Recommended):**
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+# Database Provider
+DATABASE_PROVIDER=railway
+
+# Option 1: Railway DATABASE_URL (Preferred)
+DATABASE_URL=postgresql://username:password@host:port/database
+
+# Option 2: Individual Railway Variables (Alternative)
+# DATABASE_HOST=your_railway_host
+# DATABASE_PORT=5432
+# DATABASE_NAME=your_database_name
+# DATABASE_USER=your_username
+# DATABASE_PASSWORD=your_password
+# DATABASE_SSL=true
+```
+
+**Supabase (Legacy - Migration in Progress):**
+```env
+# DATABASE_PROVIDER=supabase  # Leave commented for Railway
+# NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+**Validate Configuration:**
+```bash
+# Verify environment setup
+npm run test:env
 ```
 
 ### Development
@@ -53,7 +79,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 ## Technology Stack
 
 - **Framework**: Next.js 15.3.5 with App Router
-- **Database**: Supabase (PostgreSQL)
+- **Database**: Railway PostgreSQL (with legacy Supabase support)
 - **UI**: React 19 + Tailwind CSS + shadcn/ui
 - **Deployment**: Railway
 - **Language**: TypeScript (strict mode)

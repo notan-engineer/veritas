@@ -159,21 +159,21 @@ BEGIN
     -- Prevent circular references in tag hierarchy
     IF NEW.parent_id IS NOT NULL THEN
         -- Check if the new parent would create a cycle
-        WITH RECURSIVE tag_path AS (
-            SELECT id, parent_id, 1 as depth
-            FROM tags 
-            WHERE id = NEW.parent_id
-            
-            UNION ALL
-            
-            SELECT t.id, t.parent_id, tp.depth + 1
-            FROM tags t
-            INNER JOIN tag_path tp ON t.id = tp.parent_id
-            WHERE tp.depth < 10 -- Prevent infinite loops
-        )
-        SELECT 1 FROM tag_path WHERE id = NEW.id;
-        
-        IF FOUND THEN
+        IF EXISTS (
+            WITH RECURSIVE tag_path AS (
+                SELECT id, parent_id, 1 as depth
+                FROM tags 
+                WHERE id = NEW.parent_id
+                
+                UNION ALL
+                
+                SELECT t.id, t.parent_id, tp.depth + 1
+                FROM tags t
+                INNER JOIN tag_path tp ON t.id = tp.parent_id
+                WHERE tp.depth < 10 -- Prevent infinite loops
+            )
+            SELECT 1 FROM tag_path WHERE id = NEW.id
+        ) THEN
             RAISE EXCEPTION 'Tag hierarchy would create a circular reference';
         END IF;
     END IF;

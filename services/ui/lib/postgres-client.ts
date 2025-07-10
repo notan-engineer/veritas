@@ -170,8 +170,8 @@ class VeritasPostgreSQLClient {
    * Validate query for security (prevent SQL injection)
    */
   private validateQuery(query: string, params?: unknown[]): void {
-    // Check for dynamic SQL construction
-    if (query.includes('${') || query.includes('`')) {
+    // Check for dynamic SQL construction via template literals
+    if (query.includes('${')) {
       throw new Error('Dynamic SQL construction detected - use parameterized queries');
     }
     
