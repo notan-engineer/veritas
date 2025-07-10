@@ -326,128 +326,214 @@ function getDatabaseConfig() {
 }
 
 /**
+ * Dynamic schema inspection and fixing
+ */
+async function inspectAndFixSchema(pool) {
+  console.log('🔍 Inspecting and fixing database schema...');
+  
+  // Expected schema definition
+  const expectedSchema = {
+    sources: {
+      columns: {
+        id: 'UUID PRIMARY KEY DEFAULT uuid_generate_v4()',
+        name: 'VARCHAR(200) NOT NULL',
+        domain: 'VARCHAR(100) NOT NULL UNIQUE',
+        url: 'VARCHAR(500) NOT NULL',
+        description: 'TEXT',
+        icon_url: 'VARCHAR(500)',
+        twitter_handle: 'VARCHAR(100)',
+        profile_photo_url: 'VARCHAR(500)',
+        is_active: 'BOOLEAN DEFAULT true',
+        created_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()',
+        updated_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()'
+      }
+    },
+    tags: {
+      columns: {
+        id: 'UUID PRIMARY KEY DEFAULT uuid_generate_v4()',
+        name: 'VARCHAR(100) NOT NULL',
+        slug: 'VARCHAR(100) NOT NULL UNIQUE',
+        description: 'TEXT',
+        parent_id: 'UUID REFERENCES tags(id) ON DELETE CASCADE',
+        level: 'INTEGER NOT NULL DEFAULT 0 CHECK (level >= 0 AND level <= 10)',
+        is_active: 'BOOLEAN DEFAULT true',
+        created_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()',
+        updated_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()'
+      }
+    },
+    scraped_content: {
+      columns: {
+        id: 'UUID PRIMARY KEY DEFAULT uuid_generate_v4()',
+        source_id: 'UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE',
+        source_url: 'VARCHAR(500) NOT NULL',
+        title: 'TEXT',
+        content: 'TEXT',
+        author: 'VARCHAR(200)',
+        publication_date: 'TIMESTAMP WITH TIME ZONE',
+        content_type: 'VARCHAR(50) DEFAULT \'article\' CHECK (content_type IN (\'article\', \'social_post\', \'video\', \'other\'))',
+        language: 'VARCHAR(10) DEFAULT \'en\' CHECK (language IN (\'en\', \'he\', \'ar\', \'other\'))',
+        processing_status: 'VARCHAR(50) DEFAULT \'pending\' CHECK (processing_status IN (\'pending\', \'processing\', \'completed\', \'failed\'))',
+        created_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()',
+        updated_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()'
+      }
+    },
+    factoids: {
+      columns: {
+        id: 'UUID PRIMARY KEY DEFAULT uuid_generate_v4()',
+        title: 'VARCHAR(200) NOT NULL',
+        description: 'TEXT NOT NULL',
+        bullet_points: 'TEXT[] DEFAULT \'{}\'',
+        language: 'VARCHAR(10) DEFAULT \'en\' CHECK (language IN (\'en\', \'he\', \'ar\', \'other\'))',
+        confidence_score: 'INTEGER DEFAULT 0 CHECK (confidence_score >= 0 AND confidence_score <= 100)',
+        status: 'VARCHAR(50) DEFAULT \'draft\' CHECK (status IN (\'draft\', \'published\', \'archived\', \'flagged\'))',
+        search_vector: 'tsvector',
+        created_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()',
+        updated_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()'
+      }
+    },
+    factoid_tags: {
+      columns: {
+        id: 'UUID PRIMARY KEY DEFAULT uuid_generate_v4()',
+        factoid_id: 'UUID NOT NULL REFERENCES factoids(id) ON DELETE CASCADE',
+        tag_id: 'UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE',
+        confidence_score: 'INTEGER DEFAULT 100 CHECK (confidence_score >= 0 AND confidence_score <= 100)',
+        created_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()'
+      },
+      constraints: ['UNIQUE(factoid_id, tag_id)']
+    },
+    factoid_sources: {
+      columns: {
+        id: 'UUID PRIMARY KEY DEFAULT uuid_generate_v4()',
+        factoid_id: 'UUID NOT NULL REFERENCES factoids(id) ON DELETE CASCADE',
+        scraped_content_id: 'UUID NOT NULL REFERENCES scraped_content(id) ON DELETE CASCADE',
+        relevance_score: 'INTEGER DEFAULT 100 CHECK (relevance_score >= 0 AND relevance_score <= 100)',
+        created_at: 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()'
+      },
+      constraints: ['UNIQUE(factoid_id, scraped_content_id)']
+    }
+  };
+  
+  // Check which tables exist
+  const existingTables = await pool.query(`
+    SELECT table_name
+    FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    ORDER BY table_name;
+  `);
+  
+  const tableNames = existingTables.rows.map(row => row.table_name);
+  console.log(`📊 Found ${tableNames.length} existing tables: ${tableNames.join(', ')}`);
+  
+  // For each expected table, ensure it exists with correct schema
+  for (const [tableName, tableSchema] of Object.entries(expectedSchema)) {
+    console.log(`\n🔧 Processing table: ${tableName}`);
+    
+    if (!tableNames.includes(tableName)) {
+      // Create table from scratch
+      console.log(`   Creating missing table: ${tableName}`);
+      await createTableFromScratch(pool, tableName, tableSchema);
+    } else {
+      // Check and fix existing table schema
+      console.log(`   Checking existing table: ${tableName}`);
+      await fixExistingTableSchema(pool, tableName, tableSchema);
+    }
+  }
+  
+  console.log('\n✅ Schema inspection and fixing completed');
+}
+
+/**
+ * Create a table from scratch
+ */
+async function createTableFromScratch(pool, tableName, tableSchema) {
+  const columnDefinitions = [];
+  
+  for (const [columnName, columnDef] of Object.entries(tableSchema.columns)) {
+    columnDefinitions.push(`${columnName} ${columnDef}`);
+  }
+  
+  if (tableSchema.constraints) {
+    columnDefinitions.push(...tableSchema.constraints);
+  }
+  
+  const createSQL = `
+    CREATE TABLE ${tableName} (
+      ${columnDefinitions.join(',\n      ')}
+    );
+  `;
+  
+  await pool.query(createSQL);
+  console.log(`   ✅ Created table: ${tableName}`);
+}
+
+/**
+ * Fix existing table schema by adding missing columns
+ */
+async function fixExistingTableSchema(pool, tableName, tableSchema) {
+  // Get existing columns
+  const existingColumns = await pool.query(`
+    SELECT column_name
+    FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = $1;
+  `, [tableName]);
+  
+  const columnNames = existingColumns.rows.map(row => row.column_name);
+  const expectedColumns = Object.keys(tableSchema.columns);
+  const missingColumns = expectedColumns.filter(col => !columnNames.includes(col));
+  
+  if (missingColumns.length > 0) {
+    console.log(`   🔧 Adding missing columns: ${missingColumns.join(', ')}`);
+    
+    for (const columnName of missingColumns) {
+      // Simplify column definition for ALTER TABLE (remove constraints that don't work with ADD COLUMN)
+      let columnDef = tableSchema.columns[columnName];
+      
+      // Remove PRIMARY KEY, UNIQUE, and REFERENCES from ADD COLUMN (these need separate statements)
+      columnDef = columnDef
+        .replace(/PRIMARY KEY/g, '')
+        .replace(/UNIQUE/g, '')
+        .replace(/REFERENCES[^,]+/g, '')
+        .replace(/CHECK[^,]+/g, '')
+        .trim();
+      
+      // Special handling for specific columns
+      if (columnName === 'id' && columnDef.includes('uuid_generate_v4()')) {
+        // Skip adding ID column to existing tables
+        continue;
+      }
+      
+      try {
+        await pool.query(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS ${columnName} ${columnDef};`);
+        console.log(`     ✅ Added column: ${columnName}`);
+      } catch (error) {
+        console.log(`     ⚠️ Could not add ${columnName}: ${error.message}`);
+      }
+    }
+  } else {
+    console.log(`   ✅ All expected columns exist`);
+  }
+}
+
+/**
  * Create database schema
  */
 async function createSchema(pool) {
-  console.log('📋 Creating database schema...');
+  console.log('📋 Setting up database schema...');
   
-  // First, enable extensions and create tables
-  const baseSchemaSQL = `
-    -- Enable required extensions
+  // First, enable extensions
+  await pool.query(`
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
     CREATE EXTENSION IF NOT EXISTS "pg_trgm";
     CREATE EXTENSION IF NOT EXISTS "unaccent";
-
-    -- Sources table
-    CREATE TABLE IF NOT EXISTS sources (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        name VARCHAR(200) NOT NULL,
-        domain VARCHAR(100) NOT NULL UNIQUE,
-        url VARCHAR(500) NOT NULL,
-        description TEXT,
-        icon_url VARCHAR(500),
-        twitter_handle VARCHAR(100),
-        profile_photo_url VARCHAR(500),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-
-    -- Tags table
-    CREATE TABLE IF NOT EXISTS tags (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        name VARCHAR(100) NOT NULL,
-        slug VARCHAR(100) NOT NULL UNIQUE,
-        description TEXT,
-        parent_id UUID REFERENCES tags(id) ON DELETE CASCADE,
-        level INTEGER NOT NULL DEFAULT 0 CHECK (level >= 0 AND level <= 10),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-
-    -- Scraped content table
-    CREATE TABLE IF NOT EXISTS scraped_content (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        source_id UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
-        source_url VARCHAR(500) NOT NULL,
-        title TEXT,
-        content TEXT,
-        author VARCHAR(200),
-        publication_date TIMESTAMP WITH TIME ZONE,
-        content_type VARCHAR(50) DEFAULT 'article' CHECK (content_type IN ('article', 'social_post', 'video', 'other')),
-        language VARCHAR(10) DEFAULT 'en' CHECK (language IN ('en', 'he', 'ar', 'other')),
-        processing_status VARCHAR(50) DEFAULT 'pending' CHECK (processing_status IN ('pending', 'processing', 'completed', 'failed')),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-
-    -- Factoids table
-    CREATE TABLE IF NOT EXISTS factoids (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        title VARCHAR(200) NOT NULL,
-        description TEXT NOT NULL,
-        bullet_points TEXT[] DEFAULT '{}',
-        language VARCHAR(10) DEFAULT 'en' CHECK (language IN ('en', 'he', 'ar', 'other')),
-        confidence_score INTEGER DEFAULT 0 CHECK (confidence_score >= 0 AND confidence_score <= 100),
-        status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived', 'flagged')),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-
-    -- Factoid-Tag relationship table
-    CREATE TABLE IF NOT EXISTS factoid_tags (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        factoid_id UUID NOT NULL REFERENCES factoids(id) ON DELETE CASCADE,
-        tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-        confidence_score INTEGER DEFAULT 100 CHECK (confidence_score >= 0 AND confidence_score <= 100),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        UNIQUE(factoid_id, tag_id)
-    );
-
-    -- Factoid-Source relationship table
-    CREATE TABLE IF NOT EXISTS factoid_sources (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        factoid_id UUID NOT NULL REFERENCES factoids(id) ON DELETE CASCADE,
-        scraped_content_id UUID NOT NULL REFERENCES scraped_content(id) ON DELETE CASCADE,
-        relevance_score INTEGER DEFAULT 100 CHECK (relevance_score >= 0 AND relevance_score <= 100),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        UNIQUE(factoid_id, scraped_content_id)
-    );
-
-  `;
+  `);
+  console.log('✅ Database extensions enabled');
   
-  await pool.query(baseSchemaSQL);
-  console.log('✅ Base schema created successfully');
+  // Inspect and fix schema dynamically
+  await inspectAndFixSchema(pool);
   
-  // Add missing columns if they don't exist
-  console.log('🔧 Adding missing columns...');
-  
-  try {
-    // Add is_active column to sources table if it doesn't exist
-    await pool.query(`
-      ALTER TABLE sources 
-      ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
-    `);
-    
-    // Add is_active column to tags table if it doesn't exist
-    await pool.query(`
-      ALTER TABLE tags 
-      ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
-    `);
-    
-    // Add search_vector column to factoids table if it doesn't exist
-    await pool.query(`
-      ALTER TABLE factoids 
-      ADD COLUMN IF NOT EXISTS search_vector tsvector;
-    `);
-    
-    console.log('✅ Missing columns added successfully');
-  } catch (error) {
-    console.warn('⚠️ Warning: Could not add missing columns:', error.message);
-  }
-  
-  // Create search function and trigger (after ensuring search_vector column exists)
-  console.log('🔍 Setting up search functionality...');
-  
+  // Set up search functionality
+  console.log('\n🔍 Setting up search functionality...');
   try {
     const searchSQL = `
       -- Search vector update function
@@ -475,8 +561,8 @@ async function createSchema(pool) {
     console.warn('⚠️ Warning: Could not set up search functionality:', error.message);
   }
   
-  // Create indexes (only after ensuring columns exist)
-  console.log('📊 Creating indexes...');
+  // Create indexes
+  console.log('\n📊 Creating indexes...');
   const indexSQL = `
     CREATE INDEX IF NOT EXISTS idx_sources_domain ON sources(domain);
     CREATE INDEX IF NOT EXISTS idx_sources_active ON sources(is_active);
@@ -490,8 +576,12 @@ async function createSchema(pool) {
     CREATE INDEX IF NOT EXISTS idx_factoid_sources_factoid_id ON factoid_sources(factoid_id);
   `;
   
-  await pool.query(indexSQL);
-  console.log('✅ Database schema and indexes created successfully');
+  try {
+    await pool.query(indexSQL);
+    console.log('✅ Indexes created successfully');
+  } catch (error) {
+    console.warn('⚠️ Warning: Some indexes could not be created:', error.message);
+  }
 }
 
 /**
