@@ -96,11 +96,11 @@ class VeritasPostgreSQLClient {
       password: config.password,
       ssl: config.ssl,
       
-      // Connection pool configuration
-      max: 20, // Maximum number of clients in the pool
-      min: 2,  // Minimum number of clients in the pool
-      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-      connectionTimeoutMillis: 2000 // Return error after 2 seconds if no connection available
+      // Connection pool configuration (configurable via environment variables)
+      max: parseInt(process.env.DATABASE_POOL_MAX || '20'), // Maximum number of clients in the pool
+      min: parseInt(process.env.DATABASE_POOL_MIN || '2'),  // Minimum number of clients in the pool
+      idleTimeoutMillis: parseInt(process.env.DATABASE_IDLE_TIMEOUT || '30000'), // Close idle clients after 30 seconds
+      connectionTimeoutMillis: parseInt(process.env.DATABASE_CONNECTION_TIMEOUT || '2000') // Return error after 2 seconds if no connection available
     });
 
     // Test connection on initialization

@@ -79,7 +79,7 @@ function isValidString(value: unknown): value is string {
  * Utility to check if value is a valid number
  */
 function isValidNumber(value: unknown): value is number {
-  return typeof value === 'number' && !isNaN(value) && isFinite(value)
+  return typeof value === 'number' && !isNaN(value) && Number.isFinite(value)
 }
 
 /**

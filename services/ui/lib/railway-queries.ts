@@ -93,6 +93,17 @@ export const FACTOIDS_BY_LANGUAGE_QUERY = `${FACTOID_BASE_SELECT}
  * Query to get factoids by tag slug
  * This query joins through the tag system to find factoids with a specific tag
  * Parameters: [status: string, tagSlug: string]
+ * 
+ * Performance Optimization:
+ * For large datasets, ensure these indexes exist for optimal performance:
+ * - CREATE INDEX idx_factoid_tags_factoid_id ON factoid_tags(factoid_id);
+ * - CREATE INDEX idx_factoid_tags_tag_id ON factoid_tags(tag_id);
+ * - CREATE INDEX idx_tags_slug ON tags(slug);
+ * - CREATE INDEX idx_factoids_status_created_at ON factoids(status, created_at DESC);
+ * 
+ * Note: The base query uses LEFT JOINs for tags/sources aggregation while this
+ * query uses additional INNER JOINs for filtering. The combination requires
+ * careful index optimization to prevent performance degradation.
  */
 export const FACTOIDS_BY_TAG_QUERY = `${FACTOID_BASE_SELECT}
   INNER JOIN factoid_tags ft_filter ON f.id = ft_filter.factoid_id
