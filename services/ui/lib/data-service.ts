@@ -55,6 +55,22 @@ export interface Source {
 }
 
 /**
+ * Build the correct URL for API calls based on environment
+ * - Server-side: Use localhost with correct port
+ * - Client-side: Use relative URL
+ */
+function getApiUrl(path: string): string {
+  // Client-side: use relative URL
+  if (typeof window !== 'undefined') {
+    return path;
+  }
+  
+  // Server-side: use localhost (same server process)
+  const port = process.env.PORT || '3000';
+  return `http://localhost:${port}${path}`;
+}
+
+/**
  * Handles API responses and errors
  */
 async function handleApiResponse<T>(response: Response): Promise<T> {
@@ -70,7 +86,7 @@ async function handleApiResponse<T>(response: Response): Promise<T> {
  */
 export async function getAllFactoids(): Promise<Factoid[]> {
   try {
-    const response = await fetch('/api/factoids', {
+    const response = await fetch(getApiUrl('/api/factoids'), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -87,7 +103,7 @@ export async function getAllFactoids(): Promise<Factoid[]> {
  */
 export async function getFactoidById(id: string): Promise<Factoid | null> {
   try {
-    const response = await fetch(`/api/factoids/${id}`, {
+    const response = await fetch(getApiUrl(`/api/factoids/${id}`), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -108,7 +124,7 @@ export async function getFactoidById(id: string): Promise<Factoid | null> {
  */
 export async function getAllTags(): Promise<Tag[]> {
   try {
-    const response = await fetch('/api/tags', {
+    const response = await fetch(getApiUrl('/api/tags'), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -129,7 +145,7 @@ export async function searchFactoids(query: string): Promise<Factoid[]> {
       return [];
     }
 
-    const response = await fetch(`/api/factoids/search?q=${encodeURIComponent(query)}`, {
+    const response = await fetch(getApiUrl(`/api/factoids/search?q=${encodeURIComponent(query)}`), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -250,7 +266,7 @@ export async function getDatabaseProvider(): Promise<string> {
  */
 export async function testDatabaseConnection(): Promise<boolean> {
   try {
-    const response = await fetch('/api/factoids', {
+    const response = await fetch(getApiUrl('/api/factoids'), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
