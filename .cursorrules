@@ -1,0 +1,407 @@
+# Veritas Project - Cursor AI Development Rules
+
+## Project Context
+
+**Veritas** is a modern news aggregation platform that transforms traditional news consumption by presenting verified information through structured "factoids" instead of lengthy articles. The platform serves information-conscious professionals, students, and multilingual users who need quick, accurate, and unbiased news consumption.
+
+### Core Mission
+Transform news consumption by aggregating content from multiple sources and presenting only verified facts in an easily digestible format, saving time while ensuring accuracy and eliminating information overload.
+
+## Technology Stack
+
+### Primary Technologies
+- **Framework**: Next.js 15.3.5 with App Router (React 19.0.0)
+- **Language**: TypeScript 5 (strict mode enabled)
+- **Styling**: Tailwind CSS v4 with PostCSS
+- **UI Components**: shadcn/ui (Radix UI primitives)
+- **Database**: Supabase PostgreSQL with real-time capabilities
+- **Deployment**: Railway (cost-optimized cloud hosting)
+- **Development**: Turbopack, ESLint, Prettier
+
+### File Structure
+```
+veritas/
+├── services/ui/              # Main Next.js application
+│   ├── app/                 # App Router pages
+│   ├── components/ui/       # shadcn/ui components
+│   ├── lib/                 # Utilities and data services
+│   └── public/              # Static assets
+├── database/migrations/     # SQL migration files
+├── documentation/           # Project documentation
+└── infrastructure/          # Railway deployment config
+```
+
+## Core Development Principles
+
+### 1. Simplicity First
+- Write the minimum code necessary to achieve the goal
+- Favor existing solutions over creating new ones
+- Question complexity - if something seems complex, find a simpler approach
+- Prioritize readability over clever optimization
+- Use established patterns rather than inventing new ones
+
+### 2. Change Minimization
+- Analyze before coding - understand the full scope before making changes
+- Change as little as possible to achieve the objective
+- Prefer configuration changes over code changes when possible
+- Test changes thoroughly in development before committing
+
+### 3. Cost Consciousness
+- Always consider cloud costs before implementing features that scale
+- Use Railway's free tier features when possible
+- Monitor database queries and optimize for performance
+- Implement pagination for large datasets
+- Use batch operations instead of individual queries
+
+### 4. Security & Privacy By Design
+- Validate all inputs on the server side
+- Use environment variables for all secrets
+- Never log sensitive information
+- Apply principle of least privilege
+- Use parameterized queries to prevent SQL injection
+
+## Mandatory Documentation Requirements
+
+**CRITICAL**: Update these documentation files with every relevant commit:
+
+1. **`documentation/product-requirements.md`** - When user experience, features, or business logic changes
+2. **`documentation/technical-design.md`** - When architecture, tech stack, or database schema changes  
+3. **`documentation/developer-guidelines.md`** - When development practices or tools change
+
+### Planning Requirements
+For projects taking >1 day, create planning documents in `documentation/planning/` using format:
+```
+DD-MM-YY - [Project Short Name].md           # Active planning
+DD-MM-YY - [Project Short Name] - DONE.md    # Completed project
+```
+
+## Branching & Workflow
+
+### Absolute Rules
+- **NEVER push or merge directly to main branch**
+- Always create feature branches: `git checkout -b feature/description`
+- Update documentation in the same branch as code changes
+- Test thoroughly before requesting review
+- Manual merge only by project maintainer
+
+### Branch Naming
+```
+feature/short-description     # New features
+fix/bug-description          # Bug fixes
+refactor/area-description    # Code refactoring
+docs/section-update          # Documentation updates
+config/setting-change        # Configuration changes
+```
+
+## Code Quality Standards
+
+### TypeScript Requirements
+- Strict mode enabled - no `any` types without justification
+- Comprehensive interfaces for all data structures
+- Type safety at boundaries - validate external data
+- JSDoc comments for complex functions
+
+### Performance Standards
+- Page load times < 2 seconds
+- Database queries optimized with proper indexing
+- Use batch operations to prevent N+1 problems
+- Implement lazy loading for non-critical components
+- Optimize images using Next.js Image component
+
+### Component Architecture
+Use shadcn/ui components consistently:
+```typescript
+// ✅ Correct: Use shadcn/ui components
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
+// ❌ Incorrect: Don't create custom basic UI components
+// Use existing shadcn/ui patterns instead
+```
+
+## Database Development Guidelines
+
+### Data Models
+The system uses a **factoid-centric design** with these core interfaces:
+
+```typescript
+interface Factoid {
+  id: string
+  title: string
+  description: string
+  bullet_points: string[]
+  language: 'en' | 'he' | 'ar' | 'other'
+  confidence_score: number
+  status: 'draft' | 'published' | 'archived' | 'flagged'
+  created_at: string
+  updated_at: string
+  tags: Tag[]
+  sources: Source[]
+}
+
+interface Tag {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  parent_id?: string
+  level: number
+  is_active: boolean
+  confidence_score?: number
+}
+
+interface Source {
+  id: string
+  name: string
+  domain: string
+  url: string
+  description?: string
+  relevance_score?: number
+}
+```
+
+### Query Patterns
+```typescript
+// ✅ Preferred: Batch operations
+const factoids = await getAllFactoids()
+const tags = await getBatchTagsForFactoids(factoids)
+
+// ❌ Avoid: N+1 queries
+const factoids = await getAllFactoids()
+for (const factoid of factoids) {
+  factoid.tags = await getTagsForFactoid(factoid.id) // DON'T DO THIS
+}
+```
+
+### Schema Changes
+All database schema changes must:
+1. Be backwards compatible during deployment
+2. Include migration scripts in `database/migrations/`
+3. Update TypeScript interfaces in affected files
+4. Be documented in technical design document
+
+## RTL & Internationalization Support
+
+### Language Support
+- **Primary Languages**: English, Hebrew, Arabic
+- **RTL Utilities**: Use `lib/rtl-utils.ts` for right-to-left text handling
+- **Language Type**: `type Language = 'en' | 'he' | 'ar' | 'other'`
+
+### RTL Implementation
+```typescript
+// ✅ Correct RTL usage
+import { getRTLClasses, getRTLContainerClasses } from "@/lib/rtl-utils"
+
+<div className={`${getRTLContainerClasses(factoid.language)}`}>
+  <h2 className={`${getRTLClasses(factoid.language)}`}>
+    {factoid.title}
+  </h2>
+</div>
+```
+
+## Environment & Configuration
+
+### Required Environment Variables
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NODE_ENV=production
+```
+
+### Development Commands
+```bash
+npm run dev              # Development server
+npm run build           # Production build
+npm run start           # Production server
+npm run lint            # ESLint check
+npm run test:env        # Environment validation
+npm run test:smoke      # Build validation
+```
+
+## AI-Specific Guidelines
+
+### Decision-Making Priorities
+When choosing between options, prefer:
+1. **Simpler solution** over complex solution
+2. **Existing library** over custom implementation
+3. **Configuration change** over code change
+4. **Client-side logic** over server-side (when appropriate for cost)
+5. **Proven pattern** over experimental approach
+
+### Code Changes
+- Always read relevant documentation before making changes
+- Consider cost implications of every change
+- Use existing patterns rather than creating new ones
+- Test changes thoroughly before considering complete
+- Update documentation in the same commit as code changes
+
+### Error Handling
+```typescript
+// ✅ Preferred error handling pattern
+try {
+  const factoid = await getFactoidById(id)
+  if (!factoid) {
+    throw new Error(`Factoid not found: ${id}`)
+  }
+  return factoid
+} catch (error) {
+  console.error('Failed to fetch factoid:', error)
+  // Return meaningful fallback or re-throw with context
+  throw new Error(`Database error: ${error.message}`)
+}
+```
+
+## Security Guidelines
+
+### Input Validation
+- Validate all inputs on server side
+- Sanitize user inputs before database operations
+- Use environment variables for secrets
+- Never hardcode API keys or credentials
+
+### API Security
+```typescript
+// ✅ Secure API pattern
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    
+    // Validate input
+    if (!body.title || typeof body.title !== 'string') {
+      return Response.json({ error: 'Invalid title' }, { status: 400 })
+    }
+    
+    // Process securely
+    const result = await createFactoid(body)
+    return Response.json(result)
+    
+  } catch (error) {
+    console.error('API error:', error)
+    return Response.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+```
+
+## Performance & Cost Guidelines
+
+### Database Optimization
+- Use indexes for frequently queried fields
+- Implement pagination for large datasets
+- Use full-text search capabilities
+- Monitor query performance through Supabase dashboard
+- Batch related queries to reduce round trips
+
+### Frontend Optimization
+- Use Next.js Image component for images
+- Implement code splitting for large components
+- Use skeleton components for loading states
+- Optimize bundle size with tree shaking
+- Cache frequently accessed data appropriately
+
+### Cost Impact Assessment
+For features that might affect costs, document:
+```markdown
+## Cost Impact Analysis
+- **Database**: New tables/increased queries/storage impact
+- **Bandwidth**: Additional API calls or asset downloads
+- **Computing**: Server-side processing requirements
+- **Storage**: File storage or increased data volume
+- **Estimated Monthly Cost**: $ amount or "No cost impact"
+```
+
+## Testing Requirements
+
+### Manual Testing Checklist
+For UI changes:
+- [ ] Desktop browser testing (Chrome, Firefox, Safari)
+- [ ] Mobile responsive design testing
+- [ ] Dark/light theme compatibility
+- [ ] RTL language support (if applicable)
+- [ ] Keyboard navigation accessibility
+
+For backend changes:
+- [ ] Database query performance
+- [ ] Error handling scenarios
+- [ ] Data validation edge cases
+- [ ] API response consistency
+
+### Pre-Deployment Validation
+```bash
+npm run build            # Must complete without errors
+npm run lint             # Must pass all checks
+npm run test:env         # Environment validation
+```
+
+## Common Patterns
+
+### Page Structure
+```typescript
+// ✅ Standard page pattern
+export default async function FactoidPage({ params }: { params: { id: string } }) {
+  try {
+    const factoid = await getFactoidById(params.id)
+    
+    if (!factoid) {
+      notFound()
+    }
+    
+    return (
+      <div className={getRTLContainerClasses(factoid.language)}>
+        <Card>
+          <CardHeader>
+            <CardTitle className={getRTLClasses(factoid.language)}>
+              {factoid.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Factoid content */}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  } catch (error) {
+    console.error('Failed to load factoid:', error)
+    throw error
+  }
+}
+```
+
+### Component Patterns
+```typescript
+// ✅ Standard component pattern
+interface FactoidCardProps {
+  factoid: Factoid
+  onExpand?: (id: string) => void
+}
+
+export function FactoidCard({ factoid, onExpand }: FactoidCardProps) {
+  return (
+    <Card className="hover:shadow-lg transition-all">
+      <CardContent className="p-6">
+        <h3 className={getRTLClasses(factoid.language)}>
+          {factoid.title}
+        </h3>
+        <p className="text-muted-foreground">
+          {factoid.description}
+        </p>
+        {/* Card content */}
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+## Emergency Procedures
+
+### Production Issues
+1. Check Railway dashboard for errors
+2. Use Railway deployment history for rollback
+3. Document issue and resolution
+4. Update guidelines to prevent recurrence
+
+### Security Incidents
+1. Immediately revoke compromised credentials
+2. Assess scope of potential data exposure
+3. Update security measures and guidelines
+
+Remember: Good software is about solving problems with the least amount of appropriate code while maintaining quality, security, and cost-effectiveness. 
