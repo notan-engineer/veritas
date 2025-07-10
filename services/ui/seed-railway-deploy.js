@@ -9,31 +9,186 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-// Enhanced mock data embedded in the script for deployment
+/**
+ * Generate consistent UUID v4 from a seed string
+ * This ensures we get the same UUIDs across deployments for the same content
+ */
+function generateSeededUUID(seed) {
+  // Create a simple hash from the seed string and convert to UUID format
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Convert to positive number and pad
+  const positiveHash = Math.abs(hash).toString(16).padStart(8, '0');
+  const seed2 = seed.split('').reverse().join('');
+  let hash2 = 0;
+  for (let i = 0; i < seed2.length; i++) {
+    const char = seed2.charCodeAt(i);
+    hash2 = ((hash2 << 5) - hash2) + char;
+    hash2 = hash2 & hash2;
+  }
+  const positiveHash2 = Math.abs(hash2).toString(16).padStart(8, '0');
+  
+  // Format as UUID: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  return `${positiveHash.slice(0,8)}-${positiveHash.slice(0,4)}-4${positiveHash.slice(1,4)}-8${positiveHash2.slice(0,3)}-${positiveHash2.padStart(12, '0').slice(0,12)}`;
+}
+
+// Generate consistent UUIDs for our entities
+const sourceUUIDs = {
+  techcrunch: generateSeededUUID('source-techcrunch'),
+  reuters: generateSeededUUID('source-reuters'),
+  theverge: generateSeededUUID('source-theverge'),
+  bloomberg: generateSeededUUID('source-bloomberg'),
+  ynet: generateSeededUUID('source-ynet')
+};
+
+const tagUUIDs = {
+  technology: generateSeededUUID('tag-technology'),
+  ai: generateSeededUUID('tag-ai'),
+  hardware: generateSeededUUID('tag-hardware'),
+  finance: generateSeededUUID('tag-finance'),
+  economy: generateSeededUUID('tag-economy'),
+  space: generateSeededUUID('tag-space'),
+  environment: generateSeededUUID('tag-environment'),
+  israel: generateSeededUUID('tag-israel'),
+  startups: generateSeededUUID('tag-startups')
+};
+
+const factoidUUIDs = {
+  nvidia: generateSeededUUID('factoid-nvidia-ai-chip-2024'),
+  fed: generateSeededUUID('factoid-fed-interest-rates-december'),
+  spacex: generateSeededUUID('factoid-spacex-starlink-launch'),
+  cop28: generateSeededUUID('factoid-cop28-climate-agreement'),
+  israel_tech: generateSeededUUID('factoid-israel-tech-startup-funding')
+};
+
+// Enhanced mock data with proper UUIDs
 const deploymentMockData = {
   sources: [
-    { id: "source-1", name: "TechCrunch", domain: "techcrunch.com", url: "https://techcrunch.com", description: "Technology news and analysis", is_active: true },
-    { id: "source-2", name: "Reuters", domain: "reuters.com", url: "https://reuters.com", description: "International news and business", is_active: true },
-    { id: "source-3", name: "The Verge", domain: "theverge.com", url: "https://theverge.com", description: "Technology, science, art, and culture", is_active: true },
-    { id: "source-4", name: "Bloomberg", domain: "bloomberg.com", url: "https://bloomberg.com", description: "Business and financial news", is_active: true },
-    { id: "source-5", name: "Ynet", domain: "ynet.co.il", url: "https://ynet.co.il", description: "Israeli news portal", is_active: true }
+    { 
+      id: sourceUUIDs.techcrunch, 
+      name: "TechCrunch", 
+      domain: "techcrunch.com", 
+      url: "https://techcrunch.com", 
+      description: "Technology news and analysis", 
+      is_active: true 
+    },
+    { 
+      id: sourceUUIDs.reuters, 
+      name: "Reuters", 
+      domain: "reuters.com", 
+      url: "https://reuters.com", 
+      description: "International news and business", 
+      is_active: true 
+    },
+    { 
+      id: sourceUUIDs.theverge, 
+      name: "The Verge", 
+      domain: "theverge.com", 
+      url: "https://theverge.com", 
+      description: "Technology, science, art, and culture", 
+      is_active: true 
+    },
+    { 
+      id: sourceUUIDs.bloomberg, 
+      name: "Bloomberg", 
+      domain: "bloomberg.com", 
+      url: "https://bloomberg.com", 
+      description: "Business and financial news", 
+      is_active: true 
+    },
+    { 
+      id: sourceUUIDs.ynet, 
+      name: "Ynet", 
+      domain: "ynet.co.il", 
+      url: "https://ynet.co.il", 
+      description: "Israeli news portal", 
+      is_active: true 
+    }
   ],
   
   tags: [
-    { id: "tag-1", name: "Technology", slug: "technology", description: "Technology and innovation", level: 1, is_active: true },
-    { id: "tag-2", name: "AI", slug: "ai", description: "Artificial Intelligence", level: 1, is_active: true },
-    { id: "tag-3", name: "Hardware", slug: "hardware", description: "Computer hardware and devices", level: 2, is_active: true },
-    { id: "tag-4", name: "Finance", slug: "finance", description: "Financial news and markets", level: 1, is_active: true },
-    { id: "tag-5", name: "Economy", slug: "economy", description: "Economic news and trends", level: 2, is_active: true },
-    { id: "tag-6", name: "Space", slug: "space", description: "Space exploration and astronomy", level: 1, is_active: true },
-    { id: "tag-7", name: "Environment", slug: "environment", description: "Environmental news and climate", level: 1, is_active: true },
-    { id: "tag-8", name: "ישראל", slug: "israel", description: "Israeli news and developments", level: 1, is_active: true },
-    { id: "tag-9", name: "Startups", slug: "startups", description: "Startup companies and funding", level: 2, is_active: true }
+    { 
+      id: tagUUIDs.technology, 
+      name: "Technology", 
+      slug: "technology", 
+      description: "Technology and innovation", 
+      level: 1, 
+      is_active: true 
+    },
+    { 
+      id: tagUUIDs.ai, 
+      name: "AI", 
+      slug: "ai", 
+      description: "Artificial Intelligence", 
+      level: 1, 
+      is_active: true 
+    },
+    { 
+      id: tagUUIDs.hardware, 
+      name: "Hardware", 
+      slug: "hardware", 
+      description: "Computer hardware and devices", 
+      level: 2, 
+      is_active: true 
+    },
+    { 
+      id: tagUUIDs.finance, 
+      name: "Finance", 
+      slug: "finance", 
+      description: "Financial news and markets", 
+      level: 1, 
+      is_active: true 
+    },
+    { 
+      id: tagUUIDs.economy, 
+      name: "Economy", 
+      slug: "economy", 
+      description: "Economic news and trends", 
+      level: 2, 
+      is_active: true 
+    },
+    { 
+      id: tagUUIDs.space, 
+      name: "Space", 
+      slug: "space", 
+      description: "Space exploration and astronomy", 
+      level: 1, 
+      is_active: true 
+    },
+    { 
+      id: tagUUIDs.environment, 
+      name: "Environment", 
+      slug: "environment", 
+      description: "Environmental news and climate", 
+      level: 1, 
+      is_active: true 
+    },
+    { 
+      id: tagUUIDs.israel, 
+      name: "ישראל", 
+      slug: "israel", 
+      description: "Israeli news and developments", 
+      level: 1, 
+      is_active: true 
+    },
+    { 
+      id: tagUUIDs.startups, 
+      name: "Startups", 
+      slug: "startups", 
+      description: "Startup companies and funding", 
+      level: 2, 
+      is_active: true 
+    }
   ],
   
   factoids: [
     {
-      id: "nvidia-ai-chip-2024",
+      id: factoidUUIDs.nvidia,
       title: "NVIDIA Announces Revolutionary AI Chip with 10x Performance Boost",
       description: "NVIDIA has unveiled its latest AI chip, promising unprecedented performance improvements for machine learning workloads.",
       bullet_points: [
@@ -43,12 +198,16 @@ const deploymentMockData = {
         "Priced at $40,000 per unit, targeting enterprise AI infrastructure",
         "Compatible with existing CUDA ecosystem for seamless integration"
       ],
-      language: "en", confidence_score: 95, status: "published",
-      created_at: "2024-12-15T10:30:00Z", updated_at: "2024-12-15T10:30:00Z",
-      tag_ids: ["tag-1", "tag-2", "tag-3"], source_ids: ["source-1"]
+      language: "en", 
+      confidence_score: 95, 
+      status: "published",
+      created_at: "2024-12-15T10:30:00Z", 
+      updated_at: "2024-12-15T10:30:00Z",
+      tag_ids: [tagUUIDs.technology, tagUUIDs.ai, tagUUIDs.hardware], 
+      source_ids: [sourceUUIDs.techcrunch]
     },
     {
-      id: "fed-interest-rates-december",
+      id: factoidUUIDs.fed,
       title: "Federal Reserve Maintains Interest Rates at 5.25-5.50%",
       description: "The Federal Reserve has decided to keep interest rates unchanged, signaling a cautious approach to monetary policy.",
       bullet_points: [
@@ -58,12 +217,16 @@ const deploymentMockData = {
         "Unemployment rate stable at 3.7%, showing strong labor market",
         "Markets react positively with S&P 500 gaining 1.2% following announcement"
       ],
-      language: "en", confidence_score: 92, status: "published",
-      created_at: "2024-12-14T14:00:00Z", updated_at: "2024-12-14T14:00:00Z",
-      tag_ids: ["tag-4", "tag-5"], source_ids: ["source-2"]
+      language: "en", 
+      confidence_score: 92, 
+      status: "published",
+      created_at: "2024-12-14T14:00:00Z", 
+      updated_at: "2024-12-14T14:00:00Z",
+      tag_ids: [tagUUIDs.finance, tagUUIDs.economy], 
+      source_ids: [sourceUUIDs.reuters]
     },
     {
-      id: "spacex-starlink-launch",
+      id: factoidUUIDs.spacex,
       title: "SpaceX Successfully Launches 60 Starlink Satellites",
       description: "SpaceX has completed another successful Starlink mission, expanding global internet coverage.",
       bullet_points: [
@@ -73,12 +236,16 @@ const deploymentMockData = {
         "Starlink constellation now exceeds 4,000 active satellites",
         "Service now available in 60+ countries with 2+ million subscribers"
       ],
-      language: "en", confidence_score: 94, status: "published",
-      created_at: "2024-12-13T20:15:00Z", updated_at: "2024-12-13T20:15:00Z",
-      tag_ids: ["tag-6", "tag-1"], source_ids: ["source-3"]
+      language: "en", 
+      confidence_score: 94, 
+      status: "published",
+      created_at: "2024-12-13T20:15:00Z", 
+      updated_at: "2024-12-13T20:15:00Z",
+      tag_ids: [tagUUIDs.space, tagUUIDs.technology], 
+      source_ids: [sourceUUIDs.theverge]
     },
     {
-      id: "cop28-climate-agreement",
+      id: factoidUUIDs.cop28,
       title: "COP28 Reaches Historic Agreement on Fossil Fuel Phase-Out",
       description: "World leaders at COP28 have agreed to transition away from fossil fuels, marking a significant climate milestone.",
       bullet_points: [
@@ -88,12 +255,16 @@ const deploymentMockData = {
         "Requires regular reporting on climate action progress",
         "Creates framework for carbon trading and offset mechanisms"
       ],
-      language: "en", confidence_score: 91, status: "published",
-      created_at: "2024-12-12T16:45:00Z", updated_at: "2024-12-12T16:45:00Z",
-      tag_ids: ["tag-7"], source_ids: ["source-4"]
+      language: "en", 
+      confidence_score: 91, 
+      status: "published",
+      created_at: "2024-12-12T16:45:00Z", 
+      updated_at: "2024-12-12T16:45:00Z",
+      tag_ids: [tagUUIDs.environment], 
+      source_ids: [sourceUUIDs.bloomberg]
     },
     {
-      id: "israel-tech-startup-funding",
+      id: factoidUUIDs.israel_tech,
       title: "ישראל: חברות טכנולוגיה גייסו 2.5 מיליארד דולר ברבעון האחרון",
       description: "אקוסיסטם הסטארט-אפים הישראלי ממשיך לפרוח עם גיוסים משמעותיים בחברות בינה מלאכותית וסייבר.",
       bullet_points: [
@@ -103,9 +274,13 @@ const deploymentMockData = {
         "מרכזי פיתוח של חברות בינלאומיות גדולות נפתחים בתל אביב וירושלים",
         "הממשלה הכריזה על תכנית חדשה לתמיכה בחברות טכנולוגיה צעירות"
       ],
-      language: "he", confidence_score: 88, status: "published",
-      created_at: "2024-12-15T08:30:00Z", updated_at: "2024-12-15T08:30:00Z",
-      tag_ids: ["tag-8", "tag-1", "tag-9"], source_ids: ["source-5"]
+      language: "he", 
+      confidence_score: 88, 
+      status: "published",
+      created_at: "2024-12-15T08:30:00Z", 
+      updated_at: "2024-12-15T08:30:00Z",
+      tag_ids: [tagUUIDs.israel, tagUUIDs.technology, tagUUIDs.startups], 
+      source_ids: [sourceUUIDs.ynet]
     }
   ]
 };
@@ -400,7 +575,8 @@ async function seedData(pool) {
     
     // Create scraped content for each source
     for (const sourceId of factoid.source_ids) {
-      const contentId = `content-${factoid.id}-${sourceId}`;
+      // Generate proper UUID for content
+      const contentId = generateSeededUUID(`content-${factoid.id}-${sourceId}`);
       await pool.query(`
         INSERT INTO scraped_content (id, source_id, source_url, title, content, content_type, language, processing_status)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -483,6 +659,52 @@ async function verifyData(pool) {
 }
 
 /**
+ * Validate UUID format
+ */
+function isValidUUID(uuid) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
+/**
+ * Debug: Show generated UUIDs for verification
+ */
+function debugGeneratedUUIDs() {
+  console.log('🔍 Generated UUIDs for verification:\n');
+  
+  console.log('📊 Source UUIDs:');
+  Object.entries(sourceUUIDs).forEach(([key, uuid]) => {
+    console.log(`   ${key}: ${uuid} ${isValidUUID(uuid) ? '✅' : '❌'}`);
+  });
+  
+  console.log('\n🏷️ Tag UUIDs:');
+  Object.entries(tagUUIDs).forEach(([key, uuid]) => {
+    console.log(`   ${key}: ${uuid} ${isValidUUID(uuid) ? '✅' : '❌'}`);
+  });
+  
+  console.log('\n📰 Factoid UUIDs:');
+  Object.entries(factoidUUIDs).forEach(([key, uuid]) => {
+    console.log(`   ${key}: ${uuid} ${isValidUUID(uuid) ? '✅' : '❌'}`);
+  });
+  
+  // Test content ID generation
+  console.log('\n📄 Sample Content UUIDs:');
+  const sampleContentId = generateSeededUUID(`content-${factoidUUIDs.nvidia}-${sourceUUIDs.techcrunch}`);
+  console.log(`   sample: ${sampleContentId} ${isValidUUID(sampleContentId) ? '✅' : '❌'}`);
+  
+  // Verify all UUIDs are valid
+  const allUUIDs = [...Object.values(sourceUUIDs), ...Object.values(tagUUIDs), ...Object.values(factoidUUIDs), sampleContentId];
+  const invalidUUIDs = allUUIDs.filter(uuid => !isValidUUID(uuid));
+  
+  if (invalidUUIDs.length > 0) {
+    console.log(`\n❌ Found ${invalidUUIDs.length} invalid UUIDs:`, invalidUUIDs);
+    throw new Error('Invalid UUID format detected. Aborting deployment.');
+  } else {
+    console.log('\n✅ All UUIDs are valid format');
+  }
+}
+
+/**
  * Main deployment seeding function
  */
 async function seedRailwayDeployment() {
@@ -497,6 +719,9 @@ async function seedRailwayDeployment() {
   
   console.log(`🔍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🗄️  Database provider: ${process.env.DATABASE_PROVIDER || 'unknown'}`);
+  
+  // Debug and validate UUIDs
+  debugGeneratedUUIDs();
   
   let pool;
   
