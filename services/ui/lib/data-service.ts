@@ -1,8 +1,9 @@
 /**
  * Data Service - Client for accessing factoid data
  * 
- * This service provides a unified interface for accessing factoid data
- * through API routes that use Railway PostgreSQL database.
+ * This service provides a unified interface for accessing factoid data.
+ * - On the server, it calls database functions directly.
+ * - On the client, it uses fetch to call API routes.
  */
 
 // Type definitions
@@ -54,25 +55,10 @@ export interface Source {
   relevance_score?: number;
 }
 
-/**
- * Build the correct URL for API calls based on environment
- * - Server-side: Use localhost with correct port
- * - Client-side: Use relative URL
- */
-function getApiUrl(path: string): string {
-  // Client-side: use relative URL
-  if (typeof window !== 'undefined') {
-    return path;
-  }
-  
-  // Server-side: use localhost (same server process)
-  const port = process.env.PORT || '3000';
-  return `http://localhost:${port}${path}`;
+function isServerSide(): boolean {
+  return typeof window === 'undefined';
 }
 
-/**
- * Handles API responses and errors
- */
 async function handleApiResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Network error' }));
@@ -82,58 +68,115 @@ async function handleApiResponse<T>(response: Response): Promise<T> {
 }
 
 /**
- * Get all published factoids with their tags and sources
+ * Get a specific factoid by ID.
+ * On the server, this function bypasses the API route and queries the database directly.
  */
-export async function getAllFactoids(): Promise<Factoid[]> {
-  try {
-    const response = await fetch(getApiUrl('/api/factoids'), {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    return handleApiResponse<Factoid[]>(response);
-  } catch (error) {
-    console.error('Error fetching factoids:', error);
-    throw new Error('Failed to fetch factoids');
+export async function getFactoidById(id: string): Promise<Factoid | null> {
+  if (isServerSide()) {
+    try {
+      // Use dynamic require to prevent client-side bundling of server-only code
+      const db = eval("require")('@/lib/railway-database');
+      const result = await db.query(`
+        SELECT f.*, 
+               COALESCE(tags_agg.tags, '[]'::json) as tags,
+               COALESCE(sources_agg.sources, '[]'::json) as sources
+        FROM factoids f
+        LEFT JOIN (
+          SELECT ft.factoid_id, json_agg(t.*) as tags
+          FROM factoid_tags ft
+          JOIN tags t ON ft.tag_id = t.id
+          WHERE t.is_active = true
+          GROUP BY ft.factoid_id
+        ) tags_agg ON f.id = tags_agg.factoid_id
+        LEFT JOIN (
+          SELECT fs.factoid_id, json_agg(s.*) as sources
+          FROM factoid_sources fs
+          JOIN sources s ON fs.source_id = s.id
+          WHERE s.is_active = true
+          GROUP BY fs.factoid_id
+        ) sources_agg ON f.id = sources_agg.factoid_id
+        WHERE f.id = $1 AND f.status = 'published'
+      `, [id]);
+      if (result.rows.length === 0) return null;
+      const row = result.rows[0];
+      return {
+        ...row,
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        sources: Array.isArray(row.sources) ? row.sources : [],
+      };
+    } catch (error) {
+      console.error('Error fetching factoid by ID (server-side):', error);
+      throw new Error('Failed to fetch factoid');
+    }
   }
+
+  // Client-side fetch
+  const response = await fetch(`/api/factoids/${id}`);
+  if (response.status === 404) return null;
+  return handleApiResponse<Factoid>(response);
 }
 
 /**
- * Get a specific factoid by ID
+ * Get all published factoids with their tags and sources
  */
-export async function getFactoidById(id: string): Promise<Factoid | null> {
-  try {
-    const response = await fetch(getApiUrl(`/api/factoids/${id}`), {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (response.status === 404) {
-      return null;
+export async function getAllFactoids(): Promise<Factoid[]> {
+  if (isServerSide()) {
+    try {
+      const db = eval("require")('@/lib/railway-database');
+      const result = await db.query(`
+        SELECT f.*, 
+               COALESCE(tags_agg.tags, '[]'::json) as tags,
+               COALESCE(sources_agg.sources, '[]'::json) as sources
+        FROM factoids f
+        LEFT JOIN (
+          SELECT ft.factoid_id, json_agg(t.*) as tags
+          FROM factoid_tags ft
+          JOIN tags t ON ft.tag_id = t.id
+          WHERE t.is_active = true
+          GROUP BY ft.factoid_id
+        ) tags_agg ON f.id = tags_agg.factoid_id
+        LEFT JOIN (
+          SELECT fs.factoid_id, json_agg(s.*) as sources
+          FROM factoid_sources fs
+          JOIN sources s ON fs.source_id = s.id
+          WHERE s.is_active = true
+          GROUP BY fs.factoid_id
+        ) sources_agg ON f.id = sources_agg.factoid_id
+        WHERE f.status = 'published'
+        ORDER BY f.created_at DESC
+      `);
+      return result.rows.map((row: any) => ({
+        ...row,
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        sources: Array.isArray(row.sources) ? row.sources : [],
+      }));
+    } catch (error) {
+      console.error('Error fetching all factoids (server-side):', error);
+      throw new Error('Failed to fetch factoids');
     }
-
-    return handleApiResponse<Factoid>(response);
-  } catch (error) {
-    console.error('Error fetching factoid:', error);
-    throw new Error('Failed to fetch factoid');
   }
+  const response = await fetch('/api/factoids');
+  return handleApiResponse<Factoid[]>(response);
 }
 
 /**
  * Get all active tags
  */
 export async function getAllTags(): Promise<Tag[]> {
-  try {
-    const response = await fetch(getApiUrl('/api/tags'), {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    return handleApiResponse<Tag[]>(response);
-  } catch (error) {
-    console.error('Error fetching tags:', error);
-    throw new Error('Failed to fetch tags');
+  if (isServerSide()) {
+    try {
+      const db = eval("require")('@/lib/railway-database');
+      const result = await db.query(`
+        SELECT * FROM tags WHERE is_active = true ORDER BY level ASC, name ASC
+      `);
+      return result.rows;
+    } catch (error) {
+      console.error('Error fetching all tags (server-side):', error);
+      throw new Error('Failed to fetch tags');
+    }
   }
+  const response = await fetch('/api/tags');
+  return handleApiResponse<Tag[]>(response);
 }
 
 /**
@@ -145,11 +188,7 @@ export async function searchFactoids(query: string): Promise<Factoid[]> {
       return [];
     }
 
-    const response = await fetch(getApiUrl(`/api/factoids/search?q=${encodeURIComponent(query)}`), {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
+    const response = await fetch(`/api/factoids/search?q=${encodeURIComponent(query)}`);
     return handleApiResponse<Factoid[]>(response);
   } catch (error) {
     console.error('Error searching factoids:', error);
@@ -266,11 +305,7 @@ export async function getDatabaseProvider(): Promise<string> {
  */
 export async function testDatabaseConnection(): Promise<boolean> {
   try {
-    const response = await fetch(getApiUrl('/api/factoids'), {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    
+    const response = await fetch('/api/factoids');
     return response.ok;
   } catch (error) {
     console.error('Database connection test failed:', error);
