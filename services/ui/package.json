@@ -2,6 +2,9 @@
   "name": "veritas",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -36,7 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
     "tailwindcss": "^4",
-    "tsx": "^3.12.0",
+    "tsx": "^4.19.1",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
   }
