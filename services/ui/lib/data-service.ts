@@ -69,7 +69,7 @@ export async function getAllFactoids(): Promise<Factoid[]> {
     // Server-side: directly query the database
     try {
       // Use require() to avoid webpack bundling
-      const railwayDb = eval('require')('./railway-database');
+      const railwayDb = eval('require')('/app/lib/railway-database');
       const result = await railwayDb.query(`
         SELECT f.*, 
                COALESCE(tags_agg.tags, '[]'::json) as tags,
@@ -168,7 +168,7 @@ export async function getFactoidById(id: string): Promise<Factoid | null> {
     // Server-side: directly query the database
     try {
       // Use require() to avoid webpack bundling
-      const railwayDb = eval('require')('./railway-database');
+      const railwayDb = eval('require')('/app/lib/railway-database');
       const result = await railwayDb.query(`
         SELECT f.*, 
                COALESCE(tags_agg.tags, '[]'::json) as tags,
@@ -275,7 +275,7 @@ export async function getAllTags(): Promise<Tag[]> {
     // Server-side: directly query the database
     try {
       // Use require() to avoid webpack bundling
-      const railwayDb = eval('require')('./railway-database');
+      const railwayDb = eval('require')('/app/lib/railway-database');
       const result = await railwayDb.query(`
         SELECT * FROM tags 
         WHERE is_active = true 
@@ -319,7 +319,7 @@ export async function searchFactoids(query: string): Promise<Factoid[]> {
 
     if (isServerSide()) {
       // Server-side: directly query the database
-      const railwayDb = eval('require')('./railway-database');
+      const railwayDb = eval('require')('/app/lib/railway-database');
       const result = await railwayDb.query(`
         SELECT f.*, 
                COALESCE(tags_agg.tags, '[]'::json) as tags,
@@ -522,7 +522,7 @@ export async function testDatabaseConnection(): Promise<boolean> {
   try {
     if (isServerSide()) {
       // Server-side: directly test database connection
-      const railwayDb = eval('require')('./railway-database');
+      const railwayDb = eval('require')('/app/lib/railway-database');
       const health = await railwayDb.checkDatabaseHealth();
       return health.connected;
     } else {
