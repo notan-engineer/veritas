@@ -1,9 +1,7 @@
 /**
- * Data Service - Client for accessing factoid data
+ * Data Service - Client for accessing factoid data via API routes.
  * 
- * This service provides a unified interface for accessing factoid data.
- * - On the server, it calls database functions directly.
- * - On the client, it uses fetch to call API routes.
+ * This service is safe to use in Client Components.
  */
 
 // Type definitions
@@ -55,10 +53,6 @@ export interface Source {
   relevance_score?: number;
 }
 
-function isServerSide(): boolean {
-  return typeof window === 'undefined';
-}
-
 async function handleApiResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const errorBody = await response.text();
@@ -73,62 +67,14 @@ async function handleApiResponse<T>(response: Response): Promise<T> {
 }
 
 /**
- * Get a specific factoid by ID.
- * On the server, this function bypasses the API route and queries the database directly.
- */
-export async function getFactoidById(id: string): Promise<Factoid | null> {
-  if (isServerSide()) {
-    try {
-      // This require is safe because the 'server-only' package in railway-database
-      // will prevent this module from ever being bundled for the client.
-      const db = require('@/lib/railway-database');
-      const result = await db.query(`
-        SELECT f.*, 
-               COALESCE(tags_agg.tags, '[]'::json) as tags,
-               COALESCE(sources_agg.sources, '[]'::json) as sources
-        FROM factoids f
-        LEFT JOIN (
-          SELECT ft.factoid_id, json_agg(t.*) as tags
-          FROM factoid_tags ft JOIN tags t ON ft.tag_id = t.id
-          WHERE t.is_active = true GROUP BY ft.factoid_id
-        ) tags_agg ON f.id = tags_agg.factoid_id
-        LEFT JOIN (
-          SELECT fs.factoid_id, json_agg(s.*) as sources
-          FROM factoid_sources fs JOIN sources s ON fs.source_id = s.id
-          WHERE s.is_active = true GROUP BY fs.factoid_id
-        ) sources_agg ON f.id = sources_agg.factoid_id
-        WHERE f.id = $1 AND f.status = 'published'
-      `, [id]);
-      if (result.rows.length === 0) return null;
-      const row = result.rows[0];
-      return {
-        ...row,
-        tags: Array.isArray(row.tags) ? row.tags : [],
-        sources: Array.isArray(row.sources) ? row.sources : [],
-      };
-    } catch (error) {
-      console.error('❌ [DataService] Error fetching factoid by ID (server-side):', error);
-      throw error;
-    }
-  }
-
-  // On the client, fetch from the API route
-  const response = await fetch(`/api/factoids/${id}`);
-  if (response.status === 404) return null;
-  return handleApiResponse<Factoid>(response);
-}
-
-/**
  * These functions are called from client components and MUST use fetch.
  */
 export async function getAllFactoids(): Promise<Factoid[]> {
-    console.log('[DataService] getAllFactoids: Running on client. Fetching from API.');
     const response = await fetch('/api/factoids');
     return handleApiResponse<Factoid[]>(response);
 }
 
 export async function getAllTags(): Promise<Tag[]> {
-    console.log('[DataService] getAllTags: Running on client. Fetching from API.');
     const response = await fetch('/api/tags');
     return handleApiResponse<Tag[]>(response);
 }
@@ -137,6 +83,13 @@ export async function searchFactoids(query: string): Promise<Factoid[]> {
     if (!query.trim()) return [];
     const response = await fetch(`/api/factoids/search?q=${encodeURIComponent(query)}`);
     return handleApiResponse<Factoid[]>(response);
+}
+
+// Client-side version of getFactoidById for potential use in client components
+export async function getFactoidById_Client(id: string): Promise<Factoid | null> {
+  const response = await fetch(`/api/factoids/${id}`);
+  if (response.status === 404) return null;
+  return handleApiResponse<Factoid>(response);
 }
 
 /**
