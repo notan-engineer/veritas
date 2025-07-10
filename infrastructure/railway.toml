@@ -7,11 +7,14 @@ buildCommand = "npm install && npm run build"
 watchPatterns = ["services/ui/**"]
 
 [services.ui.deploy]
-startCommand = "npm start"
+startCommand = "npm run db:init && npm start"
 healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
 
 [services.ui.variables]
 NODE_ENV = "production"
 PORT = "${{PORT}}"
-NEXT_PUBLIC_SUPABASE_URL = "${{NEXT_PUBLIC_SUPABASE_URL}}"
-NEXT_PUBLIC_SUPABASE_ANON_KEY = "${{NEXT_PUBLIC_SUPABASE_ANON_KEY}}" 
+# DATABASE_URL is automatically provided by Railway PostgreSQL addon
+# No need to explicitly set it in configuration 
