@@ -120,6 +120,11 @@ function getDatabaseConfig() {
     throw new Error('No DATABASE_URL or DATABASE_HOST found');
   }
   
+  // Configure SSL for Railway environment
+  const sslConfig = process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: false } // Railway uses self-signed certificates
+    : false;
+  
   // Parse the database URL
   try {
     const url = new URL(dbUrl);
@@ -130,7 +135,7 @@ function getDatabaseConfig() {
       database: url.pathname.slice(1),
       user: url.username,
       password: url.password,
-      ssl: process.env.NODE_ENV === 'production'
+      ssl: sslConfig
     };
   } catch (error) {
     // If URL parsing fails, try direct configuration
@@ -140,7 +145,7 @@ function getDatabaseConfig() {
       database: process.env.DATABASE_NAME || process.env.PGDATABASE || 'railway',
       user: process.env.DATABASE_USER || process.env.PGUSER || 'postgres',
       password: process.env.DATABASE_PASSWORD || process.env.PGPASSWORD,
-      ssl: process.env.DATABASE_SSL === 'true' || process.env.NODE_ENV === 'production'
+      ssl: sslConfig
     };
   }
 }
