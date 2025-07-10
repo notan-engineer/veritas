@@ -91,7 +91,8 @@ export const FACTOIDS_BY_LANGUAGE_QUERY = `${FACTOID_BASE_SELECT}
 
 /**
  * Query to get factoids by tag slug
- * This query joins through the tag system to find factoids with a specific tag
+ * Uses CTE (Common Table Expression) to separate filtering logic from aggregation,
+ * improving query planner optimization and avoiding mixed JOIN strategy confusion.
  * Parameters: [status: string, tagSlug: string]
  * 
  * Performance Optimization:
@@ -101,45 +102,53 @@ export const FACTOIDS_BY_LANGUAGE_QUERY = `${FACTOID_BASE_SELECT}
  * - CREATE INDEX idx_tags_slug ON tags(slug);
  * - CREATE INDEX idx_factoids_status_created_at ON factoids(status, created_at DESC);
  * 
- * Note: The base query uses LEFT JOINs for tags/sources aggregation while this
- * query uses additional INNER JOINs for filtering. The combination requires
- * careful index optimization to prevent performance degradation.
+ * Performance Benefits of CTE approach:
+ * - Query planner can optimize filtering separately from aggregation
+ * - Avoids mixed LEFT/INNER JOIN strategy confusion
+ * - More predictable execution plans for large datasets
  */
-export const FACTOIDS_BY_TAG_QUERY = `${FACTOID_BASE_SELECT}
-  INNER JOIN factoid_tags ft_filter ON f.id = ft_filter.factoid_id
-  INNER JOIN tags t_filter ON ft_filter.tag_id = t_filter.id
-  WHERE f.status = $1 AND t_filter.slug = $2 AND t_filter.is_active = true
+export const FACTOIDS_BY_TAG_QUERY = `
+  WITH filtered_factoids AS (
+    SELECT DISTINCT f.id
+    FROM factoids f
+    INNER JOIN factoid_tags ft ON f.id = ft.factoid_id
+    INNER JOIN tags t ON ft.tag_id = t.id
+    WHERE f.status = $1 AND t.slug = $2 AND t.is_active = true
+  )
+  ${FACTOID_BASE_SELECT}
+  INNER JOIN filtered_factoids ff ON f.id = ff.id
   GROUP BY f.id
   ORDER BY f.created_at DESC`;
 
 /**
  * Query parameter builders for common use cases
+ * Type-safe parameter builders ensuring consistent parameter order and types
  */
 export const QueryParams = {
   /**
    * Parameters for getting published factoids by ID
    */
-  factoidById: (id: string) => [id, 'published'],
+  factoidById: (id: string): [string, string] => [id, 'published'],
   
   /**
    * Parameters for getting all published factoids
    */
-  allPublished: () => ['published'],
+  allPublished: (): [string] => ['published'],
   
   /**
    * Parameters for searching published factoids
    */
-  searchPublished: (query: string) => ['published', query, `%${query}%`],
+  searchPublished: (query: string): [string, string, string] => ['published', query, `%${query}%`],
   
   /**
    * Parameters for getting published factoids by language
    */
-  byLanguage: (language: string) => ['published', language],
+  byLanguage: (language: string): [string, string] => ['published', language],
   
   /**
    * Parameters for getting published factoids by tag
    */
-  byTag: (tagSlug: string) => ['published', tagSlug],
+  byTag: (tagSlug: string): [string, string] => ['published', tagSlug],
 };
 
 /**
