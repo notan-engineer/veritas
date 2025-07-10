@@ -13,18 +13,18 @@ Implemented automatic database seeding that runs after each Railway deployment b
 
 ### Key Files
 - `database/seed-railway-deploy.js` - Production-optimized seeding script
-- `services/ui/package.json` - Contains `postbuild` script configuration
+- `services/ui/package.json` - Contains `prestart` script configuration
 - `infrastructure/railway.toml` - Railway deployment configuration
 
 ### Environment Safety
-- ✅ **Production**: Automatic seeding after deployment
+- ✅ **Production**: Automatic seeding during application startup
 - ✅ **Development**: Seeding skipped by default (safety check)
 - ✅ **Testing**: Use `FORCE_SEED=true` to override locally
 
 ### Available Scripts
 ```bash
 # Automatic (runs on Railway)
-npm run build                     # Triggers postbuild seeding in production
+npm run build                     # Clean build without database dependency
 
 # Manual testing
 npm run test:seed:deploy          # Test seeding locally with FORCE_SEED=true
