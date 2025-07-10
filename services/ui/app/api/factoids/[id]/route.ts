@@ -8,10 +8,10 @@ import { mockFactoids } from '@/lib/mock-data';
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const result = await query(`
       SELECT f.*, 
@@ -87,8 +87,9 @@ export async function GET(
     console.error('Database error - falling back to mock data:', error);
     
     // Return mock data as fallback
-    console.log('⚠️ [API] Database unavailable, searching mock data for ID:', params.id);
-    const mockFactoid = mockFactoids.find(f => f.id === params.id);
+    const { id } = await params;
+    console.log('⚠️ [API] Database unavailable, searching mock data for ID:', id);
+    const mockFactoid = mockFactoids.find(f => f.id === id);
     
     if (!mockFactoid) {
       return NextResponse.json({ error: 'Factoid not found' }, { status: 404 });
