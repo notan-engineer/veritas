@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/railway-database';
+import { mockFactoids } from '@/lib/mock-data';
 
 /**
  * GET /api/factoids - Get all published factoids with tags and sources
+ * Falls back to mock data if database is unavailable
  */
 export async function GET(): Promise<NextResponse> {
   try {
@@ -74,10 +76,10 @@ export async function GET(): Promise<NextResponse> {
 
     return NextResponse.json(factoids);
   } catch (error) {
-    console.error('API error - Get all factoids:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch factoids' },
-      { status: 500 }
-    );
+    console.error('Database error - falling back to mock data:', error);
+    
+    // Return mock data as fallback
+    console.log('⚠️ [API] Database unavailable, returning mock data');
+    return NextResponse.json(mockFactoids);
   }
 } 

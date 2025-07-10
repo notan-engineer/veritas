@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/railway-database';
+import { mockFactoids } from '@/lib/mock-data';
 
 /**
- * GET /api/factoids/[id] - Get factoid by ID with tags and sources
+ * GET /api/factoids/[id] - Get a specific factoid by ID
+ * Falls back to mock data if database is unavailable
  */
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    const { id } = await params;
+    const { id } = params;
 
     const result = await query(`
       SELECT f.*, 
@@ -71,25 +73,27 @@ export async function GET(
     `, [id]);
 
     if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Factoid not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Factoid not found' }, { status: 404 });
     }
 
-    const row = result.rows[0];
     const factoid = {
-      ...row,
-      tags: Array.isArray(row.tags) ? row.tags : [],
-      sources: Array.isArray(row.sources) ? row.sources : []
+      ...result.rows[0],
+      tags: Array.isArray(result.rows[0].tags) ? result.rows[0].tags : [],
+      sources: Array.isArray(result.rows[0].sources) ? result.rows[0].sources : []
     };
 
     return NextResponse.json(factoid);
   } catch (error) {
-    console.error('API error - Get factoid by ID:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch factoid' },
-      { status: 500 }
-    );
+    console.error('Database error - falling back to mock data:', error);
+    
+    // Return mock data as fallback
+    console.log('⚠️ [API] Database unavailable, searching mock data for ID:', params.id);
+    const mockFactoid = mockFactoids.find(f => f.id === params.id);
+    
+    if (!mockFactoid) {
+      return NextResponse.json({ error: 'Factoid not found' }, { status: 404 });
+    }
+    
+    return NextResponse.json(mockFactoid);
   }
 } 

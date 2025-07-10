@@ -8,10 +8,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "node .next/standalone/server.js",
+    "start": "next start",
     "lint": "next lint",
     "test:env": "tsx scripts/validate-env.ts",
-    "test:env:template": "tsx scripts/validate-env.ts --template"
+    "test:env:template": "tsx scripts/validate-env.ts --template",
+    "db:init": "tsx scripts/init-database.ts",
+    "db:check": "tsx scripts/init-database.ts --check"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.0",

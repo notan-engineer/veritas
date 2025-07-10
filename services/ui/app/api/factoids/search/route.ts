@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/railway-database';
+import { mockFactoids } from '@/lib/mock-data';
 
 /**
  * GET /api/factoids/search?q=query - Search factoids
+ * Falls back to mock data if database is unavailable
  */
 export async function GET(request: Request): Promise<NextResponse> {
+  const { searchParams } = new URL(request.url);
+  const queryText = searchParams.get('q');
+
+  if (!queryText || !queryText.trim()) {
+    return NextResponse.json([]);
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const queryText = searchParams.get('q');
-
-    if (!queryText || !queryText.trim()) {
-      return NextResponse.json([]);
-    }
-
     const result = await query(`
       SELECT f.*, 
              COALESCE(tags_agg.tags, '[]'::json) as tags,
@@ -87,10 +89,19 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(factoids);
   } catch (error) {
-    console.error('API error - Search factoids:', error);
-    return NextResponse.json(
-      { error: 'Failed to search factoids' },
-      { status: 500 }
+    console.error('Database error - falling back to mock data search:', error);
+    
+    // Return mock data as fallback with simple text search
+    console.log('⚠️ [API] Database unavailable, searching mock data for:', queryText);
+    
+    const searchLower = queryText.toLowerCase();
+    const filteredFactoids = mockFactoids.filter(factoid =>
+      factoid.title.toLowerCase().includes(searchLower) ||
+      factoid.description.toLowerCase().includes(searchLower) ||
+      factoid.bullet_points.some(point => point.toLowerCase().includes(searchLower)) ||
+      factoid.tags.some(tag => tag.name.toLowerCase().includes(searchLower))
     );
+    
+    return NextResponse.json(filteredFactoids);
   }
 } 
