@@ -102,7 +102,7 @@ config/setting-change        # Configuration changes
 - JSDoc comments for complex functions
 
 ### Performance Standards
-- Page load times < 2 seconds
+- Page load times < 1 seconds
 - Database queries optimized with proper indexing
 - Use batch operations to prevent N+1 problems
 - Implement lazy loading for non-critical components
@@ -234,6 +234,170 @@ When choosing between options, prefer:
 - Use existing patterns rather than creating new ones
 - Test changes thoroughly before considering complete
 - Update documentation in the same commit as code changes
+
+### Incremental Development
+
+**CRITICAL**: Always work in small, testable iterations to maintain system stability and enable quick rollbacks.
+
+#### 1. Small Iterative Changes
+- **Break large tasks** into 3-5 small, focused steps
+- **Each step should be testable** independently
+- **Implement one feature/fix at a time** - avoid combining multiple changes
+- **Aim for 15-30 minute iterations** maximum before testing
+
+#### 2. Test-First Approach
+- **Test current state** before making any changes
+- **Validate each step** before proceeding to the next
+- **Run build/lint checks** after each logical change
+- **Test functionality manually** if automated tests aren't available
+
+#### 3. Incremental Validation Protocol
+**Required validation steps between iterations:**
+```bash
+# After each change iteration:
+npm run build            # Must pass
+npm run lint             # Must pass
+npm run test:env         # Environment validation
+# Manual testing of changed functionality
+```
+
+#### 4. Rollback Safety
+- **Each step should be easily revertible**
+- **Commit working states** before attempting next change
+- **Keep backup of original code** when making significant changes
+- **Document rollback procedures** for complex changes
+
+#### 5. Progress Verification Checkpoints
+**Stop and verify at each checkpoint:**
+- ✅ Code compiles without errors
+- ✅ No new TypeScript/ESLint warnings
+- ✅ Changed functionality works as expected
+- ✅ No regression in existing functionality
+- ✅ Documentation updated (if applicable)
+
+#### 6. When to Pause vs. Continue
+
+**⏸️ PAUSE and Test When:**
+- Adding new dependencies or packages
+- Modifying database schemas or data models
+- Changing environment variables or configuration
+- Implementing new API endpoints or routes
+- Modifying core utility functions
+- Adding new components or pages
+
+**⏳ Continue When:**
+- Adding simple styling or CSS changes
+- Updating text content or copy
+- Adding JSDoc comments
+- Minor refactoring of variable names
+
+#### 7. Feature Breakdown Patterns
+
+**✅ Good: Small Steps**
+```typescript
+// Step 1: Create basic component structure
+export function FactoidCard({ factoid }: { factoid: Factoid }) {
+  return <div>{factoid.title}</div>
+}
+// Test: Component renders
+
+// Step 2: Add styling and layout
+export function FactoidCard({ factoid }: { factoid: Factoid }) {
+  return (
+    <Card>
+      <CardHeader>{factoid.title}</CardHeader>
+    </Card>
+  )
+}
+// Test: Styling appears correctly
+
+// Step 3: Add interaction handlers
+export function FactoidCard({ factoid, onClick }: FactoidCardProps) {
+  return (
+    <Card onClick={() => onClick?.(factoid.id)}>
+      <CardHeader>{factoid.title}</CardHeader>
+    </Card>
+  )
+}
+// Test: Click handlers work
+```
+
+**❌ Bad: Large Steps**
+```typescript
+// DON'T: Implement entire component with styling, 
+// interactions, error handling, and API calls all at once
+export function ComplexFactoidCard({ factoid }: { factoid: Factoid }) {
+  // 50+ lines of complex logic, styling, state management, etc.
+}
+// Result: Hard to debug, test, and rollback
+```
+
+#### 8. Database Change Patterns
+
+**✅ Incremental Database Changes:**
+```sql
+-- Step 1: Add new column (nullable first)
+ALTER TABLE factoids ADD COLUMN new_field VARCHAR(255);
+-- Test: Schema update successful
+
+-- Step 2: Populate existing data
+UPDATE factoids SET new_field = 'default_value' WHERE new_field IS NULL;
+-- Test: Data migration successful
+
+-- Step 3: Add constraints (if needed)
+ALTER TABLE factoids ALTER COLUMN new_field SET NOT NULL;
+-- Test: Constraints work correctly
+```
+
+#### 9. Error Handling for Failed Iterations
+
+**When an iteration fails:**
+1. **Stop immediately** - don't try to fix multiple issues at once
+2. **Revert to last working state** using git or backups
+3. **Analyze the failure** - understand what went wrong
+4. **Break the failed step into smaller pieces**
+5. **Try again with smaller scope**
+
+**Recovery Pattern:**
+```bash
+# If current changes are broken:
+git stash                    # Save current work
+git checkout .              # Revert to last commit
+# Or restore from backup
+
+# Analyze what went wrong
+# Break into smaller steps
+# Try again with reduced scope
+```
+
+#### 10. Commit Granularity
+
+**✅ Good Commits:**
+- `feat: add basic FactoidCard component structure`
+- `style: add Tailwind styling to FactoidCard`
+- `feat: add click handler to FactoidCard`
+- `docs: update component documentation`
+
+**❌ Bad Commits:**
+- `feat: complete factoid system with cards, API, styling, and tests`
+- `fix: multiple issues` (too vague)
+- `wip: work in progress` (not a complete step)
+
+#### 11. Integration with Change Minimization
+
+This incremental approach **enhances** the existing Change Minimization principle:
+- **Analyze** → Break into small steps
+- **Minimize** → Each iteration changes as little as possible
+- **Test** → Validate each iteration
+- **Document** → Update docs incrementally
+
+#### 12. Documentation Updates
+
+**Update incrementally:**
+- **Code comments** as you write functions
+- **README sections** when adding new features
+- **Technical design** when changing architecture
+- **Never leave documentation for "later"**
 
 ### Error Handling
 ```typescript
