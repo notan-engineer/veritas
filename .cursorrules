@@ -14,7 +14,7 @@ Transform news consumption by aggregating content from multiple sources and pres
 - **Language**: TypeScript 5 (strict mode enabled)
 - **Styling**: Tailwind CSS v4 with PostCSS
 - **UI Components**: shadcn/ui (Radix UI primitives)
-- **Database**: Supabase PostgreSQL with real-time capabilities
+- **Database**: Railway PostgreSQL with direct connection pooling
 - **Deployment**: Railway (cost-optimized cloud hosting)
 - **Development**: Turbopack, ESLint, Prettier
 
@@ -217,8 +217,18 @@ import { getRTLClasses, getRTLContainerClasses } from "@/lib/rtl-utils"
 
 ### Required Environment Variables
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+# Railway PostgreSQL (preferred - automatically provided by Railway)
+DATABASE_URL=postgresql://username:password@host:port/database
+
+# Alternative: Individual database variables
+DATABASE_HOST=your_railway_host
+DATABASE_PORT=5432
+DATABASE_NAME=railway
+DATABASE_USER=postgres
+DATABASE_PASSWORD=your_password
+DATABASE_SSL=true
+
+# Application
 NODE_ENV=production
 ```
 
@@ -465,9 +475,10 @@ export async function POST(request: Request) {
 ### Database Optimization
 - Use indexes for frequently queried fields
 - Implement pagination for large datasets
-- Use full-text search capabilities
-- Monitor query performance through Supabase dashboard
+- Use PostgreSQL full-text search capabilities (`tsvector`, `websearch_to_tsquery`)
+- Monitor query performance through Railway metrics
 - Batch related queries to reduce round trips
+- Use connection pooling to optimize database connections
 
 ### Frontend Optimization
 - Use Next.js Image component for images

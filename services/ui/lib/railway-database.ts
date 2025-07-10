@@ -1,10 +1,16 @@
-import { Pool, PoolClient, QueryResult } from 'pg';
-
 /**
  * Railway PostgreSQL Database Client
  * 
+ * ⚠️ SERVER-SIDE ONLY - This module cannot be used in browser environments
  * Handles connection pooling and query execution for Railway PostgreSQL
  */
+
+// Ensure this runs only on server-side
+if (typeof window !== 'undefined') {
+  throw new Error('Railway database client can only be used on the server side');
+}
+
+import type { Pool, PoolClient, QueryResult } from 'pg';
 
 interface DatabaseConfig {
   host: string;
@@ -18,6 +24,16 @@ interface DatabaseConfig {
 class RailwayDatabase {
   private pool: Pool | null = null;
   private isInitialized = false;
+
+  /**
+   * Get PostgreSQL Pool class (server-side only)
+   */
+  private getPoolClass(): new (config: object) => Pool {
+    // Dynamic import for server-side only to prevent browser bundling
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pg = require('pg');
+    return pg.Pool;
+  }
 
   /**
    * Get database configuration from environment variables
@@ -66,7 +82,8 @@ class RailwayDatabase {
       throw new Error('Missing required database configuration. Please check your environment variables.');
     }
 
-    this.pool = new Pool({
+    const PoolClass = this.getPoolClass();
+    this.pool = new PoolClass({
       host: config.host,
       port: config.port,
       database: config.database,
@@ -183,21 +200,21 @@ class RailwayDatabase {
 export const railwayDb = new RailwayDatabase();
 
 /**
- * Helper function for executing queries
+ * Helper function for executing queries (server-side only)
  */
 export async function query(text: string, params?: unknown[]): Promise<QueryResult> {
   return railwayDb.query(text, params);
 }
 
 /**
- * Helper function for transactions
+ * Helper function for transactions (server-side only)
  */
 export async function transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
   return railwayDb.transaction(callback);
 }
 
 /**
- * Database health check
+ * Database health check (server-side only)
  */
 export async function checkDatabaseHealth() {
   try {
