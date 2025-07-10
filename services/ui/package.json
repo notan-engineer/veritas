@@ -12,6 +12,7 @@
     "lint": "next lint",
     "test:env": "tsx scripts/validate-env.ts",
     "test:env:template": "tsx scripts/validate-env.ts --template",
+    "test:db": "tsx scripts/test-database-connection.ts",
     "db:init": "tsx scripts/init-database.ts",
     "db:check": "tsx scripts/init-database.ts --check"
   },
