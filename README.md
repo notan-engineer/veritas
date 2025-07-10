@@ -1,153 +1,132 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Veritas
 
-## Getting Started
+A modern news aggregation platform that transforms traditional news consumption by presenting verified information through structured "factoids" instead of lengthy articles.
 
-First, run the development server:
+## Overview
+
+**Veritas** combats information overload by providing factual, multi-sourced summaries of current events. The system processes news from multiple sources and presents verified facts in an easily digestible format, with first-class support for Hebrew and Arabic content.
+
+## Quick Start
+
+### Prerequisites
+
+- **Node.js**: 18.x or higher
+- **npm**: 9.x or higher (included with Node.js)
+
+### Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Clone the repository
+git clone https://github.com/[username]/veritas.git
+cd veritas
+
+# Install dependencies
+npm install
+
+# Copy environment template
+cp .env.example .env.local
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Database
-
-This project uses **Supabase** as the database backend with a comprehensive factoid-based schema designed for news aggregation and content management.
-
-### Database Schema
-
-The database consists of several interconnected tables:
-
-- **Sources** - News sources and publishers
-- **Scraped Content** - Raw content from various sources
-- **Factoids** - Processed news items (the central unit)
-- **Tags** - Hierarchical categorization system
-- **Factoid Tags** - Many-to-many relationship with confidence scores
-- **Users** - User management and preferences
-- **User Interactions** - Likes, comments, bookmarks
-
-### Database Migration
-
-#### Initial Setup
-
-1. **Run the main migration script:**
-   ```bash
-   psql -d your_database -f database/veritas-migration.sql
-   ```
-
-2. **Apply tag linking improvements (optional):**
-   ```bash
-   psql -d your_database -f database/improve-tag-linking.sql
-   ```
-
-3. **Fix existing database issues (if needed):**
-   ```bash
-   psql -d your_database -f database/fix-existing-database.sql
-   ```
-
-#### Tag Linking System
-
-The project uses an **improved tag linking system** that replaces hardcoded ILIKE conditions with a maintainable mapping approach:
-
-**Features:**
-- ✅ **Maintainable**: Easy to add/modify tag patterns
-- ✅ **Multi-language**: Supports English and Hebrew content
-- ✅ **Confidence Scores**: Different confidence levels per mapping
-- ✅ **Flexible Matching**: Can match on title, description, or content
-- ✅ **Organized**: Patterns grouped by category (AI, Finance, Israeli, etc.)
-
-**Pattern Categories:**
-- **AI & Technology**: NVIDIA, artificial intelligence, machine learning, chips, hardware
-- **Finance & Economy**: Federal Reserve, interest rates, inflation, stock market
-- **Israeli Content**: Hebrew patterns for Israeli tech, startups, and news
-- **Startups**: Funding, venture capital, IPO, acquisitions
-- **Future Categories**: Space, environment (ready for expansion)
-
-**Example Mapping:**
-```sql
-('%NVIDIA%', 'ai', 0.95, 'title', 'NVIDIA is primarily an AI hardware company'),
-('%Federal Reserve%', 'finance', 0.95, 'title', 'Fed is financial institution'),
-('%ישראל%', 'israel', 0.95, 'title', 'Israel in Hebrew'),
-```
-
-#### Database Scripts
-
-| Script | Purpose | Safe to Re-run |
-|--------|---------|----------------|
-| `veritas-migration.sql` | Initial database setup with sample data | ⚠️ Destructive (with backup) |
-| `improve-tag-linking.sql` | Upgrade tag linking to improved system | ✅ Yes (idempotent) |
-| `fix-existing-database.sql` | Fix security and performance issues in existing databases | ✅ Yes (idempotent) |
-
-**Script Features:**
-- **Transaction Safety**: All changes wrapped in transactions
-- **Automatic Backup**: Creates timestamped backup tables before destructive operations
-- **Security Hardening**: Proper row-level security policies with user authentication
-- **NULL-Safe Indexes**: Full-text search indexes handle NULL values correctly
-- **Robust Linking**: Fuzzy matching for factoid-source relationships
-- **Validation**: Checks for required tables and valid mappings
-- **Rollback Instructions**: Clear rollback procedures included
-- **Progress Reporting**: Detailed status messages during execution
 
 ### Environment Setup
 
-1. **Create a `.env.local` file:**
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
+Create a `.env.local` file:
 
-2. **Configure Supabase:**
-   - Create a new Supabase project
-   - Run the migration scripts
-   - Set up Row Level Security policies
-   - Configure authentication (optional)
+**Railway PostgreSQL (Recommended):**
+```env
+# Database Provider
+DATABASE_PROVIDER=railway
 
-### Data Service
+# Option 1: Railway DATABASE_URL (Preferred)
+DATABASE_URL=postgresql://username:password@host:port/database
 
-The project includes a comprehensive data service (`lib/data-service.ts`) with:
-
-- **Type-safe functions** for all database operations
-- **Error handling** with fallback mechanisms
-- **Batch operations** for performance optimization
-- **Full-text search** capabilities
-- **Multi-language support** (English, Hebrew, Arabic)
-
-**Key Functions:**
-```typescript
-// Fetch all factoids with pagination
-getAllFactoids(page?: number, limit?: number): Promise<Factoid[]>
-
-// Search factoids with full-text search
-searchFactoids(query: string): Promise<Factoid[]>
-
-// Get factoids by tag
-getFactoidsByTag(tagSlug: string): Promise<Factoid[]>
-
-// Get all tags with hierarchy
-getAllTags(): Promise<Tag[]>
+# Option 2: Individual Railway Variables (Alternative)
+# DATABASE_HOST=your_railway_host
+# DATABASE_PORT=5432
+# DATABASE_NAME=your_database_name
+# DATABASE_USER=your_username
+# DATABASE_PASSWORD=your_password
+# DATABASE_SSL=true
 ```
 
-## Learn More
+**Supabase (Legacy - Migration in Progress):**
+```env
+# DATABASE_PROVIDER=supabase  # Leave commented for Railway
+# NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-To learn more about Next.js, take a look at the following resources:
+**Validate Configuration:**
+```bash
+# Verify environment setup
+npm run test:env
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Start development server
+npm run dev
 
-## Deploy on Vercel
+# Build for production
+npm run build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Run production server
+npm start
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+## Technology Stack
+
+- **Framework**: Next.js 15.3.5 with App Router
+- **Database**: Railway PostgreSQL (with legacy Supabase support)
+- **UI**: React 19 + Tailwind CSS + shadcn/ui
+- **Deployment**: Railway
+- **Language**: TypeScript (strict mode)
+
+## Key Features
+
+- **Factoid-based News**: Structured summaries instead of full articles
+- **Multi-source Verification**: Every factoid linked to verified sources
+- **Multilingual Support**: Native Hebrew/Arabic RTL support
+- **Responsive Design**: Optimized for mobile and desktop
+- **Dark/Light Theme**: Built-in theme switching
+- **Performance Optimized**: Sub-2-second page loads
+
+## Documentation
+
+For detailed information, see the `documentation/` directory:
+
+- **[Product Requirements](documentation/product-requirements.md)** - User requirements, use cases, and business logic
+- **[Technical Design](documentation/technical-design.md)** - Architecture, tech stack, and system design
+- **[Developer Guidelines](documentation/developer-guidelines.md)** - Development standards and best practices
+- **[Planning](documentation/planning/)** - Historical project planning documents and implementation records
+
+## Development Workflow
+
+1. **Create feature branch** from main
+2. **Follow developer guidelines** in documentation/
+3. **Update relevant documentation** with changes
+4. **Test thoroughly** before pushing
+5. **Manual review and merge** to main
+
+**Important**: Never push directly to main branch. All changes must go through feature branches.
+
+## Deployment
+
+- **Platform**: Railway with automatic deployments
+- **Environment**: Production variables configured
+- **Monitoring**: Railway built-in observability
+
+## Contributing
+
+Please read the [Developer Guidelines](documentation/developer-guidelines.md) before contributing. Key principles:
+
+- **Simplicity first** - write minimal, maintainable code
+- **Cost consciousness** - consider cloud costs in all decisions  
+- **Security by design** - follow security best practices
+- **Documentation updates** - update docs with every relevant change
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -1,7 +1,7 @@
-export type Language = 'en' | 'he';
+export type Language = 'en' | 'he' | 'ar' | 'other';
 
 export function isRTL(language: Language): boolean {
-  return language === 'he';
+  return language === 'he' || language === 'ar';
 }
 
 export function getTextDirection(language: Language): 'ltr' | 'rtl' {
