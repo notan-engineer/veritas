@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getDatabaseProvider } from './database-config'
 
 export interface Factoid {
   id: string
@@ -104,7 +105,154 @@ interface FactoidIdRow {
   factoid_id: string
 }
 
+// Railway API helpers (using API routes to avoid client-side pg bundling)
 
+/**
+ * Railway API: Get all published factoids
+ */
+async function getAllFactoidsRailway(): Promise<Factoid[]> {
+  try {
+    const response = await fetch('/api/railway/factoids');
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching factoids from Railway API:', error);
+    return [];
+  }
+}
+
+/**
+ * Railway API: Get factoid by ID
+ */
+async function getFactoidByIdRailway(id: string): Promise<Factoid | null> {
+  try {
+    const response = await fetch(`/api/railway/factoids/${id}`);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching factoid by ID from Railway API:', error);
+    return null;
+  }
+}
+
+/**
+ * Railway API: Search factoids
+ */
+async function searchFactoidsRailway(query: string): Promise<Factoid[]> {
+  try {
+    const response = await fetch(`/api/railway/factoids/search?q=${encodeURIComponent(query)}`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error searching factoids from Railway API:', error);
+    return [];
+  }
+}
+
+/**
+ * Railway API: Get factoids by language
+ */
+async function getFactoidsByLanguageRailway(language: 'en' | 'he' | 'ar' | 'other'): Promise<Factoid[]> {
+  try {
+    const response = await fetch(`/api/railway/factoids/language/${language}`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching factoids by language from Railway API:', error);
+    return [];
+  }
+}
+
+/**
+ * Railway API: Get factoids by tag
+ */
+async function getFactoidsByTagRailway(tagSlug: string): Promise<Factoid[]> {
+  try {
+    const response = await fetch(`/api/railway/factoids/tag/${tagSlug}`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching factoids by tag from Railway API:', error);
+    return [];
+  }
+}
+
+/**
+ * Railway API: Get all active tags
+ */
+async function getAllTagsRailway(): Promise<Tag[]> {
+  try {
+    const response = await fetch('/api/railway/tags');
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching tags from Railway API:', error);
+    return [];
+  }
+}
+
+/**
+ * Railway API: Get tags by level
+ */
+async function getTagsByLevelRailway(level: number): Promise<Tag[]> {
+  try {
+    const response = await fetch(`/api/railway/tags/level/${level}`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching tags by level from Railway API:', error);
+    return [];
+  }
+}
+
+/**
+ * Railway API: Get child tags
+ */
+async function getChildTagsRailway(parentId: string): Promise<Tag[]> {
+  try {
+    const response = await fetch(`/api/railway/tags/children/${parentId}`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching child tags from Railway API:', error);
+    return [];
+  }
+}
+
+/**
+ * Railway API: Get all active sources
+ */
+async function getAllSourcesRailway(): Promise<Source[]> {
+  try {
+    const response = await fetch('/api/railway/sources');
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching sources from Railway API:', error);
+    return [];
+  }
+}
+
+// Original Supabase implementations (preserved for compatibility)
 
 // Batch helper to fetch tags for multiple factoids
 async function getBatchTagsForFactoids(factoidIds: string[]): Promise<Record<string, Tag[]>> {
@@ -210,6 +358,13 @@ async function getBatchSourcesForFactoids(factoidIds: string[]): Promise<Record<
 
 // Get all published factoids with optimized queries
 export async function getAllFactoids(): Promise<Factoid[]> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return getAllFactoidsRailway();
+  }
+  
+  // Supabase implementation (original)
   const { data, error } = await supabase
     .from('factoids')
     .select('*')
@@ -226,6 +381,13 @@ export async function getAllFactoids(): Promise<Factoid[]> {
 
 // Get factoids by tag
 export async function getFactoidsByTag(tagSlug: string): Promise<Factoid[]> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return getFactoidsByTagRailway(tagSlug);
+  }
+  
+  // Supabase implementation (original)
   // Find tag by slug
   const { data: tagData, error: tagError } = await supabase
     .from('tags')
@@ -272,6 +434,13 @@ export async function getFactoidsByTag(tagSlug: string): Promise<Factoid[]> {
 
 // Get factoid by ID
 export async function getFactoidById(id: string): Promise<Factoid | null> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return getFactoidByIdRailway(id);
+  }
+  
+  // Supabase implementation (original)
   const { data, error } = await supabase
     .from('factoids')
     .select('*')
@@ -328,6 +497,13 @@ async function processFactoidRows(rows: FactoidDbRow[]): Promise<Factoid[]> {
 
 // Get factoids by language
 export async function getFactoidsByLanguage(language: 'en' | 'he' | 'ar' | 'other'): Promise<Factoid[]> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return getFactoidsByLanguageRailway(language);
+  }
+  
+  // Supabase implementation (original)
   const { data, error } = await supabase
     .from('factoids')
     .select('*')
@@ -345,6 +521,13 @@ export async function getFactoidsByLanguage(language: 'en' | 'he' | 'ar' | 'othe
 
 // Search factoids using full-text search
 export async function searchFactoids(query: string): Promise<Factoid[]> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return searchFactoidsRailway(query);
+  }
+  
+  // Supabase implementation (original)
   const { data, error } = await supabase
     .from('factoids')
     .select('*')
@@ -378,6 +561,13 @@ export async function searchFactoids(query: string): Promise<Factoid[]> {
 
 // Get all active tags
 export async function getAllTags(): Promise<Tag[]> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return getAllTagsRailway();
+  }
+  
+  // Supabase implementation (original)
   const { data, error } = await supabase
     .from('tags')
     .select('*')
@@ -394,6 +584,13 @@ export async function getAllTags(): Promise<Tag[]> {
 
 // Get tags by level (for hierarchy)
 export async function getTagsByLevel(level: number): Promise<Tag[]> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return getTagsByLevelRailway(level);
+  }
+  
+  // Supabase implementation (original)
   const { data, error } = await supabase
     .from('tags')
     .select('*')
@@ -411,6 +608,13 @@ export async function getTagsByLevel(level: number): Promise<Tag[]> {
 
 // Get child tags for a parent tag
 export async function getChildTags(parentId: string): Promise<Tag[]> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return getChildTagsRailway(parentId);
+  }
+  
+  // Supabase implementation (original)
   const { data, error } = await supabase
     .from('tags')
     .select('*')
@@ -428,6 +632,13 @@ export async function getChildTags(parentId: string): Promise<Tag[]> {
 
 // Get all active sources
 export async function getAllSources(): Promise<Source[]> {
+  const provider = getDatabaseProvider();
+  
+  if (provider === 'railway') {
+    return getAllSourcesRailway();
+  }
+  
+  // Supabase implementation (original)
   const { data, error } = await supabase
     .from('sources')
     .select('*')

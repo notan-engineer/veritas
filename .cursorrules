@@ -75,6 +75,20 @@ DD-MM-YY - [Project Short Name].md           # Active planning
 DD-MM-YY - [Project Short Name] - DONE.md    # Completed project
 ```
 
+#### Planning File Standards
+- **File Management**: AI can update planning document contents but cannot rename files - file renaming must be done by user when marking projects as DONE
+- **Status Updates**: Update "Last Updated" date with each status change to actual execution time
+- **Progress Tracking**: Maintain "Plan Status" section with current progress and document any deviations
+
+#### Time Estimation Policy
+**CRITICAL**: Planning documents must follow strict time policies:
+- **NEVER include time estimations** in planning documents  
+- **NEVER use projected timelines** like "July 15-17, 2025" or "Timeline: 2-3 days"
+- **ALWAYS use actual execution dates** when updating status (e.g., "Executed: January 10, 2025")
+- **Focus on task dependencies** and logical sequence, not time predictions
+- **Update timestamps only when tasks are actually executed**
+- Use "Executed:" instead of "Timeline:" for completed phases
+
 ## Branching & Workflow
 
 ### Absolute Rules

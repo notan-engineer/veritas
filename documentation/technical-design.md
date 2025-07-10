@@ -9,6 +9,7 @@ Veritas is built as a modern web application using a simplified, single-service 
 - **Cost Optimization**: Minimal infrastructure with efficient scaling
 - **Performance Focus**: Sub-2-second page loads with optimized database queries
 - **Maintainability**: Clean, understandable code with comprehensive documentation
+- **Provider Agnostic**: Flexible database provider switching for cost optimization
 
 ## Technology Stack
 
@@ -22,8 +23,10 @@ Veritas is built as a modern web application using a simplified, single-service 
 - **Build Tool**: Turbopack (development)
 
 ### Backend & Data
-- **Database**: Supabase (PostgreSQL) with real-time capabilities
-- **ORM**: Direct SQL queries via Supabase client
+- **Database Primary**: Railway PostgreSQL (production)
+- **Database Secondary**: Supabase PostgreSQL (development/fallback)
+- **Database Client**: PostgreSQL native client with connection pooling
+- **ORM**: Direct SQL queries with prepared statements
 - **Authentication**: Supabase Auth (prepared, not yet implemented)
 - **File Storage**: Supabase Storage (for future use)
 
@@ -32,7 +35,7 @@ Veritas is built as a modern web application using a simplified, single-service 
 - **CI/CD**: GitHub integration with automatic deployments
 - **Domain**: Railway-provided domain with SSL
 - **Monitoring**: Railway built-in observability
-- **Environment**: Production/Development separation
+- **Environment**: Production/Development separation with provider switching
 
 ### Development Tools
 - **Linting**: ESLint with Next.js configuration
@@ -40,6 +43,7 @@ Veritas is built as a modern web application using a simplified, single-service 
 - **Version Control**: Git with GitHub
 - **Package Manager**: npm
 - **Development Server**: Next.js development server with hot reload
+- **Environment Validation**: Automated environment configuration validation
 
 ## System Architecture Diagram
 
@@ -62,25 +66,101 @@ Veritas is built as a modern web application using a simplified, single-service 
 │  │                                                          │
 │  ├── App Router (SSR/SSG)                                  │
 │  ├── API Routes (Server-side logic)                        │
+│  │   ├── /api/railway/* (Railway PostgreSQL endpoints)     │
+│  │   └── Database Provider Switch                          │
 │  ├── Component Library (shadcn/ui)                         │
-│  ├── Data Service Layer                                     │
+│  ├── Data Service Layer (Provider Agnostic)                │
+│  ├── Input Validation & Security Utilities                 │
+│  ├── PostgreSQL Client (Connection Pooling)                │
 │  └── RTL Utilities & Internationalization                  │
 └─────────────────────────────────────────────────────────────┘
-                             │ HTTPS/API
+                             │ HTTPS/PostgreSQL
                              ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    DATA LAYER                               │
 ├─────────────────────────────────────────────────────────────┤
-│               Supabase PostgreSQL                           │
+│            Railway PostgreSQL (Primary)                     │
 │  │                                                          │
-│  ├── Factoids (Core content)                               │
+│  ├── Factoids (Core content with full-text search)         │
 │  ├── Sources (News source tracking)                        │
 │  ├── Tags (Hierarchical categorization)                    │
 │  ├── Users (Authentication ready)                          │
-│  ├── Full-text Search Indexes                              │
+│  ├── Advanced Full-text Search (GIN indexes)               │
+│  ├── Connection Pooling & Performance Optimization         │
 │  └── Row-level Security (RLS)                              │
+│                                                            │
+│            Supabase PostgreSQL (Fallback)                   │
+│  │                                                          │
+│  ├── Same schema compatibility                             │
+│  ├── Development environment support                       │
+│  └── Migration pathway                                     │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+## Database Provider Architecture
+
+### Multi-Provider Support
+
+The system now supports seamless switching between database providers based on environment configuration:
+
+#### Supported Providers
+1. **Railway PostgreSQL** (Primary)
+   - Production environment
+   - Direct PostgreSQL connection with pooling
+   - Advanced full-text search capabilities
+   - Cost-optimized ($3-5/month vs $25-30/month Supabase)
+   - High-performance GIN indexes and optimized queries
+
+2. **Supabase PostgreSQL** (Secondary)
+   - Development and fallback environment
+   - Real-time capabilities
+   - Built-in authentication system
+   - Administrative dashboard
+   - Easy development setup
+
+#### Provider Configuration
+
+```typescript
+// lib/database-config.ts
+interface DatabaseConfig {
+  provider: 'railway' | 'supabase';
+  railway?: RailwayConfig;
+  supabase?: SupabaseConfig;
+}
+
+interface RailwayConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  ssl: boolean;
+  maxConnections: number;
+  idleTimeoutMs: number;
+}
+```
+
+#### Automatic Provider Detection
+- Environment variable-based configuration
+- Graceful fallback mechanism
+- Runtime provider switching capability
+- Environment validation and health checks
+
+### API Routes Architecture
+
+#### Railway-Specific Endpoints
+```
+/api/railway/factoids          # GET: All published factoids
+/api/railway/factoids/[id]     # GET: Factoid by ID with relations
+/api/railway/factoids/search   # GET: Full-text search with ranking
+/api/railway/tags              # GET: All active tags with hierarchy
+```
+
+#### Data Service Integration
+- Provider-agnostic interface in `lib/data-service.ts`
+- Automatic routing to appropriate backend
+- Consistent data models across providers
+- Error handling and retry logic
 
 ## Codebase Structure
 
@@ -112,11 +192,17 @@ veritas/
 │   │       └── theme-toggle.tsx  # Dark/light mode
 │   │
 │   ├── lib/                      # Utility Libraries
-│   │   ├── data-service.ts       # Database operations (510+ lines)
-│   │   ├── supabase.ts           # Database client config
+│   │   ├── data-service.ts       # Database operations (provider-agnostic)
+│   │   ├── database-config.ts    # Database provider configuration
+│   │   ├── postgres-client.ts    # PostgreSQL client with pooling
+│   │   ├── input-validation.ts   # Security & validation utilities
+│   │   ├── supabase.ts           # Supabase client config
 │   │   ├── rtl-utils.ts          # Right-to-left support
 │   │   ├── utils.ts              # General utilities
 │   │   └── mock-data.ts          # Development data
+│   │
+│   ├── scripts/                  # Build and Development Scripts
+│   │   └── validate-env.ts       # Environment validation utility
 │   │
 │   ├── public/                   # Static Assets
 │   │   ├── favicon-16x16.png     # Small icon
@@ -132,8 +218,10 @@ veritas/
 │   └── .env.example              # Environment template
 │
 ├── database/                     # Database Management
-│   └── migrations/               # SQL Migration Files
-│       └── veritas-migration.sql # Schema definition (480+ lines)
+│   ├── migrations/               # SQL Migration Files
+│   │   └── veritas-migration.sql # Original Supabase schema
+│   ├── railway-schema.sql        # Railway PostgreSQL optimized schema
+│   └── migrate-to-railway.js     # Migration script with data transfer
 │
 ├── infrastructure/               # Deployment Configuration
 │   └── railway.toml              # Railway deployment config
@@ -382,16 +470,39 @@ getRTLFlexDirection(language: Language): string
 ## Security Architecture
 
 ### Application Security
-- **Input Validation**: Server-side validation for all inputs
-- **SQL Injection Prevention**: Parameterized queries via Supabase
-- **XSS Protection**: React's built-in XSS prevention
+- **Input Validation**: Comprehensive server-side validation with `lib/input-validation.ts`
+  - Schema-based validation for all data types
+  - SQL injection pattern detection
+  - XSS prevention and sanitization
+  - Rate limiting with configurable windows
+- **SQL Injection Prevention**: Parameterized queries with PostgreSQL prepared statements
+- **XSS Protection**: React's built-in XSS prevention + input sanitization
 - **CSRF Protection**: SameSite cookies and CSRF tokens
+- **Security Headers**: Standard security headers on all API responses
 
 ### Database Security
-- **Row-Level Security (RLS)**: Supabase RLS policies
-- **API Key Management**: Environment variable protection
-- **Access Control**: Least privilege principle
-- **Regular Updates**: Dependency and security updates
+- **Row-Level Security (RLS)**: PostgreSQL RLS policies on all tables
+- **Connection Security**: SSL-enforced connections with certificate validation
+- **API Key Management**: Environment variable protection with validation
+- **Access Control**: Least privilege principle with connection pooling limits
+- **Regular Updates**: Dependency and security updates with vulnerability scanning
+
+### Input Validation System
+```typescript
+// Comprehensive validation utilities
+validateFactoidInput(data: unknown): ValidationResult
+validateSearchQuery(query: unknown): ValidationResult
+validateUUID(uuid: unknown): boolean
+checkRateLimit(config: RateLimitConfig): { allowed: boolean }
+```
+
+**Validation Features**:
+- Type-safe schema validation
+- SQL injection pattern detection
+- String sanitization and length limits
+- Rate limiting with memory-based store
+- UUID format validation
+- Pagination parameter validation
 
 ### Infrastructure Security
 - **HTTPS Enforcement**: All communications encrypted
@@ -408,6 +519,8 @@ npm run dev              # Start development server
 npm run build           # Production build
 npm run start           # Production server
 npm run lint            # Code quality check
+npm run test:env         # Environment validation
+npm run test:env:template # Generate environment template
 ```
 
 ### Deployment Pipeline

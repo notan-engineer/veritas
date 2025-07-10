@@ -105,20 +105,27 @@ DD-MM-YY - [Project Short Name] - DONE.md    # Completed project
    - Infrastructure migrations
    - Significant feature additions
    - Code refactoring projects
-   - Any project expected to take >1 day
+   - Any project expected to be complex or multi-step
 
 2. **Planning File Management:**
    - **Create** with initial plan date in filename
    - **Update** plan status section with each implementation milestone
-   - **Rename** to add "- DONE" when fully implemented
+   - **Rename** to add "- DONE" when fully implemented (user must rename file)
    - **Keep** planning history - never delete completed plans
    - **Reference** in commit messages when implementing planned changes
 
 3. **Status Tracking:**
-   - Update "Last Updated" date with each status change
+   - Update "Last Updated" date with each status change to actual execution time
    - Maintain "Plan Status" section with current progress
    - Document any deviations from original plan
    - Record lessons learned and recommendations
+
+4. **Time Estimation Policy:**
+   - **NEVER include time estimations** in planning documents
+   - **NEVER use projected timelines** like "July 15-17, 2025" 
+   - **ALWAYS use actual execution dates** when updating status
+   - **Focus on task dependencies** and logical sequence, not time predictions
+   - **Update timestamps only when tasks are actually executed**
 
 ### Documentation Quality Standards
 
