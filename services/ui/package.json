@@ -8,11 +8,19 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "postbuild": "node ../../database/seed-railway-deploy.js",
     "start": "next start -p ${PORT:-3000}",
     "lint": "next lint",
     "test:env": "tsx scripts/validate-env.ts",
     "test:env:template": "tsx scripts/validate-env.ts --template",
-    "prestart": "npm run test:env"
+    "test:seed:deploy": "FORCE_SEED=true node ../../database/seed-railway-deploy.js",
+    "prestart": "npm run test:env",
+    "seed:railway": "node ../../database/seed-railway.js",
+    "railway:link": "node ../../scripts/railway-utils.js link",
+    "railway:seed": "node ../../scripts/railway-utils.js seed",
+    "railway:status": "node ../../scripts/railway-utils.js status",
+    "railway:logs": "node ../../scripts/railway-utils.js logs",
+    "railway:deploy": "node ../../scripts/railway-utils.js deploy"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

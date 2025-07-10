@@ -1,0 +1,27 @@
+{
+  "projectId": "32900e57-b721-494d-8e68-d15ac01e5c03",
+  "projectName": "Veritas",
+  "environment": "production",
+  "serviceName": "veritas",
+  "team": "notan-engineer",
+  "publicDomain": "veritas-production-e04f.up.railway.app",
+  "privateNetwork": "veritas-92f16e9c.railway.internal",
+  "services": {
+    "veritas": {
+      "type": "web",
+      "environment": "production"
+    },
+    "postgresql": {
+      "type": "database",
+      "provider": "railway"
+    }
+  },
+  "envVarMapping": {
+    "DATABASE_PROVIDER": "railway",
+    "DATABASE_SSL": "true",
+    "DATABASE_PORT": "5432",
+    "DATABASE_NAME": "railway",
+    "DATABASE_USER": "postgres",
+    "note": "DATABASE_HOST and DATABASE_PASSWORD are pulled from Railway at runtime"
+  }
+} 
