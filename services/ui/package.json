@@ -11,15 +11,7 @@
     "start": "next start -p ${PORT:-3000}",
     "lint": "next lint",
     "test:env": "tsx scripts/validate-env.ts",
-    "test:env:template": "tsx scripts/validate-env.ts --template",
-    "test:seed:deploy": "FORCE_SEED=true node seed-railway-deploy.js",
-    "prestart": "npm run test:env && node seed-railway-deploy.js",
-    "seed:railway": "node ../../database/seed-railway.js",
-    "railway:link": "node ../../scripts/railway-utils.js link",
-    "railway:seed": "node ../../scripts/railway-utils.js seed",
-    "railway:status": "node ../../scripts/railway-utils.js status",
-    "railway:logs": "node ../../scripts/railway-utils.js logs",
-    "railway:deploy": "node ../../scripts/railway-utils.js deploy"
+    "test:env:template": "tsx scripts/validate-env.ts --template"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -31,7 +23,6 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.525.0",
     "next": "15.3.5",
-    "pg": "^8.16.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.3.1"
@@ -40,7 +31,6 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/pg": "^8.15.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
