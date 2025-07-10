@@ -214,7 +214,6 @@ async function createSchema(pool) {
         language VARCHAR(10) DEFAULT 'en' CHECK (language IN ('en', 'he', 'ar', 'other')),
         confidence_score INTEGER DEFAULT 0 CHECK (confidence_score >= 0 AND confidence_score <= 100),
         status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived', 'flagged')),
-        search_vector tsvector,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
@@ -239,23 +238,6 @@ async function createSchema(pool) {
         UNIQUE(factoid_id, scraped_content_id)
     );
 
-    -- Search vector update function
-    CREATE OR REPLACE FUNCTION update_factoid_search_vector()
-    RETURNS trigger AS $$
-    BEGIN
-        NEW.search_vector := 
-            setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
-            setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
-            setweight(to_tsvector('english', COALESCE(array_to_string(NEW.bullet_points, ' '), '')), 'C');
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    -- Trigger for search vector updates
-    DROP TRIGGER IF EXISTS factoid_search_update ON factoids;
-    CREATE TRIGGER factoid_search_update
-        BEFORE INSERT OR UPDATE ON factoids
-        FOR EACH ROW EXECUTE FUNCTION update_factoid_search_vector();
   `;
   
   await pool.query(baseSchemaSQL);
@@ -277,9 +259,45 @@ async function createSchema(pool) {
       ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
     `);
     
+    // Add search_vector column to factoids table if it doesn't exist
+    await pool.query(`
+      ALTER TABLE factoids 
+      ADD COLUMN IF NOT EXISTS search_vector tsvector;
+    `);
+    
     console.log('✅ Missing columns added successfully');
   } catch (error) {
     console.warn('⚠️ Warning: Could not add missing columns:', error.message);
+  }
+  
+  // Create search function and trigger (after ensuring search_vector column exists)
+  console.log('🔍 Setting up search functionality...');
+  
+  try {
+    const searchSQL = `
+      -- Search vector update function
+      CREATE OR REPLACE FUNCTION update_factoid_search_vector()
+      RETURNS trigger AS $$
+      BEGIN
+          NEW.search_vector := 
+              setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
+              setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
+              setweight(to_tsvector('english', COALESCE(array_to_string(NEW.bullet_points, ' '), '')), 'C');
+          RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      -- Trigger for search vector updates
+      DROP TRIGGER IF EXISTS factoid_search_update ON factoids;
+      CREATE TRIGGER factoid_search_update
+          BEFORE INSERT OR UPDATE ON factoids
+          FOR EACH ROW EXECUTE FUNCTION update_factoid_search_vector();
+    `;
+    
+    await pool.query(searchSQL);
+    console.log('✅ Search functionality set up successfully');
+  } catch (error) {
+    console.warn('⚠️ Warning: Could not set up search functionality:', error.message);
   }
   
   // Create indexes (only after ensuring columns exist)
