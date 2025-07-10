@@ -77,15 +77,11 @@ async function handleApiResponse<T>(response: Response): Promise<T> {
  * On the server, this function bypasses the API route and queries the database directly.
  */
 export async function getFactoidById(id: string): Promise<Factoid | null> {
-  console.log(`[DataService] getFactoidById called for ID: ${id}`);
-  
   if (isServerSide()) {
-    console.log('[DataService] getFactoidById: Running on server. Using direct DB access.');
     try {
-      // Use a dynamic require to ensure this module is only loaded on the server
+      // This require is safe because the 'server-only' package in railway-database
+      // will prevent this module from ever being bundled for the client.
       const db = require('@/lib/railway-database');
-      console.log('[DataService] getFactoidById: Database module loaded.');
-      
       const result = await db.query(`
         SELECT f.*, 
                COALESCE(tags_agg.tags, '[]'::json) as tags,
@@ -97,23 +93,13 @@ export async function getFactoidById(id: string): Promise<Factoid | null> {
           WHERE t.is_active = true GROUP BY ft.factoid_id
         ) tags_agg ON f.id = tags_agg.factoid_id
         LEFT JOIN (
-          SELECT fs.factoid_id, json_agg(json_build_object(
-            'id', s.id, 'name', s.name, 'domain', s.domain, 'url', s.url, 'description', s.description,
-            'icon_url', s.icon_url, 'twitter_handle', s.twitter_handle, 'profile_photo_url', s.profile_photo_url,
-            'is_active', s.is_active, 'relevance_score', fs.relevance_score,
-            'scraped_content', sc.*
-          )) as sources
-          FROM factoid_sources fs 
-          JOIN scraped_content sc ON fs.scraped_content_id = sc.id
-          JOIN sources s ON sc.source_id = s.id
+          SELECT fs.factoid_id, json_agg(s.*) as sources
+          FROM factoid_sources fs JOIN sources s ON fs.source_id = s.id
           WHERE s.is_active = true GROUP BY fs.factoid_id
         ) sources_agg ON f.id = sources_agg.factoid_id
         WHERE f.id = $1 AND f.status = 'published'
       `, [id]);
-      
-      console.log(`[DataService] getFactoidById: Query executed, found ${result.rows.length} rows.`);
       if (result.rows.length === 0) return null;
-      
       const row = result.rows[0];
       return {
         ...row,
@@ -122,111 +108,35 @@ export async function getFactoidById(id: string): Promise<Factoid | null> {
       };
     } catch (error) {
       console.error('❌ [DataService] Error fetching factoid by ID (server-side):', error);
-      // We throw the error here to let the calling Server Component handle it (e.g., show an error page).
-      throw error; 
+      throw error;
     }
   }
 
   // On the client, fetch from the API route
-  console.log('[DataService] getFactoidById: Running on client. Fetching from API.');
   const response = await fetch(`/api/factoids/${id}`);
   if (response.status === 404) return null;
   return handleApiResponse<Factoid>(response);
 }
 
 /**
- * Get all published factoids with their tags and sources
+ * These functions are called from client components and MUST use fetch.
  */
 export async function getAllFactoids(): Promise<Factoid[]> {
-  console.log(`[DataService] getAllFactoids called.`);
-  if (isServerSide()) {
-    console.log('[DataService] getAllFactoids: Running on server. Using direct DB access.');
-    try {
-      const db = require('@/lib/railway-database');
-      console.log('[DataService] getAllFactoids: Database module loaded.');
-      const result = await db.query(`
-        SELECT f.*, 
-               COALESCE(tags_agg.tags, '[]'::json) as tags,
-               COALESCE(sources_agg.sources, '[]'::json) as sources
-        FROM factoids f
-        LEFT JOIN (
-          SELECT ft.factoid_id, json_agg(t.*) as tags
-          FROM factoid_tags ft JOIN tags t ON ft.tag_id = t.id
-          WHERE t.is_active = true GROUP BY ft.factoid_id
-        ) tags_agg ON f.id = tags_agg.factoid_id
-        LEFT JOIN (
-          SELECT fs.factoid_id, json_agg(json_build_object(
-            'id', s.id, 'name', s.name, 'domain', s.domain, 'url', s.url, 'description', s.description,
-            'icon_url', s.icon_url, 'twitter_handle', s.twitter_handle, 'profile_photo_url', s.profile_photo_url,
-            'is_active', s.is_active, 'relevance_score', fs.relevance_score,
-            'scraped_content', sc.*
-          )) as sources
-          FROM factoid_sources fs 
-          JOIN scraped_content sc ON fs.scraped_content_id = sc.id
-          JOIN sources s ON sc.source_id = s.id
-          WHERE s.is_active = true GROUP BY fs.factoid_id
-        ) sources_agg ON f.id = sources_agg.factoid_id
-        WHERE f.status = 'published'
-        ORDER BY f.created_at DESC
-      `);
-      console.log(`[DataService] getAllFactoids: Query executed, found ${result.rows.length} rows.`);
-      return result.rows.map((row: any) => ({
-        ...row,
-        tags: Array.isArray(row.tags) ? row.tags : [],
-        sources: Array.isArray(row.sources) ? row.sources : [],
-      }));
-    } catch (error) {
-      console.error('❌ [DataService] Error fetching all factoids (server-side):', error);
-      throw error;
-    }
-  }
-
-  console.log('[DataService] getAllFactoids: Running on client. Fetching from API.');
-  const response = await fetch('/api/factoids');
-  return handleApiResponse<Factoid[]>(response);
+    console.log('[DataService] getAllFactoids: Running on client. Fetching from API.');
+    const response = await fetch('/api/factoids');
+    return handleApiResponse<Factoid[]>(response);
 }
 
-/**
- * Get all active tags
- */
 export async function getAllTags(): Promise<Tag[]> {
-  console.log(`[DataService] getAllTags called.`);
-  if (isServerSide()) {
-    console.log('[DataService] getAllTags: Running on server. Using direct DB access.');
-    try {
-      const db = require('@/lib/railway-database');
-      console.log('[DataService] getAllTags: Database module loaded.');
-      const result = await db.query(`
-        SELECT * FROM tags WHERE is_active = true ORDER BY level ASC, name ASC
-      `);
-      console.log(`[DataService] getAllTags: Query executed, found ${result.rows.length} rows.`);
-      return result.rows;
-    } catch (error) {
-      console.error('❌ [DataService] Error fetching all tags (server-side):', error);
-      throw error;
-    }
-  }
-
-  console.log('[DataService] getAllTags: Running on client. Fetching from API.');
-  const response = await fetch('/api/tags');
-  return handleApiResponse<Tag[]>(response);
+    console.log('[DataService] getAllTags: Running on client. Fetching from API.');
+    const response = await fetch('/api/tags');
+    return handleApiResponse<Tag[]>(response);
 }
 
-/**
- * Search factoids by query
- */
 export async function searchFactoids(query: string): Promise<Factoid[]> {
-  try {
-    if (!query.trim()) {
-      return [];
-    }
-
+    if (!query.trim()) return [];
     const response = await fetch(`/api/factoids/search?q=${encodeURIComponent(query)}`);
     return handleApiResponse<Factoid[]>(response);
-  } catch (error) {
-    console.error('Error searching factoids:', error);
-    throw new Error('Failed to search factoids');
-  }
 }
 
 /**
@@ -305,7 +215,8 @@ export async function getRecentFactoids(): Promise<Factoid[]> {
     return factoids.filter(factoid => 
       new Date(factoid.created_at) > sevenDaysAgo
     );
-  } catch (error) {
+  } catch (error)
+ {
     console.error('Error fetching recent factoids:', error);
     throw new Error('Failed to fetch recent factoids');
   }

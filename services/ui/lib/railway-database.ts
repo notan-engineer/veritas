@@ -1,3 +1,5 @@
+import 'server-only';
+
 /**
  * Railway PostgreSQL Database Client
  * 
@@ -39,8 +41,10 @@ class RailwayDatabase {
    * Get database configuration from environment variables
    */
   private getDatabaseConfig(): DatabaseConfig {
+    console.log('[DB] Getting database configuration...');
     // Check for DATABASE_URL first (Railway's preferred format)
     if (process.env.DATABASE_URL) {
+      console.log('[DB] DATABASE_URL found. Parsing...');
       try {
         const url = new URL(process.env.DATABASE_URL);
         return {
@@ -52,12 +56,14 @@ class RailwayDatabase {
           ssl: true // Railway requires SSL
         };
       } catch (error) {
-        console.error('Error parsing DATABASE_URL:', error);
+        console.error('[DB] Error parsing DATABASE_URL:', error);
       }
+    } else {
+      console.log('[DB] DATABASE_URL not found. Using individual variables.');
     }
 
     // Fallback to individual environment variables
-    return {
+    const config = {
       host: process.env.DATABASE_HOST || '',
       port: parseInt(process.env.DATABASE_PORT || '5432'),
       database: process.env.DATABASE_NAME || '',
@@ -65,6 +71,8 @@ class RailwayDatabase {
       password: process.env.DATABASE_PASSWORD || '',
       ssl: process.env.DATABASE_SSL === 'true'
     };
+    console.log(`[DB] Config constructed: host=${config.host}, port=${config.port}, db=${config.database}, user=${config.user}, ssl=${config.ssl}`);
+    return config;
   }
 
   /**
@@ -74,11 +82,13 @@ class RailwayDatabase {
     if (this.isInitialized && this.pool) {
       return;
     }
-
+    console.log('[DB] Initializing connection pool...');
+    
     const config = this.getDatabaseConfig();
 
     // Validate configuration
     if (!config.host || !config.database || !config.user || !config.password) {
+      console.error('[DB] Missing required database configuration.');
       throw new Error('Missing required database configuration. Please check your environment variables.');
     }
 
@@ -100,10 +110,12 @@ class RailwayDatabase {
 
     // Test connection
     try {
+      console.log('[DB] Testing connection pool...');
       await this.pool.query('SELECT 1');
       this.isInitialized = true;
-      console.log('✅ Railway PostgreSQL connection pool initialized');
+      console.log('✅ [DB] Railway PostgreSQL connection pool initialized');
     } catch (error) {
+      console.error('❌ [DB] Failed to connect to Railway PostgreSQL:', error);
       this.pool = null;
       throw new Error(`Failed to connect to Railway PostgreSQL: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -116,8 +128,10 @@ class RailwayDatabase {
     await this.initialize();
     
     if (!this.pool) {
+      console.error('[DB] Query attempted but pool not initialized.');
       throw new Error('Database pool not initialized');
     }
+    console.log(`[DB] Executing query: ${text.substring(0, 100).replace(/\s+/g, ' ')}...`);
 
     try {
       const result = await this.pool.query(text, params);
