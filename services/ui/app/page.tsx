@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Calendar, ThumbsUp, ThumbsDown, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
-import { getAllArticles, getUniqueTags, type Article } from "@/lib/data-service";
+import { getAllFactoids, getAllTags, type Factoid } from "@/lib/data-service";
 import { getRTLClasses, getRTLContainerClasses, getRTLFlexDirection } from "@/lib/rtl-utils";
 import * as React from "react";
 
@@ -41,12 +41,12 @@ export default function HomePage() {
   const [expandedArticles, setExpandedArticles] = React.useState<Set<string>>(new Set());
   const [loading, setLoading] = React.useState(true);
   const [articleReactions, setArticleReactions] = React.useState<Record<string, 'like' | 'dislike' | null>>({});
-  const [articles, setArticles] = React.useState<Article[]>([]);
+  const [factoids, setFactoids] = React.useState<Factoid[]>([]);
   const [topics, setTopics] = React.useState<string[]>([]);
 
-  const filteredArticles = selectedTopic === "All" 
-    ? articles 
-    : articles.filter(article => article.tags.includes(selectedTopic));
+  const filteredFactoids = selectedTopic === "All" 
+    ? factoids 
+    : factoids.filter(factoid => factoid.tags.some(tag => tag.name === selectedTopic));
 
   const toggleArticleExpansion = (articleId: string) => {
     const newExpanded = new Set(expandedArticles);
@@ -65,7 +65,7 @@ export default function HomePage() {
     }));
   };
 
-  const formatDate = (dateString: string, language: 'en' | 'he') => {
+  const formatDate = (dateString: string, language: 'en' | 'he' | 'ar' | 'other') => {
     const locale = language === 'he' ? 'he-IL' : 'en-US';
     return new Date(dateString).toLocaleDateString(locale, {
       year: 'numeric',
@@ -81,11 +81,11 @@ export default function HomePage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [articlesData, topicsData] = await Promise.all([
-          getAllArticles(),
-          getUniqueTags()
+        const [factoidsData, topicsData] = await Promise.all([
+          getAllFactoids(),
+          getAllTags().then(tags => tags.map(tag => tag.name))
         ]);
-        setArticles(articlesData);
+        setFactoids(factoidsData);
         setTopics(topicsData);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -99,12 +99,12 @@ export default function HomePage() {
 
   // Simulate loading on topic change
   React.useEffect(() => {
-    if (articles.length > 0) {
+    if (factoids.length > 0) {
       setLoading(true);
       const timeout = setTimeout(() => setLoading(false), 400);
       return () => clearTimeout(timeout);
     }
-  }, [selectedTopic, articles.length]);
+  }, [selectedTopic, factoids.length]);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -135,7 +135,7 @@ export default function HomePage() {
 
       {/* Article Count */}
       <div className="text-center text-xs sm:text-sm text-muted-foreground px-4 sm:px-0">
-        Showing {filteredArticles.length} article{filteredArticles.length !== 1 ? 's' : ''}
+        Showing {filteredFactoids.length} factoid{filteredFactoids.length !== 1 ? 's' : ''}
         {selectedTopic !== "All" && ` in ${selectedTopic}`}
       </div>
 
@@ -143,8 +143,8 @@ export default function HomePage() {
       <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-4 sm:px-0">
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <ArticleSkeleton key={i} />)
-          : filteredArticles.map((article) => (
-            <Card key={article.id} className={`h-fit hover:shadow-xl hover:-translate-y-1 transition-all duration-200 ${getRTLContainerClasses(article.language)}`}>
+          : filteredFactoids.map((factoid) => (
+            <Card key={factoid.id} className={`h-fit hover:shadow-xl hover:-translate-y-1 transition-all duration-200 ${getRTLContainerClasses(factoid.language)}`}>
               <CardHeader className="pb-3">
                 {/* Hero Image Placeholder */}
                 <div className="w-full h-32 sm:h-40 bg-muted rounded-lg flex items-center justify-center mb-3">
@@ -155,47 +155,47 @@ export default function HomePage() {
                 </div>
 
                 {/* Expand/Collapse and Title Row */}
-                <div className={`flex items-start gap-2 ${getRTLFlexDirection(article.language)}`}>
-                  {article.language === 'he' ? (
+                <div className={`flex items-start gap-2 ${getRTLFlexDirection(factoid.language)}`}>
+                  {factoid.language === 'he' ? (
                     <>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => toggleArticleExpansion(article.id)}
+                        onClick={() => toggleArticleExpansion(factoid.id)}
                         className="flex-shrink-0"
                       >
-                        {expandedArticles.has(article.id) ? (
+                        {expandedArticles.has(factoid.id) ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
                         )}
                       </Button>
-                      <CardTitle className={`text-base sm:text-lg leading-tight ${getRTLClasses(article.language)}`}>
+                      <CardTitle className={`text-base sm:text-lg leading-tight ${getRTLClasses(factoid.language)}`}>
                         <Link 
-                          href={`/article/${article.id}`}
+                          href={`/article/${factoid.id}`}
                           className="hover:text-primary transition-colors"
                         >
-                          {article.title}
+                          {factoid.title}
                         </Link>
                       </CardTitle>
                     </>
                   ) : (
                     <>
-                      <CardTitle className={`text-base sm:text-lg leading-tight ${getRTLClasses(article.language)}`}>
+                      <CardTitle className={`text-base sm:text-lg leading-tight ${getRTLClasses(factoid.language)}`}>
                         <Link 
-                          href={`/article/${article.id}`}
+                          href={`/article/${factoid.id}`}
                           className="hover:text-primary transition-colors"
                         >
-                          {article.title}
+                          {factoid.title}
                         </Link>
                       </CardTitle>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => toggleArticleExpansion(article.id)}
+                        onClick={() => toggleArticleExpansion(factoid.id)}
                         className="flex-shrink-0"
                       >
-                        {expandedArticles.has(article.id) ? (
+                        {expandedArticles.has(factoid.id) ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
@@ -205,24 +205,24 @@ export default function HomePage() {
                   )}
                 </div>
                 {/* Timestamp Row */}
-                <div className={`flex items-center gap-2 text-xs sm:text-sm text-muted-foreground ${article.language === 'he' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`flex items-center gap-2 text-xs sm:text-sm text-muted-foreground ${factoid.language === 'he' ? 'justify-end' : 'justify-start'}`}>
                   <Calendar className="h-3 w-3" />
-                  <span>{formatDate(article.created_at, article.language)}</span>
+                  <span>{formatDate(factoid.created_at, factoid.language)}</span>
                 </div>
                 {/* Expandable Description */}
-                {expandedArticles.has(article.id) && (
-                  <CardDescription className={`text-xs sm:text-sm leading-relaxed line-clamp-4 ${getRTLClasses(article.language)}`}>
-                    {article.short_summary}
+                {expandedArticles.has(factoid.id) && (
+                  <CardDescription className={`text-xs sm:text-sm leading-relaxed line-clamp-4 ${getRTLClasses(factoid.language)}`}>
+                    {factoid.description}
                   </CardDescription>
                 )}
               </CardHeader>
 
               <CardContent className="space-y-3 pt-0">
                 {/* Tags */}
-                <div className={`flex flex-wrap gap-1 ${article.language === 'he' ? 'justify-end' : 'justify-start'} ${getRTLClasses(article.language)}`}>
-                  {article.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs">
-                      {tag}
+                <div className={`flex flex-wrap gap-1 ${factoid.language === 'he' ? 'justify-end' : 'justify-start'} ${getRTLClasses(factoid.language)}`}>
+                  {factoid.tags.map((tag) => (
+                    <Badge key={tag.id} variant="secondary" className="text-xs">
+                      {tag.name}
                     </Badge>
                   ))}
                 </div>
@@ -232,9 +232,9 @@ export default function HomePage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleReaction(article.id, 'like')}
+                    onClick={() => handleReaction(factoid.id, 'like')}
                     className={`flex items-center gap-1 text-xs ${
-                      articleReactions[article.id] === 'like' ? 'text-green-600' : 'text-muted-foreground'
+                      articleReactions[factoid.id] === 'like' ? 'text-green-600' : 'text-muted-foreground'
                     }`}
                   >
                     <ThumbsUp className="h-3 w-3" />
@@ -243,9 +243,9 @@ export default function HomePage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleReaction(article.id, 'dislike')}
+                    onClick={() => handleReaction(factoid.id, 'dislike')}
                     className={`flex items-center gap-1 text-xs ${
-                      articleReactions[article.id] === 'dislike' ? 'text-red-600' : 'text-muted-foreground'
+                      articleReactions[factoid.id] === 'dislike' ? 'text-red-600' : 'text-muted-foreground'
                     }`}
                   >
                     <ThumbsDown className="h-3 w-3" />
@@ -260,7 +260,7 @@ export default function HomePage() {
       </div>
 
       {/* Empty State */}
-      {!loading && filteredArticles.length === 0 && (
+      {!loading && filteredFactoids.length === 0 && (
         <div className="text-center py-8 sm:py-12 px-4 sm:px-0">
           <div className="text-muted-foreground">
             <p className="text-base sm:text-lg">No articles found for &quot;{selectedTopic}&quot;</p>

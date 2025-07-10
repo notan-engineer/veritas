@@ -4,19 +4,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Calendar, CheckCircle, ThumbsUp, ThumbsDown, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
-import { getArticleById } from "@/lib/data-service";
+import { getFactoidById } from "@/lib/data-service";
 import { getRTLClasses, getRTLContainerClasses, getRTLFlexDirection } from "@/lib/rtl-utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function ArticlePage({ params }: any) {
-  const article = await getArticleById(params.id);
+  const factoid = await getFactoidById(params.id);
 
-  if (!article) {
+  if (!factoid) {
     notFound();
   }
 
   const formatDate = (dateString: string) => {
-    const locale = article.language === 'he' ? 'he-IL' : 'en-US';
+    const locale = factoid.language === 'he' ? 'he-IL' : 'en-US';
     return new Date(dateString).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
@@ -27,11 +27,11 @@ export default async function ArticlePage({ params }: any) {
   };
 
   return (
-    <div className={`max-w-4xl mx-auto space-y-6 sm:space-y-8 px-4 sm:px-0 ${getRTLContainerClasses(article.language)}`}>
+    <div className={`max-w-4xl mx-auto space-y-6 sm:space-y-8 px-4 sm:px-0 ${getRTLContainerClasses(factoid.language)}`}>
       {/* Back Button */}
       <div>
         <Link href="/">
-          <Button variant="ghost" className={`flex items-center gap-2 text-sm sm:text-base ${getRTLFlexDirection(article.language)}`}>
+          <Button variant="ghost" className={`flex items-center gap-2 text-sm sm:text-base ${getRTLFlexDirection(factoid.language)}`}>
             <ArrowLeft className="h-4 w-4" />
             Back to News Feed
           </Button>
@@ -40,23 +40,23 @@ export default async function ArticlePage({ params }: any) {
 
       {/* Article Header */}
       <div className="space-y-4">
-        <div className={`flex items-center gap-2 text-xs sm:text-sm text-muted-foreground ${getRTLFlexDirection(article.language)}`}>
+        <div className={`flex items-center gap-2 text-xs sm:text-sm text-muted-foreground ${getRTLFlexDirection(factoid.language)}`}>
           <Calendar className="h-4 w-4" />
-          <span>{formatDate(article.created_at)}</span>
+          <span>{formatDate(factoid.created_at)}</span>
         </div>
 
-        <h1 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold leading-tight ${getRTLClasses(article.language)}`}>
-          {article.title}
+        <h1 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold leading-tight ${getRTLClasses(factoid.language)}`}>
+          {factoid.title}
         </h1>
 
-        <p className={`text-sm sm:text-base md:text-xl text-muted-foreground leading-relaxed ${getRTLClasses(article.language)}`}>
-          {article.short_summary}
+        <p className={`text-sm sm:text-base md:text-xl text-muted-foreground leading-relaxed ${getRTLClasses(factoid.language)}`}>
+          {factoid.description}
         </p>
 
-        <div className={`flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent ${getRTLClasses(article.language)}`}>
-          {article.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs sm:text-sm">
-              {tag}
+        <div className={`flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent ${getRTLClasses(factoid.language)}`}>
+          {factoid.tags.map((tag) => (
+            <Badge key={tag.id} variant="secondary" className="text-xs sm:text-sm">
+              {tag.name}
             </Badge>
           ))}
         </div>
@@ -70,7 +70,7 @@ export default async function ArticlePage({ params }: any) {
         </div>
 
         {/* Like/Dislike Buttons */}
-        <div className={`flex items-center gap-3 pt-2 ${getRTLFlexDirection(article.language)}`}>
+        <div className={`flex items-center gap-3 pt-2 ${getRTLFlexDirection(factoid.language)}`}>
           <Button
             variant="outline"
             size="sm"
@@ -93,22 +93,22 @@ export default async function ArticlePage({ params }: any) {
       {/* Factual Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 text-lg sm:text-xl ${getRTLFlexDirection(article.language)}`}>
+          <CardTitle className={`flex items-center gap-2 text-lg sm:text-xl ${getRTLFlexDirection(factoid.language)}`}>
             <CheckCircle className="h-5 w-5 text-green-600" />
             Verified Facts
           </CardTitle>
-          <CardDescription className={`text-sm sm:text-base ${getRTLClasses(article.language)}`}>
+          <CardDescription className={`text-sm sm:text-base ${getRTLClasses(factoid.language)}`}>
             Key facts extracted and verified from multiple sources
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 sm:space-y-4">
-            {article.bullet_summary.map((point, index) => (
-              <div key={index} className={`flex items-start gap-3 p-3 bg-muted/50 rounded-lg ${getRTLFlexDirection(article.language)}`}>
+            {factoid.bullet_points.map((point, index) => (
+              <div key={index} className={`flex items-start gap-3 p-3 bg-muted/50 rounded-lg ${getRTLFlexDirection(factoid.language)}`}>
                 <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold">
                   {index + 1}
                 </div>
-                <p className={`text-sm sm:text-base leading-relaxed ${getRTLClasses(article.language)}`}>{point}</p>
+                <p className={`text-sm sm:text-base leading-relaxed ${getRTLClasses(factoid.language)}`}>{point}</p>
               </div>
             ))}
           </div>
@@ -118,31 +118,31 @@ export default async function ArticlePage({ params }: any) {
       {/* Sources */}
       <Card>
         <CardHeader>
-          <CardTitle className={`text-lg sm:text-xl ${getRTLClasses(article.language)}`}>Sources</CardTitle>
-          <CardDescription className={`text-sm sm:text-base ${getRTLClasses(article.language)}`}>
+          <CardTitle className={`text-lg sm:text-xl ${getRTLClasses(factoid.language)}`}>Sources</CardTitle>
+          <CardDescription className={`text-sm sm:text-base ${getRTLClasses(factoid.language)}`}>
             Multiple verified sources for this information
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {article.source_urls.map((url, index) => (
-              <div key={index} className={`flex items-center justify-between p-3 border rounded-lg ${getRTLFlexDirection(article.language)}`}>
-                <div className={`flex items-center gap-3 min-w-0 flex-1 ${getRTLFlexDirection(article.language)}`}>
+            {factoid.sources.map((source, index) => (
+              <div key={source.id} className={`flex items-center justify-between p-3 border rounded-lg ${getRTLFlexDirection(factoid.language)}`}>
+                <div className={`flex items-center gap-3 min-w-0 flex-1 ${getRTLFlexDirection(factoid.language)}`}>
                   <div className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
                     {index + 1}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`font-medium text-sm sm:text-base ${getRTLClasses(article.language)}`}>Source {index + 1}</p>
-                    <p className={`text-xs sm:text-sm text-muted-foreground truncate ${getRTLClasses(article.language)}`}>
-                      {url}
+                    <p className={`font-medium text-sm sm:text-base ${getRTLClasses(factoid.language)}`}>{source.name}</p>
+                    <p className={`text-xs sm:text-sm text-muted-foreground truncate ${getRTLClasses(factoid.language)}`}>
+                      {source.scraped_content?.source_url || source.url}
                     </p>
                   </div>
                 </div>
                 <a
-                  href={url}
+                  href={source.scraped_content?.source_url || source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`flex items-center gap-2 text-primary hover:underline flex-shrink-0 ml-2 ${getRTLFlexDirection(article.language)}`}
+                  className={`flex items-center gap-2 text-primary hover:underline flex-shrink-0 ml-2 ${getRTLFlexDirection(factoid.language)}`}
                 >
                   <span className="text-xs sm:text-sm">Visit</span>
                   <ExternalLink className="h-4 w-4" />
@@ -156,9 +156,9 @@ export default async function ArticlePage({ params }: any) {
       {/* About Veritas */}
       <Card className="bg-muted/30">
         <CardHeader>
-          <CardTitle className={`text-lg sm:text-xl ${getRTLClasses(article.language)}`}>About This Article</CardTitle>
+          <CardTitle className={`text-lg sm:text-xl ${getRTLClasses(factoid.language)}`}>About This Article</CardTitle>
         </CardHeader>
-        <CardContent className={`space-y-3 text-xs sm:text-sm text-muted-foreground ${getRTLClasses(article.language)}`}>
+        <CardContent className={`space-y-3 text-xs sm:text-sm text-muted-foreground ${getRTLClasses(factoid.language)}`}>
           <p>
             This article has been processed by Veritas to extract factual information from multiple sources. 
             Our system aggregates news from various outlets and presents verified facts in an easily digestible format.
@@ -176,7 +176,7 @@ export default async function ArticlePage({ params }: any) {
       {/* Navigation */}
       <div className="flex justify-between pt-6 sm:pt-8">
         <Link href="/">
-          <Button variant="outline" className={`flex items-center gap-2 text-sm sm:text-base ${getRTLFlexDirection(article.language)}`}>
+          <Button variant="outline" className={`flex items-center gap-2 text-sm sm:text-base ${getRTLFlexDirection(factoid.language)}`}>
             <ArrowLeft className="h-4 w-4" />
             Back to News Feed
           </Button>

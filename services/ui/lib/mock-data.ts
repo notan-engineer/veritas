@@ -1,4 +1,4 @@
-import { Factoid, Tag, Source, Article } from './data-service'
+import { Factoid, Tag, Source } from './data-service'
 
 export const mockFactoids: Factoid[] = [
   {
@@ -354,43 +354,6 @@ export const mockSources: Source[] = [
   }
 ]
 
-// Legacy compatibility functions
-// Filter factoids to only include supported languages ('en' | 'he') for Article interface
-export const mockArticles = mockFactoids
-  .filter(factoid => factoid.language === 'en' || factoid.language === 'he')
-  .map(factoid => ({
-    id: factoid.id,
-    title: factoid.title,
-    short_summary: factoid.description,
-    tags: factoid.tags.map(tag => tag.name),
-    bullet_summary: factoid.bullet_points,
-    source_urls: factoid.sources.map(source => source.url),
-    created_at: factoid.created_at,
-    language: factoid.language as 'en' | 'he' // Safe assertion since we filtered above
-  }))
-
-// Helper functions for filtering
-export function getFactoidsByTopic(topic: string): Factoid[] {
-  return mockFactoids.filter(factoid => 
-    factoid.tags.some(tag => tag.name.toLowerCase() === topic.toLowerCase())
-  )
-}
-
-export function getFactoidsByLanguage(language: 'en' | 'he' | 'ar' | 'other'): Factoid[] {
-  return mockFactoids.filter(factoid => factoid.language === language)
-}
-
-export function searchFactoids(query: string): Factoid[] {
-  const lowerQuery = query.toLowerCase()
-  return mockFactoids.filter(factoid => 
-    factoid.title.toLowerCase().includes(lowerQuery) ||
-    factoid.description.toLowerCase().includes(lowerQuery) ||
-    factoid.tags.some(tag => tag.name.toLowerCase().includes(lowerQuery))
-  )
-}
-
-
-
 // Dynamically derive topics from mockTags to ensure consistency
 export const topics = [
   "All", 
@@ -398,15 +361,4 @@ export const topics = [
     .filter(tag => tag.is_active)
     .map(tag => tag.name)
     .sort() // Sort alphabetically for consistent ordering
-];
-
-export function getArticlesByTopic(topic: string): Article[] {
-  if (topic === "All") {
-    return mockArticles;
-  }
-  return mockArticles.filter(article => article.tags.includes(topic));
-}
-
-export function getArticleById(id: string): Article | undefined {
-  return mockArticles.find(article => article.id === id);
-} 
+]; 

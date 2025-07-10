@@ -1,30 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Veritas
+
+A modern news aggregation platform that transforms traditional news consumption by presenting verified information through structured "factoids" instead of lengthy articles.
+
+## Overview
+
+**Veritas** combats information overload by providing factual, multi-sourced summaries of current events. The system processes news from multiple sources and presents verified facts in an easily digestible format.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- **Node.js**: 18.x or higher
+- **npm**: 9.x or higher (included with Node.js)
+
+### Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Clone the repository
+git clone https://github.com/[username]/veritas.git
+cd veritas
+
+# Install dependencies
+npm install
+
+# Copy environment template
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.local` file:
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Development
 
-## Database
+```bash
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run production server
+npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+## Project Structure
+
+```
+veritas/
+├── app/                    # Next.js App Router pages
+│   ├── page.tsx           # Homepage with news feed
+│   ├── layout.tsx         # Root layout
+│   ├── article/[id]/      # Dynamic article pages
+│   └── settings/          # Settings pages
+├── components/            # React components
+│   └── ui/               # Reusable UI components (shadcn/ui)
+├── lib/                  # Utilities and services
+│   ├── data-service.ts   # Database operations
+│   ├── supabase.ts       # Database client
+│   └── utils.ts          # Utility functions
+├── public/               # Static assets
+├── database/             # Database management
+│   └── migrations/       # SQL migration files
+├── infrastructure/       # Deployment configuration
+│   └── railway.toml      # Railway deployment config
+└── docs/                 # Documentation
+```
+
+## Technology Stack
+
+### Core Technologies
+- **Framework**: Next.js 15.3.5 with App Router
+- **UI Library**: React 19
+- **Styling**: Tailwind CSS
+- **Components**: Radix UI primitives via shadcn/ui
+- **Database**: Supabase (PostgreSQL)
+- **Deployment**: Railway
+
+### Database
 
 This project uses **Supabase** as the database backend with a comprehensive factoid-based schema designed for news aggregation and content management.
 
-### Database Schema
+#### Database Schema
 
 The database consists of several interconnected tables:
 
@@ -36,81 +99,19 @@ The database consists of several interconnected tables:
 - **Users** - User management and preferences
 - **User Interactions** - Likes, comments, bookmarks
 
-### Database Migration
+#### Database Migration
 
-#### Initial Setup
-
-1. **Run the main migration script:**
-   ```bash
-   psql -d your_database -f database/veritas-migration.sql
-   ```
-
-2. **Apply tag linking improvements (optional):**
-   ```bash
-   psql -d your_database -f database/improve-tag-linking.sql
-   ```
-
-3. **Fix existing database issues (if needed):**
-   ```bash
-   psql -d your_database -f database/fix-existing-database.sql
-   ```
-
-#### Tag Linking System
-
-The project uses an **improved tag linking system** that replaces hardcoded ILIKE conditions with a maintainable mapping approach:
-
-**Features:**
-- ✅ **Maintainable**: Easy to add/modify tag patterns
-- ✅ **Multi-language**: Supports English and Hebrew content
-- ✅ **Confidence Scores**: Different confidence levels per mapping
-- ✅ **Flexible Matching**: Can match on title, description, or content
-- ✅ **Organized**: Patterns grouped by category (AI, Finance, Israeli, etc.)
-
-**Pattern Categories:**
-- **AI & Technology**: NVIDIA, artificial intelligence, machine learning, chips, hardware
-- **Finance & Economy**: Federal Reserve, interest rates, inflation, stock market
-- **Israeli Content**: Hebrew patterns for Israeli tech, startups, and news
-- **Startups**: Funding, venture capital, IPO, acquisitions
-- **Future Categories**: Space, environment (ready for expansion)
-
-**Example Mapping:**
-```sql
-('%NVIDIA%', 'ai', 0.95, 'title', 'NVIDIA is primarily an AI hardware company'),
-('%Federal Reserve%', 'finance', 0.95, 'title', 'Fed is financial institution'),
-('%ישראל%', 'israel', 0.95, 'title', 'Israel in Hebrew'),
+**Initial Setup:**
+```bash
+psql -d your_database -f database/migrations/veritas-migration.sql
 ```
 
-#### Database Scripts
-
-| Script | Purpose | Safe to Re-run |
-|--------|---------|----------------|
-| `veritas-migration.sql` | Initial database setup with sample data | ⚠️ Destructive (with backup) |
-| `improve-tag-linking.sql` | Upgrade tag linking to improved system | ✅ Yes (idempotent) |
-| `fix-existing-database.sql` | Fix security and performance issues in existing databases | ✅ Yes (idempotent) |
-
-**Script Features:**
-- **Transaction Safety**: All changes wrapped in transactions
-- **Automatic Backup**: Creates timestamped backup tables before destructive operations
-- **Security Hardening**: Proper row-level security policies with user authentication
-- **NULL-Safe Indexes**: Full-text search indexes handle NULL values correctly
-- **Robust Linking**: Fuzzy matching for factoid-source relationships
-- **Validation**: Checks for required tables and valid mappings
-- **Rollback Instructions**: Clear rollback procedures included
-- **Progress Reporting**: Detailed status messages during execution
-
-### Environment Setup
-
-1. **Create a `.env.local` file:**
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-2. **Configure Supabase:**
-   - Create a new Supabase project
-   - Run the migration scripts
-   - Set up Row Level Security policies
-   - Configure authentication (optional)
+#### Key Features
+- **Factoid-Centric Design**: News presented as structured facts
+- **Multi-source Verification**: Every factoid linked to multiple verified sources
+- **Multi-language Support**: First-class Hebrew and Arabic support with RTL handling
+- **Performance Optimized**: Batch queries and efficient database operations
+- **Type-Safe**: Comprehensive TypeScript usage throughout
 
 ### Data Service
 
@@ -137,17 +138,70 @@ getFactoidsByTag(tagSlug: string): Promise<Factoid[]>
 getAllTags(): Promise<Tag[]>
 ```
 
+## Core Features
+
+### Content Management
+- **News Aggregation**: Ingestion from multiple sources with metadata preservation
+- **Factoid Processing**: Conversion of articles into structured, bullet-pointed summaries
+- **Multi-language Support**: Native Hebrew/Arabic RTL support with language-specific formatting
+- **Tag-based Organization**: Intelligent categorization with confidence scoring
+
+### User Experience
+- **Feed Interface**: Card-based layout with expandable summaries
+- **Topic Filtering**: Dynamic filtering by tags/categories
+- **Article Details**: Full factoid view with source verification
+- **Responsive Design**: Optimized for mobile and desktop consumption
+- **Dark/Light Theme**: Built-in theme switching
+
+### Performance Features
+- **Search Capabilities**: Full-text search with fallback mechanisms
+- **Source Tracking**: Multiple source attribution with relevance scoring
+- **Content Verification**: Confidence scoring for factoids and tag associations
+- **Performance Optimization**: Batch queries to prevent N+1 problems
+
+## Development
+
+### Code Style
+- **TypeScript**: Strict mode enabled
+- **ESLint**: Configured with Next.js and React rules
+- **Component Development**: Uses shadcn/ui design system
+- **RTL Support**: Built-in right-to-left text support
+
+### Available Scripts
+
+```bash
+npm run dev          # Start development server with hot reload
+npm run build        # Build for production
+npm start            # Start production server
+npm run lint         # Run ESLint
+```
+
+## Deployment
+
+The application is deployed on Railway with automatic deployments from the main branch.
+
+- **Platform**: Railway
+- **Build Command**: `npm install && npm run build`
+- **Start Command**: `npm start`
+- **Environment**: Production environment variables configured
+
+## Contributing
+
+1. Create a feature branch from main
+2. Develop and test changes locally
+3. Push branch and create PR
+4. Code review and approval
+5. Merge to main (triggers deployment)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+To learn more about the technologies used:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API
+- [Supabase Documentation](https://supabase.com/docs) - learn about the database platform
+- [Tailwind CSS](https://tailwindcss.com/docs) - utility-first CSS framework
+- [shadcn/ui](https://ui.shadcn.com/) - re-usable components built using Radix UI and Tailwind CSS

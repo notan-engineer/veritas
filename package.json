@@ -1,5 +1,5 @@
 {
-  "name": "veritas-monorepo",
+  "name": "veritas",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,12 +7,8 @@
     "build": "cd services/ui && npm run build",
     "start": "cd services/ui && npm run start",
     "lint": "cd services/ui && npm run lint",
-    "ui:dev": "cd services/ui && npm run dev",
-    "ui:build": "cd services/ui && npm run build",
-    "ui:start": "cd services/ui && npm run start",
-    "test:env": "echo 'Testing environment variables...' && cd services/ui && node -e \"console.log('Environment check passed')\"",
-    "test:smoke": "echo 'Running smoke tests...' && cd services/ui && npm run build",
-    "install:all": "cd services/ui && npm install"
+    "test:env": "cd services/ui && node -e \"console.log('Environment check passed')\"",
+    "test:smoke": "cd services/ui && npm run build"
   },
   "devDependencies": {
     "@railway/cli": "^3.0.0"
