@@ -156,7 +156,8 @@ function getDatabaseConfig() {
 async function createSchema(pool) {
   console.log('📋 Creating database schema...');
   
-  const schemaSQL = `
+  // First, enable extensions and create tables
+  const baseSchemaSQL = `
     -- Enable required extensions
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
     CREATE EXTENSION IF NOT EXISTS "pg_trgm";
@@ -172,7 +173,6 @@ async function createSchema(pool) {
         icon_url VARCHAR(500),
         twitter_handle VARCHAR(100),
         profile_photo_url VARCHAR(500),
-        is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
@@ -185,7 +185,6 @@ async function createSchema(pool) {
         description TEXT,
         parent_id UUID REFERENCES tags(id) ON DELETE CASCADE,
         level INTEGER NOT NULL DEFAULT 0 CHECK (level >= 0 AND level <= 10),
-        is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
@@ -257,8 +256,35 @@ async function createSchema(pool) {
     CREATE TRIGGER factoid_search_update
         BEFORE INSERT OR UPDATE ON factoids
         FOR EACH ROW EXECUTE FUNCTION update_factoid_search_vector();
-
-    -- Create indexes
+  `;
+  
+  await pool.query(baseSchemaSQL);
+  console.log('✅ Base schema created successfully');
+  
+  // Add missing columns if they don't exist
+  console.log('🔧 Adding missing columns...');
+  
+  try {
+    // Add is_active column to sources table if it doesn't exist
+    await pool.query(`
+      ALTER TABLE sources 
+      ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+    `);
+    
+    // Add is_active column to tags table if it doesn't exist
+    await pool.query(`
+      ALTER TABLE tags 
+      ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+    `);
+    
+    console.log('✅ Missing columns added successfully');
+  } catch (error) {
+    console.warn('⚠️ Warning: Could not add missing columns:', error.message);
+  }
+  
+  // Create indexes (only after ensuring columns exist)
+  console.log('📊 Creating indexes...');
+  const indexSQL = `
     CREATE INDEX IF NOT EXISTS idx_sources_domain ON sources(domain);
     CREATE INDEX IF NOT EXISTS idx_sources_active ON sources(is_active);
     CREATE INDEX IF NOT EXISTS idx_tags_slug ON tags(slug);
@@ -271,8 +297,8 @@ async function createSchema(pool) {
     CREATE INDEX IF NOT EXISTS idx_factoid_sources_factoid_id ON factoid_sources(factoid_id);
   `;
   
-  await pool.query(schemaSQL);
-  console.log('✅ Database schema created successfully');
+  await pool.query(indexSQL);
+  console.log('✅ Database schema and indexes created successfully');
 }
 
 /**
