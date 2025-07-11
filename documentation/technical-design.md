@@ -26,7 +26,7 @@ Veritas is built as a modern web application using a simplified, single-service 
 - **Database**: Railway PostgreSQL (production)
 - **Database Client**: PostgreSQL native client with connection pooling
 - **ORM**: Direct SQL queries with prepared statements
-- **Authentication**: To be implemented (future)
+- **Authentication**: Schema ready, implementation in progress
 - **File Storage**: To be implemented (future)
 
 ### Infrastructure & Deployment
@@ -366,7 +366,7 @@ The database follows a **factoid-centric design** optimized for news aggregation
 
 #### Performance Optimizations
 
-**Full-Text Search**
+### Full-Text Search
 - Automated search vector generation with weighted fields:
   - Title: Weight 'A' (highest priority)
   - Description: Weight 'B' (medium priority)
@@ -374,30 +374,30 @@ The database follows a **factoid-centric design** optimized for news aggregation
 - GIN index on search_vector for fast text search
 - Trigger-based automatic search vector updates
 
-**Primary Indexes**
+### Primary Indexes
 - **Sources**: domain, is_active, created_at DESC
 - **Scraped Content**: source_id, source_url, processing_status, created_at DESC
 - **Tags**: slug, parent_id, level, is_active, name
 - **Factoids**: status, language, confidence_score DESC, created_at DESC
 - **User Tables**: email, username, is_active for users; user_id, factoid_id for actions
 
-**Composite Indexes for Common Queries**
+### Composite Indexes for Common Queries
 - **factoids_status_created_at**: Optimized for published content by date
 - **factoids_status_language**: Optimized for language-specific queries
 - **factoids_status_confidence**: Optimized for high-confidence content
 
-**Relationship Indexes**
+### Relationship Indexes
 - **factoid_tags**: factoid_id, tag_id, confidence_score DESC
 - **factoid_sources**: factoid_id, scraped_content_id, relevance_score DESC
 - **user_subscriptions**: user_id, source_id for user preferences
 - **user_actions**: user_id, factoid_id, created_at DESC for user history
 
-**Database Functions and Triggers**
+### Database Functions and Triggers
 - **update_factoid_search_vector()**: Automatically maintains search vectors
 - **update_updated_at_column()**: Automatically updates timestamp fields
 - **check_tag_hierarchy()**: Prevents circular references in tag hierarchy
 
-**Query Optimization**
+### Query Optimization
 - Batch fetching to prevent N+1 problems
 - Efficient JOIN operations for related data
 - Prepared statements for common queries

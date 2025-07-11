@@ -6,17 +6,18 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "unaccent";
+CREATE EXTENSION IF NOT EXISTS "citext";  -- Case-insensitive text for emails/usernames
 
 -- Sources table: News sources and content providers
 CREATE TABLE IF NOT EXISTS sources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(200) NOT NULL,
-    domain VARCHAR(100) NOT NULL UNIQUE,
-    url VARCHAR(500) NOT NULL,
+    domain CITEXT NOT NULL UNIQUE,  -- Case-insensitive domain
+    url VARCHAR(500) NOT NULL CHECK (url ~ '^https?://'),  -- URL format validation
     description TEXT,
-    icon_url VARCHAR(500),
-    twitter_handle VARCHAR(100),
-    profile_photo_url VARCHAR(500),
+    icon_url VARCHAR(500) CHECK (icon_url IS NULL OR icon_url ~ '^https?://'),
+    twitter_handle VARCHAR(100) CHECK (twitter_handle IS NULL OR twitter_handle ~ '^[a-zA-Z0-9_]{1,15}$'),
+    profile_photo_url VARCHAR(500) CHECK (profile_photo_url IS NULL OR profile_photo_url ~ '^https?://'),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -26,11 +27,11 @@ CREATE TABLE IF NOT EXISTS sources (
 CREATE TABLE IF NOT EXISTS scraped_content (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     source_id UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
-    source_url VARCHAR(500) NOT NULL,
-    title TEXT,
-    content TEXT,
-    author VARCHAR(200),
-    publication_date TIMESTAMP WITH TIME ZONE,
+    source_url VARCHAR(500) NOT NULL CHECK (source_url ~ '^https?://'),
+    title TEXT CHECK (title IS NULL OR LENGTH(TRIM(title)) > 0),
+    content TEXT CHECK (content IS NULL OR LENGTH(TRIM(content)) > 0),
+    author VARCHAR(200) CHECK (author IS NULL OR LENGTH(TRIM(author)) > 0),
+    publication_date TIMESTAMP WITH TIME ZONE CHECK (publication_date IS NULL OR publication_date <= NOW()),
     content_type VARCHAR(50) DEFAULT 'article' CHECK (content_type IN ('article', 'social_post', 'video', 'other')),
     language VARCHAR(10) DEFAULT 'en' CHECK (language IN ('en', 'he', 'ar', 'other')),
     processing_status VARCHAR(50) DEFAULT 'pending' CHECK (processing_status IN ('pending', 'processing', 'completed', 'failed')),
@@ -41,9 +42,9 @@ CREATE TABLE IF NOT EXISTS scraped_content (
 -- Tags table: Hierarchical tag system
 CREATE TABLE IF NOT EXISTS tags (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
+    name VARCHAR(100) NOT NULL CHECK (LENGTH(TRIM(name)) > 0),
+    slug VARCHAR(100) NOT NULL UNIQUE CHECK (slug ~ '^[a-z0-9-]+$' AND slug NOT LIKE '-%' AND slug NOT LIKE '%-'),
+    description TEXT CHECK (description IS NULL OR LENGTH(TRIM(description)) > 0),
     parent_id UUID REFERENCES tags(id) ON DELETE CASCADE,
     level INTEGER NOT NULL DEFAULT 0 CHECK (level >= 0 AND level <= 10),
     is_active BOOLEAN DEFAULT true,
@@ -55,9 +56,9 @@ CREATE TABLE IF NOT EXISTS tags (
 -- FIXED: title length increased to 500, confidence_score changed to DECIMAL(3,2)
 CREATE TABLE IF NOT EXISTS factoids (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title VARCHAR(500) NOT NULL,
-    description TEXT NOT NULL,
-    bullet_points TEXT[] DEFAULT '{}',
+    title VARCHAR(500) NOT NULL CHECK (LENGTH(TRIM(title)) BETWEEN 3 AND 500),
+    description TEXT NOT NULL CHECK (LENGTH(TRIM(description)) BETWEEN 10 AND 10000),
+    bullet_points TEXT[] DEFAULT '{}' CHECK (array_length(bullet_points, 1) IS NULL OR array_length(bullet_points, 1) <= 20),
     language VARCHAR(10) DEFAULT 'en' CHECK (language IN ('en', 'he', 'ar', 'other')),
     confidence_score DECIMAL(3,2) DEFAULT 0.00 CHECK (confidence_score >= 0.00 AND confidence_score <= 1.00),
     status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived', 'flagged')),
@@ -91,11 +92,11 @@ CREATE TABLE IF NOT EXISTS factoid_sources (
 -- ADDED: Users table for authentication ready architecture
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    username VARCHAR(100) UNIQUE,
-    full_name VARCHAR(200),
-    avatar_url VARCHAR(500),
-    preferences JSONB,
+    email CITEXT UNIQUE NOT NULL CHECK (email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
+    username CITEXT UNIQUE CHECK (username IS NULL OR (username ~ '^[a-zA-Z0-9_-]{3,30}$' AND username NOT LIKE '%-%-%')),
+    full_name VARCHAR(200) CHECK (full_name IS NULL OR LENGTH(TRIM(full_name)) >= 1),
+    avatar_url VARCHAR(500) CHECK (avatar_url IS NULL OR avatar_url ~ '^https?://'),
+    preferences JSONB DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -138,7 +139,10 @@ CREATE TABLE IF NOT EXISTS user_interactions (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     factoid_id UUID NOT NULL REFERENCES factoids(id) ON DELETE CASCADE,
     interaction_type VARCHAR(50) NOT NULL CHECK (interaction_type IN ('like', 'dislike', 'comment')),
-    content TEXT,
+    content TEXT CHECK (
+        (interaction_type != 'comment' AND content IS NULL) OR 
+        (interaction_type = 'comment' AND content IS NOT NULL AND LENGTH(TRIM(content)) BETWEEN 1 AND 2000)
+    ),
     is_public BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -150,7 +154,17 @@ RETURNS trigger AS $$
 DECLARE
     lang_config TEXT;
 BEGIN
+    -- Input validation
+    IF NEW.title IS NULL OR LENGTH(TRIM(NEW.title)) = 0 THEN
+        RAISE EXCEPTION 'Factoid title cannot be null or empty';
+    END IF;
+    
+    IF NEW.description IS NULL OR LENGTH(TRIM(NEW.description)) = 0 THEN
+        RAISE EXCEPTION 'Factoid description cannot be null or empty';
+    END IF;
+    
     -- Map language codes to PostgreSQL text search configurations
+    -- Note: Language mapping executed per row - for bulk imports consider optimizing
     lang_config := CASE 
         WHEN NEW.language = 'en' THEN 'english'
         WHEN NEW.language = 'ar' THEN 'arabic'
@@ -158,10 +172,21 @@ BEGIN
         ELSE 'simple'  -- Default fallback for 'other' and unknown languages
     END;
     
-    NEW.search_vector := 
-        setweight(to_tsvector(lang_config, COALESCE(NEW.title, '')), 'A') ||
-        setweight(to_tsvector(lang_config, COALESCE(NEW.description, '')), 'B') ||
-        setweight(to_tsvector(lang_config, COALESCE(array_to_string(NEW.bullet_points, ' '), '')), 'C');
+    -- Build search vector with error handling
+    BEGIN
+        NEW.search_vector := 
+            setweight(to_tsvector(lang_config, COALESCE(NEW.title, '')), 'A') ||
+            setweight(to_tsvector(lang_config, COALESCE(NEW.description, '')), 'B') ||
+            setweight(to_tsvector(lang_config, COALESCE(array_to_string(NEW.bullet_points, ' '), '')), 'C');
+    EXCEPTION
+        WHEN others THEN
+            -- Fallback to simple configuration if language-specific config fails
+            NEW.search_vector := 
+                setweight(to_tsvector('simple', COALESCE(NEW.title, '')), 'A') ||
+                setweight(to_tsvector('simple', COALESCE(NEW.description, '')), 'B') ||
+                setweight(to_tsvector('simple', COALESCE(array_to_string(NEW.bullet_points, ' '), '')), 'C');
+    END;
+    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -186,11 +211,13 @@ CREATE TRIGGER scraped_content_updated_at BEFORE UPDATE ON scraped_content FOR E
 CREATE TRIGGER tags_updated_at BEFORE UPDATE ON tags FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER factoids_updated_at BEFORE UPDATE ON factoids FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER user_actions_updated_at BEFORE UPDATE ON user_actions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER user_interactions_updated_at BEFORE UPDATE ON user_interactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_sources_domain ON sources(domain);
 CREATE INDEX IF NOT EXISTS idx_sources_created_at ON sources(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sources_active_domain ON sources(domain) WHERE is_active = true;
 
 CREATE INDEX IF NOT EXISTS idx_scraped_content_source_id ON scraped_content(source_id);
 CREATE INDEX IF NOT EXISTS idx_scraped_content_url ON scraped_content(source_url);
@@ -216,9 +243,14 @@ CREATE INDEX IF NOT EXISTS idx_factoid_sources_factoid_id ON factoid_sources(fac
 CREATE INDEX IF NOT EXISTS idx_factoid_sources_scraped_content_id ON factoid_sources(scraped_content_id);
 CREATE INDEX IF NOT EXISTS idx_factoid_sources_relevance ON factoid_sources(relevance_score DESC);
 
+-- Performance indexes for RLS policy lookups
+CREATE INDEX IF NOT EXISTS idx_factoids_status_published ON factoids(id) WHERE status = 'published';
+CREATE INDEX IF NOT EXISTS idx_tags_active ON tags(id) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_sources_active ON sources(id) WHERE is_active = true;
+
 -- ADDED: User table indexes (optimized - removed low-cardinality boolean indexes)
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE username IS NOT NULL;
 -- Removed idx_users_active - boolean index provides minimal benefit
 
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON user_subscriptions(user_id);
@@ -274,6 +306,45 @@ CREATE TRIGGER check_tag_hierarchy_trigger
     BEFORE INSERT OR UPDATE ON tags
     FOR EACH ROW EXECUTE FUNCTION check_tag_hierarchy();
 
+-- Email normalization function to ensure consistent case handling
+CREATE OR REPLACE FUNCTION normalize_email()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Normalize email to lowercase and trim whitespace
+    IF NEW.email IS NOT NULL THEN
+        NEW.email := LOWER(TRIM(NEW.email));
+    END IF;
+    
+    -- Normalize username to lowercase and trim whitespace
+    IF NEW.username IS NOT NULL THEN
+        NEW.username := LOWER(TRIM(NEW.username));
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER normalize_user_data_trigger
+    BEFORE INSERT OR UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION normalize_email();
+
+-- Tag slug normalization function
+CREATE OR REPLACE FUNCTION normalize_tag_slug()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Normalize slug to lowercase and trim whitespace
+    IF NEW.slug IS NOT NULL THEN
+        NEW.slug := LOWER(TRIM(NEW.slug));
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER normalize_tag_slug_trigger
+    BEFORE INSERT OR UPDATE ON tags
+    FOR EACH ROW EXECUTE FUNCTION normalize_tag_slug();
+
 -- Comments for documentation
 COMMENT ON TABLE sources IS 'News sources and content providers';
 COMMENT ON TABLE scraped_content IS 'Raw content scraped from sources';
@@ -311,8 +382,17 @@ CREATE POLICY "Allow public read access to published factoids" ON factoids FOR S
 CREATE POLICY "Allow public read access to active sources" ON sources FOR SELECT USING (is_active = true);
 CREATE POLICY "Allow public read access to active tags" ON tags FOR SELECT USING (is_active = true);
 CREATE POLICY "Allow public read access to completed scraped content" ON scraped_content FOR SELECT USING (processing_status = 'completed');
-CREATE POLICY "Allow public read access to factoid tags" ON factoid_tags FOR SELECT USING (true);
-CREATE POLICY "Allow public read access to factoid sources" ON factoid_sources FOR SELECT USING (true);
+
+-- SECURITY FIX: Restrict factoid relationship access to published factoids only
+CREATE POLICY "Allow public read access to published factoid tags" ON factoid_tags 
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM factoids WHERE factoids.id = factoid_tags.factoid_id AND factoids.status = 'published')
+  );
+
+CREATE POLICY "Allow public read access to published factoid sources" ON factoid_sources 
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM factoids WHERE factoids.id = factoid_sources.factoid_id AND factoids.status = 'published')
+  );
 
 -- Create Railway PostgreSQL compatible session functions for user authentication
 -- These functions manage user session state for RLS policies
@@ -353,9 +433,13 @@ CREATE POLICY "Users can read their own actions" ON user_actions
     get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
   );
 
-CREATE POLICY "Users can read their own interactions" ON user_interactions 
+-- Enhanced policy for user interactions: users can read their own + public interactions of others
+CREATE POLICY "Users can read interactions" ON user_interactions 
   FOR SELECT USING (
-    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+    get_current_user_id() IS NOT NULL AND (
+      user_id = get_current_user_id() OR 
+      (is_public = true AND EXISTS (SELECT 1 FROM factoids WHERE factoids.id = factoid_id AND factoids.status = 'published'))
+    )
   );
 
 -- Analyze tables for optimal query planning
