@@ -57,38 +57,56 @@ export async function POST(request: NextRequest): Promise<NextResponse<TriggerSc
       );
     }
 
-    // For now, simulate scraping trigger (will be replaced with actual scraper service call)
-    const mockJobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Call the live scraper service
+    const scraperServiceUrl = process.env.SCRAPER_SERVICE_URL || 'http://localhost:3001';
     
-    const mockLogs = [
-      {
-        timestamp: new Date().toISOString(),
-        level: 'info' as const,
-        message: 'Scraping job initiated',
-        source: 'api'
-      },
-      {
-        timestamp: new Date().toISOString(),
-        level: 'info' as const,
-        message: `Processing ${body.sources.length} source(s): ${body.sources.join(', ')}`
-      },
-      {
-        timestamp: new Date().toISOString(),
-        level: 'info' as const,
-        message: `Max articles per source: ${body.maxArticles || 3}`
+    try {
+      console.log(`[Scraper API] Calling scraper service at ${scraperServiceUrl}`);
+      
+      const response = await fetch(`${scraperServiceUrl}/api/scrape`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Scraper service responded with status ${response.status}`);
       }
-    ];
 
-    // TODO: Replace with actual scraper service integration
-    // This is a proof of concept response
-    console.log(`[Scraper API] Mock scraping triggered for sources: ${body.sources.join(', ')}`);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Scraping initiated successfully (mock mode)',
-      jobId: mockJobId,
-      logs: mockLogs
-    });
+      const scraperResponse: TriggerScrapingResponse = await response.json();
+      
+      console.log(`[Scraper API] Scraper service completed job ${scraperResponse.jobId}`);
+      
+      return NextResponse.json(scraperResponse);
+      
+    } catch (scraperError) {
+      console.error('[Scraper API] Failed to call scraper service:', scraperError);
+      
+      // Fallback to mock response if scraper service is unavailable
+      const mockJobId = `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      return NextResponse.json({
+        success: false,
+        message: `Scraper service unavailable: ${scraperError instanceof Error ? scraperError.message : 'Unknown error'}. Using fallback mode.`,
+        jobId: mockJobId,
+        logs: [
+          {
+            timestamp: new Date().toISOString(),
+            level: 'error',
+            message: 'Failed to connect to scraper service',
+            source: 'api'
+          },
+          {
+            timestamp: new Date().toISOString(),
+            level: 'info',
+            message: `Requested sources: ${body.sources.join(', ')}`,
+            source: 'fallback'
+          }
+        ]
+      });
+    }
 
   } catch (error) {
     console.error('[Scraper API] Error:', error);

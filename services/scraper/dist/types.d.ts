@@ -80,5 +80,10 @@ export interface TriggerScrapingResponse {
     success: boolean;
     message: string;
     jobId: string;
-    logs: ScrapingLog[];
+    logs: Array<{
+        timestamp: string;
+        level: 'info' | 'warn' | 'error';
+        message: string;
+        source?: string;
+    }>;
 }
