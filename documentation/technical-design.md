@@ -556,6 +556,21 @@ getRTLFlexDirection(language: Language): string
 - **Efficient Scaling**: Horizontal scaling only when needed
 - **Resource Monitoring**: Track usage to prevent cost surprises
 
+### Database Performance Optimizations
+
+The system includes several performance optimizations:
+
+1. **Full-text Search**: GIN indexes on tsvector columns for efficient text search
+2. **Composite Indexes**: Multi-column indexes for common query patterns
+3. **Partial Indexes**: Filtered indexes for frequently accessed subsets (e.g., active records)
+4. **Redundant Index Removal**: Eliminated duplicate indexes where UNIQUE constraints already provide indexing
+5. **Connection Pooling**: Efficient database connection management
+
+**Index Optimization Notes:**
+- Removed redundant `idx_sources_domain` index since `domain CITEXT NOT NULL UNIQUE` automatically creates a unique index
+- Retained `idx_sources_active_domain` partial index for optimizing active domain queries
+- Eliminated low-cardinality boolean indexes that provide minimal performance benefit
+
 ## Security Architecture
 
 ### Application Security

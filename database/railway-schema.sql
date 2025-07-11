@@ -215,7 +215,7 @@ CREATE TRIGGER user_actions_updated_at BEFORE UPDATE ON user_actions FOR EACH RO
 CREATE TRIGGER user_interactions_updated_at BEFORE UPDATE ON user_interactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Performance indexes
-CREATE INDEX IF NOT EXISTS idx_sources_domain ON sources(domain);
+-- Note: domain column already indexed via UNIQUE constraint, no explicit index needed
 CREATE INDEX IF NOT EXISTS idx_sources_created_at ON sources(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sources_active_domain ON sources(domain) WHERE is_active = true;
 
