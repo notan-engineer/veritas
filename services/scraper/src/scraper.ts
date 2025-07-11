@@ -19,6 +19,7 @@ export class VeritasScraper {
   private rssParser: RSSParser;
   private crawler: CheerioCrawler;
   private currentJob: ScrapingJob | null = null;
+  private scrapedResults: Map<string, ScrapedArticle> = new Map();
 
   // Predefined news sources
   private readonly sources: Omit<NewsSource, 'id'>[] = [
@@ -137,8 +138,42 @@ export class VeritasScraper {
       // Process articles (limited by maxArticles)
       const itemsToProcess = feed.items.slice(0, this.currentJob!.maxArticles);
       
+      // Filter out items that already exist in database
+      const newItems: Item[] = [];
       for (const item of itemsToProcess) {
-        await this.processRSSItem(item, dbSource.id);
+        if (item.link && !(await scraperDb.contentExists(item.link))) {
+          newItems.push(item);
+        } else {
+          this.log('info', `Content already exists, skipping: ${item.link}`);
+        }
+      }
+
+      if (newItems.length > 0) {
+        // Batch process all new articles
+        const scrapedArticles = await this.scrapeMultipleArticles(newItems);
+        
+        // Store results in database
+        for (const article of scrapedArticles) {
+          try {
+            await scraperDb.insertScrapedContent({
+              sourceId: dbSource.id,
+              sourceUrl: article.sourceUrl,
+              title: article.title,
+              content: article.content,
+              author: article.author,
+              publicationDate: article.publicationDate,
+              contentType: 'article',
+              language: article.language,
+              processingStatus: 'completed'
+            });
+
+            this.currentJob!.results.articlesStored++;
+            this.log('info', `Article stored: ${article.title.substring(0, 50)}...`);
+          } catch (error) {
+            this.currentJob!.results.errors++;
+            this.log('error', `Failed to store article ${article.title}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
       }
 
     } catch (error) {
@@ -148,77 +183,47 @@ export class VeritasScraper {
   }
 
   /**
-   * Process individual RSS item
+   * Scrape multiple articles in a batch for better performance
    */
-  private async processRSSItem(item: Item, sourceId: number): Promise<void> {
-    if (!item.link) {
-      this.log('warn', 'RSS item missing link, skipping');
-      return;
+  private async scrapeMultipleArticles(rssItems: Item[]): Promise<ScrapedArticle[]> {
+    if (rssItems.length === 0) {
+      return [];
+    }
+
+    this.log('info', `Batch processing ${rssItems.length} articles`);
+    
+    // Clear previous results
+    this.scrapedResults.clear();
+
+    // Create requests for all articles
+    const requests = rssItems
+      .filter(item => item.link)
+      .map(item => ({
+        url: item.link!,
+        userData: { rssItem: item }
+      }));
+
+    if (requests.length === 0) {
+      return [];
     }
 
     try {
-      // Check if content already exists
-      const exists = await scraperDb.contentExists(item.link);
-      if (exists) {
-        this.log('info', `Content already exists, skipping: ${item.link}`);
-        return;
-      }
-
-      // Scrape full article content
-      const article = await this.scrapeArticleContent(item);
+      // Add all requests to crawler
+      await this.crawler.addRequests(requests);
       
-      if (article) {
-        // Store in database
-        await scraperDb.insertScrapedContent({
-          sourceId,
-          sourceUrl: article.sourceUrl,
-          title: article.title,
-          content: article.content,
-          author: article.author,
-          publicationDate: article.publicationDate,
-          contentType: 'article',
-          language: article.language,
-          processingStatus: 'completed'
-        });
-
-        this.currentJob!.results.articlesStored++;
-        this.log('info', `Article stored: ${article.title.substring(0, 50)}...`);
-      }
-
-    } catch (error) {
-      this.currentJob!.results.errors++;
-      this.log('error', `Failed to process RSS item ${item.link}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Scrape full article content from URL
-   */
-  private async scrapeArticleContent(rssItem: Item): Promise<ScrapedArticle | null> {
-    try {
-      this.currentJob!.results.articlesScraped++;
-
-      // Use Crawlee to scrape the article
-      await this.crawler.addRequests([{
-        url: rssItem.link,
-        userData: { rssItem }
-      }]);
-
+      // Run crawler once for all articles
       await this.crawler.run();
-
-      // Return basic article data (enhanced by crawler handler)
-      return {
-        sourceUrl: rssItem.link || '',
-        title: rssItem.title || 'No title',
-        content: (rssItem as any).contentSnippet || (rssItem as any).content || rssItem.summary || 'No content available',
-        author: rssItem.creator || (rssItem as any)['dc:creator'] || undefined,
-        publicationDate: rssItem.pubDate ? new Date(rssItem.pubDate) : undefined,
-        language: 'en'
-      };
-
+      
+      // Update counters
+      this.currentJob!.results.articlesScraped += requests.length;
+      
+      // Return collected results
+      return Array.from(this.scrapedResults.values());
+      
     } catch (error) {
-      this.log('error', `Article scraping failed for ${rssItem.link}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return null;
+      this.log('error', `Batch scraping failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.currentJob!.results.errors += requests.length;
+      return [];
     }
   }
 
@@ -227,28 +232,47 @@ export class VeritasScraper {
    */
   private async handleArticleScraping({ request, $ }: CheerioCrawlingContext): Promise<void> {
     try {
-      // Basic content extraction - can be enhanced later
-      const title = $('h1').first().text().trim() || 
-                   $('title').text().trim() || 
-                   request.userData.rssItem.title;
+      const rssItem = request.userData.rssItem;
+      
+      // Extract enhanced content from webpage
+      const extractedTitle = $('h1').first().text().trim() || 
+                           $('title').text().trim();
+      
+      const extractedContent = $('article').text().trim() || 
+                             $('.content').text().trim() || 
+                             $('.story-body').text().trim() ||
+                             $('main').text().trim();
 
-      const content = $('article').text().trim() || 
-                     $('.content').text().trim() || 
-                     $('.story-body').text().trim() ||
-                     $('main').text().trim() ||
-                     request.userData.rssItem.contentSnippet;
-
-      this.log('info', `Content extracted from ${request.url}: ${title?.substring(0, 50)}...`);
-
-      // Store enhanced content (this is basic - can be improved)
-      request.userData.extractedContent = {
-        title,
-        content,
-        extractedAt: new Date()
+      // Create scraped article with enhanced content
+      const scrapedArticle: ScrapedArticle = {
+        sourceUrl: request.url,
+        title: extractedTitle || rssItem.title || 'No title',
+        content: extractedContent || (rssItem as any).contentSnippet || (rssItem as any).content || rssItem.summary || 'No content available',
+        author: rssItem.creator || (rssItem as any)['dc:creator'] || undefined,
+        publicationDate: rssItem.pubDate ? new Date(rssItem.pubDate) : undefined,
+        language: 'en'
       };
+
+      // Store result in Map for collection
+      this.scrapedResults.set(request.url, scrapedArticle);
+
+      this.log('info', `Content extracted from ${request.url}: ${scrapedArticle.title.substring(0, 50)}...`);
 
     } catch (error) {
       this.log('warn', `Content extraction failed for ${request.url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Store fallback article data even if extraction failed
+      const rssItem = request.userData.rssItem;
+      const fallbackArticle: ScrapedArticle = {
+        sourceUrl: request.url,
+        title: rssItem.title || 'No title',
+        content: (rssItem as any).contentSnippet || (rssItem as any).content || rssItem.summary || 'No content available',
+        author: rssItem.creator || (rssItem as any)['dc:creator'] || undefined,
+        publicationDate: rssItem.pubDate ? new Date(rssItem.pubDate) : undefined,
+        language: 'en'
+      };
+      
+      this.scrapedResults.set(request.url, fallbackArticle);
     }
   }
 
