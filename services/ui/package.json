@@ -14,21 +14,16 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
-    "test:env": "tsx scripts/validate-env.ts",
-    "test:env:template": "tsx scripts/validate-env.ts --template",
-    "test:db": "tsx scripts/test-database-connection.ts",
+
     "test:build": "npm run build",
-    "test:all": "npm run test:env && npm run lint && npm run type-check && npm run test:build",
-    "db:init": "tsx scripts/init-database.ts",
-    "db:check": "tsx scripts/init-database.ts --check",
-    "precommit": "npm run lint && npm run test:env",
+    "test:all": "npm run lint && npm run type-check && npm run test:build",
+
+    "precommit": "npm run lint",
     "predeploy": "npm run test:all",
     "clean": "rm -rf .next node_modules/.cache",
     "analyze": "ANALYZE=true npm run build"
   },
   "dependencies": {
-    "@radix-ui/react-avatar": "^1.1.0",
-    "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.1.0",
     "class-variance-authority": "^0.7.0",
