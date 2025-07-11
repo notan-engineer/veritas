@@ -128,7 +128,7 @@ interface RailwayConfig {
 ### API Routes Architecture
 
 #### Database Endpoints
-```
+```text
 /api/factoids          # GET: All published factoids
 /api/factoids/[id]     # GET: Factoid by ID with relations
 /api/factoids/search   # GET: Full-text search with ranking

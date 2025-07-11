@@ -144,14 +144,24 @@ CREATE TABLE IF NOT EXISTS user_interactions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Full-text search function for factoids
+-- Full-text search function for factoids with multilingual support
 CREATE OR REPLACE FUNCTION update_factoid_search_vector()
 RETURNS trigger AS $$
+DECLARE
+    lang_config TEXT;
 BEGIN
+    -- Map language codes to PostgreSQL text search configurations
+    lang_config := CASE 
+        WHEN NEW.language = 'en' THEN 'english'
+        WHEN NEW.language = 'ar' THEN 'arabic'
+        WHEN NEW.language = 'he' THEN 'simple'  -- Hebrew falls back to simple
+        ELSE 'simple'  -- Default fallback for 'other' and unknown languages
+    END;
+    
     NEW.search_vector := 
-        setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
-        setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
-        setweight(to_tsvector('english', COALESCE(array_to_string(NEW.bullet_points, ' '), '')), 'C');
+        setweight(to_tsvector(lang_config, COALESCE(NEW.title, '')), 'A') ||
+        setweight(to_tsvector(lang_config, COALESCE(NEW.description, '')), 'B') ||
+        setweight(to_tsvector(lang_config, COALESCE(array_to_string(NEW.bullet_points, ' '), '')), 'C');
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -180,7 +190,6 @@ CREATE TRIGGER user_interactions_updated_at BEFORE UPDATE ON user_interactions F
 
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_sources_domain ON sources(domain);
-CREATE INDEX IF NOT EXISTS idx_sources_active ON sources(is_active);
 CREATE INDEX IF NOT EXISTS idx_sources_created_at ON sources(created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_scraped_content_source_id ON scraped_content(source_id);
@@ -191,7 +200,6 @@ CREATE INDEX IF NOT EXISTS idx_scraped_content_created_at ON scraped_content(cre
 CREATE INDEX IF NOT EXISTS idx_tags_slug ON tags(slug);
 CREATE INDEX IF NOT EXISTS idx_tags_parent_id ON tags(parent_id);
 CREATE INDEX IF NOT EXISTS idx_tags_level ON tags(level);
-CREATE INDEX IF NOT EXISTS idx_tags_active ON tags(is_active);
 CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
 
 CREATE INDEX IF NOT EXISTS idx_factoids_status ON factoids(status);
@@ -208,10 +216,10 @@ CREATE INDEX IF NOT EXISTS idx_factoid_sources_factoid_id ON factoid_sources(fac
 CREATE INDEX IF NOT EXISTS idx_factoid_sources_scraped_content_id ON factoid_sources(scraped_content_id);
 CREATE INDEX IF NOT EXISTS idx_factoid_sources_relevance ON factoid_sources(relevance_score DESC);
 
--- ADDED: User table indexes
+-- ADDED: User table indexes (optimized - removed low-cardinality boolean indexes)
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
+-- Removed idx_users_active - boolean index provides minimal benefit
 
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON user_subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_source_id ON user_subscriptions(source_id);
@@ -225,7 +233,7 @@ CREATE INDEX IF NOT EXISTS idx_user_actions_created_at ON user_actions(created_a
 
 CREATE INDEX IF NOT EXISTS idx_user_interactions_user_id ON user_interactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_interactions_factoid_id ON user_interactions(factoid_id);
-CREATE INDEX IF NOT EXISTS idx_user_interactions_public ON user_interactions(is_public);
+-- Removed idx_user_interactions_public - boolean index provides minimal benefit
 
 -- Composite indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_factoids_status_created_at ON factoids(status, created_at DESC);
@@ -306,13 +314,49 @@ CREATE POLICY "Allow public read access to completed scraped content" ON scraped
 CREATE POLICY "Allow public read access to factoid tags" ON factoid_tags FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to factoid sources" ON factoid_sources FOR SELECT USING (true);
 
--- User-specific policies (for future authentication)
--- SECURITY: Restricted to SELECT only until authentication is implemented
-CREATE POLICY "Users can read their own data" ON users FOR SELECT USING (true);
-CREATE POLICY "Users can read their own subscriptions" ON user_subscriptions FOR SELECT USING (true);
-CREATE POLICY "Users can read their own tag preferences" ON user_tag_preferences FOR SELECT USING (true);
-CREATE POLICY "Users can read their own actions" ON user_actions FOR SELECT USING (true);
-CREATE POLICY "Users can read their own interactions" ON user_interactions FOR SELECT USING (true);
+-- Create Railway PostgreSQL compatible session functions for user authentication
+-- These functions manage user session state for RLS policies
+CREATE OR REPLACE FUNCTION set_current_user_id(uid UUID) RETURNS VOID AS $$
+BEGIN
+  PERFORM set_config('app.current_user_id', uid::TEXT, TRUE);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_current_user_id() RETURNS UUID AS $$
+BEGIN
+  RETURN NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID;
+EXCEPTION
+  WHEN others THEN
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- User-specific policies with proper access control
+-- SECURITY: Users can only access their own data when authenticated
+CREATE POLICY "Users can read their own data" ON users 
+  FOR SELECT USING (
+    get_current_user_id() IS NOT NULL AND id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can read their own subscriptions" ON user_subscriptions 
+  FOR SELECT USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can read their own tag preferences" ON user_tag_preferences 
+  FOR SELECT USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can read their own actions" ON user_actions 
+  FOR SELECT USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can read their own interactions" ON user_interactions 
+  FOR SELECT USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
 
 -- Analyze tables for optimal query planning
 ANALYZE sources;
