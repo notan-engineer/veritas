@@ -32,8 +32,7 @@ class RailwayDatabase {
    */
   private getPoolClass(): new (config: object) => Pool {
     // Dynamic import for server-side only to prevent browser bundling
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pg = require('pg');
+    const pg = eval('require')('pg');
     return pg.Pool;
   }
 

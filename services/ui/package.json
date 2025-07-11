@@ -8,13 +8,23 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:fast": "NODE_ENV=production npm run build",
+    "build:clean": "rm -rf .next && npm run build",
     "start": "next start",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
     "test:env": "tsx scripts/validate-env.ts",
     "test:env:template": "tsx scripts/validate-env.ts --template",
     "test:db": "tsx scripts/test-database-connection.ts",
+    "test:build": "npm run build",
+    "test:all": "npm run test:env && npm run lint && npm run type-check && npm run test:build",
     "db:init": "tsx scripts/init-database.ts",
-    "db:check": "tsx scripts/init-database.ts --check"
+    "db:check": "tsx scripts/init-database.ts --check",
+    "precommit": "npm run lint && npm run test:env",
+    "predeploy": "npm run test:all",
+    "clean": "rm -rf .next node_modules/.cache",
+    "analyze": "ANALYZE=true npm run build"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.0",
@@ -38,6 +48,8 @@
     "@types/pg": "^8.11.6",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
     "eslint": "^8",
     "eslint-config-next": "15.3.5",
     "tailwindcss": "^4.0.0-alpha.13",

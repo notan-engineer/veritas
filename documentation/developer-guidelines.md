@@ -22,7 +22,7 @@ This document establishes development standards, practices, and guardrails for t
 
 ### 3. **Cost Consciousness**
 - **Always consider cloud costs** before implementing features that scale
-- **Use free tiers** and cost-optimized services (Railway, Supabase free tier)
+- **Use free tiers** and cost-optimized services (Railway)
 - **Monitor resource usage** and set up alerts for cost overruns
 - **Question features** that require expensive infrastructure
 - **Review cost implications** of database queries, API calls, and storage
@@ -159,28 +159,185 @@ docs/section-update          # Documentation updates
 config/setting-change        # Configuration changes
 ```
 
-### Commit Message Standards
+### Git Workflow Optimization
 
+**CRITICAL**: Follow this optimized git workflow to prevent conflicts and reduce development time:
+
+#### Conflict Prevention Strategy
+
+**Before Starting Work:**
+```bash
+# Always start from fresh main branch
+git checkout main
+git pull origin main
+git checkout -b feature/your-feature-name
 ```
-type(scope): brief description
 
-Detailed explanation of changes, including:
+**During Development:**
+```bash
+# Commit frequently with meaningful messages
+git add .
+git commit -m "type(scope): specific change description"
+
+# Stay up to date with main (run daily)
+git fetch origin main
+git rebase origin/main      # Preferred over merge to keep history clean
+```
+
+**Before Pushing:**
+```bash
+# Final sync with main to prevent conflicts
+git fetch origin main
+git rebase origin/main
+npm run precommit          # Run tests before pushing
+git push origin feature/your-feature-name
+```
+
+#### Efficient Git Commands
+
+**Daily Git Workflow:**
+```bash
+# Start of day - sync with main
+git checkout main && git pull origin main
+
+# Quick status check
+git status --porcelain      # Short format status
+
+# Clean commit with testing
+git add . && npm run precommit && git commit -m "feat: description"
+
+# Push with upstream tracking
+git push -u origin feature/branch-name
+```
+
+**Conflict Resolution:**
+```bash
+# If conflicts occur during rebase
+git status                  # See conflicted files
+# Edit conflicted files, then:
+git add .
+git rebase --continue
+
+# If rebase gets complex, abort and merge instead
+git rebase --abort
+git merge origin/main
+```
+
+#### Commit Message Standards (Enhanced)
+
+**Format:**
+```
+type(scope): concise description
+
+Optional body with:
 - What was changed and why
-- Documentation files updated
-- Cost implications (if any)
-- Security considerations (if any)
+- Breaking changes noted
+- Documentation updates
+- Testing performed
 
 Examples:
-feat(ui): add dark mode toggle
-docs: update technical design for theme system
-cost: estimated $0 impact - client-side only
-security: no security implications
+feat(ui): add responsive navigation menu
+- Add mobile-first navigation
+- Update layout for tablet breakpoint
+- Test on Chrome, Firefox, Safari
+- Update component documentation
 
-fix(database): optimize factoid query performance
-docs: update technical design query optimization section
-cost: reduced database load, potential cost savings
-security: no security implications
+fix(database): resolve connection pool exhaustion
+- Increase max connections from 10 to 20
+- Add connection timeout handling
+- Monitor resource usage
+- No breaking changes
+
+docs(guidelines): optimize git workflow section
+- Add conflict prevention strategies
+- Include daily workflow commands
+- Address merge vs rebase decisions
+- Based on development experience feedback
 ```
+
+#### Git Configuration for Efficiency
+
+**Recommended Git Settings:**
+```bash
+# One-time setup for better git experience
+git config --global pull.rebase true          # Rebase by default on pull
+git config --global rebase.autoStash true     # Auto-stash during rebase
+git config --global merge.tool vscode         # Use VS Code for merge conflicts
+git config --global init.defaultBranch main   # Use main as default branch
+```
+
+#### Documentation Update Strategy
+
+**Prevent Documentation Conflicts:**
+- **Update documentation in same commit** as code changes
+- **Use specific file sections** when multiple people work on docs
+- **Planning documents**: Only one person updates at a time
+- **Technical design**: Coordinate updates via chat/issues first
+
+#### Branch Management
+
+**Clean Branch Practices:**
+```bash
+# Delete merged branches locally
+git branch -d feature/completed-feature
+
+# Delete remote tracking branches
+git remote prune origin
+
+# Clean up local branches that are merged
+git branch --merged main | grep -v "main" | xargs git branch -d
+```
+
+**Emergency Recovery:**
+```bash
+# If you accidentally commit to main
+git reset --soft HEAD~1     # Undo last commit, keep changes
+git checkout -b feature/fix-commit
+git commit -m "fix: move changes to proper branch"
+
+# If you need to discard local changes
+git stash                   # Save changes temporarily
+git checkout .              # Discard changes
+git stash pop               # Restore changes if needed
+```
+
+#### File Ignore Strategy
+
+**Prevent Unnecessary Commits:**
+```gitignore
+# Already in .gitignore, but ensure these are covered:
+node_modules/
+.next/
+.env
+.env.local
+*.log
+.DS_Store
+.vscode/settings.json
+.idea/
+```
+
+#### Pull Request Workflow
+
+**Before Creating PR:**
+```bash
+# Ensure clean, up-to-date branch
+git checkout main && git pull origin main
+git checkout feature/your-branch
+git rebase origin/main
+npm run test:all            # Full test suite
+git push origin feature/your-branch --force-with-lease
+```
+
+**PR Best Practices:**
+- **Small, focused PRs** - easier to review and merge
+- **Clear description** with what, why, and how
+- **Reference issues** or planning documents
+- **Include testing notes** and validation steps
+- **Update documentation** in the same PR
+
+### Commit Message Reference
+
+**Note:** See "Git Workflow Optimization" section above for enhanced commit message standards and examples.
 
 ## Code Quality Standards
 
@@ -207,7 +364,7 @@ services/ui/lib/              # Utility functions
 ├── data-service.ts          # Database operations (single responsibility)
 ├── utils.ts                 # General utilities
 ├── rtl-utils.ts             # RTL-specific functions
-└── supabase.ts              # Database client configuration
+└── railway-database.ts      # Database client configuration
 
 services/ui/components/       # React components
 ├── ui/                      # Reusable UI components (shadcn/ui)
@@ -234,8 +391,8 @@ services/ui/app/              # Next.js App Router pages
 
 ```bash
 # Required environment variables
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+DATABASE_URL=postgresql://username:password@host:port/database
+DATABASE_PROVIDER=railway
 
 # Development commands
 npm run dev              # Development server
@@ -255,11 +412,69 @@ Before making any code changes:
 5. **Plan documentation updates** needed
 6. **Create feature branch** for your work
 
+### Testing Workflow Optimization
+
+**CRITICAL**: Follow this optimized testing workflow to avoid repetitive actions and ensure quality:
+
+#### Quick Testing (Before Each Commit)
+```bash
+# From project root - works from any directory
+npm run precommit          # Runs linting and environment validation
+```
+
+#### Comprehensive Testing (Before Push)
+```bash
+# From project root - works from any directory
+npm run test:all           # Full test suite: env, lint, type-check, build
+```
+
+#### Individual Test Commands
+```bash
+# Environment and configuration validation
+npm run test:env           # Validate environment variables
+npm run test:db            # Test database connection
+
+# Code quality checks
+npm run lint               # ESLint check
+npm run lint:fix           # Auto-fix linting issues (UI directory)
+npm run type-check         # TypeScript type checking (UI directory)
+
+# Build validation
+npm run test:smoke         # Build test
+npm run build              # Production build
+```
+
+#### Directory Navigation Optimization
+**Problem Solved**: No more confusion about which directory to run commands from!
+
+- **Always run from project root** - all commands are configured to work from root
+- **Root package.json** automatically navigates to correct subdirectories
+- **Consistent command interface** across all testing operations
+
+#### Testing Checklist Templates
+
+**Before Each Commit:**
+- [ ] `npm run precommit` passes
+- [ ] Changes align with cursorrules principles
+- [ ] Documentation updated (if applicable)
+
+**Before Push:**
+- [ ] `npm run test:all` passes
+- [ ] All TypeScript errors resolved
+- [ ] No ESLint warnings
+- [ ] Build completes successfully
+
+**Before Pull Request:**
+- [ ] Full testing workflow completed
+- [ ] Feature branch up to date with main
+- [ ] Documentation updated
+- [ ] Planning document updated (if applicable)
+
 ## Cost Management Guidelines
 
 ### Cost Monitoring Requirements
 
-- **Monthly cost review** of Railway and Supabase usage
+- **Monthly cost review** of Railway usage
 - **Alert setup** for unexpected cost increases
 - **Resource usage tracking** through platform dashboards
 - **Performance monitoring** to optimize resource usage
@@ -280,7 +495,6 @@ Before making any code changes:
 
 **Infrastructure Usage**:
 - Use Railway's free tier features when possible
-- Stay within Supabase free tier limits
 - Monitor bandwidth and storage usage
 - Plan for scaling only when necessary
 
@@ -319,9 +533,8 @@ For every feature that might affect costs, document:
 
 ```bash
 # Environment variables - NEVER commit these
-SUPABASE_URL=                 # Database connection
-SUPABASE_ANON_KEY=           # Public API key
-SUPABASE_SERVICE_ROLE_KEY=   # Private API key (future)
+DATABASE_URL=                # Database connection
+DATABASE_PROVIDER=           # Database provider
 NEXTAUTH_SECRET=             # Session encryption (future)
 ```
 
@@ -349,7 +562,10 @@ Before deploying any change:
 ### Production Readiness
 
 ```bash
-# Pre-deployment checklist
+# Optimized pre-deployment checklist
+npm run predeploy        # Comprehensive pre-deployment validation
+# Or individual commands:
+npm run test:all         # Full test suite
 npm run build            # Must complete without errors
 npm run lint             # Must pass all checks
 npm run type-check       # Must pass TypeScript validation
@@ -386,9 +602,37 @@ For backend changes:
 
 - **Use indexes** for frequently queried fields
 - **Batch operations** instead of N+1 queries
-- **Monitor query performance** through Supabase dashboard
+- **Monitor query performance** through Railway dashboard
 - **Optimize slow queries** before they impact users
 - **Use proper JOIN strategies** for related data
+
+### Current Database Schema
+
+**Railway PostgreSQL Schema Overview:**
+- **11 Tables Total**: 6 core content tables + 5 user management tables
+- **Full-text Search**: GIN indexes with weighted search vectors on factoids
+- **Hierarchical Tags**: Support for 10-level tag hierarchy with circular reference prevention
+- **Authentication Ready**: Complete user management schema implemented
+- **Performance Optimized**: 25+ indexes for optimal query performance
+
+**Core Content Tables:**
+```sql
+factoids              -- Primary content with search_vector TSVECTOR
+sources               -- News sources with domain UNIQUE constraint  
+scraped_content       -- Raw content from sources
+tags                  -- Hierarchical tags (level 0-10)
+factoid_tags          -- Many-to-many with confidence_score DECIMAL(3,2)
+factoid_sources       -- Many-to-many with relevance_score DECIMAL(3,2)
+```
+
+**User Management Tables:**
+```sql
+users                 -- User accounts with JSONB preferences
+user_subscriptions    -- User source subscriptions
+user_tag_preferences  -- Tag preferences (follow/block/mute)
+user_actions          -- Private actions (read/bookmark/hide/report)
+user_interactions     -- Public interactions (like/dislike/comment)
+```
 
 ### Data Service Patterns
 

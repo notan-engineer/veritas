@@ -7,8 +7,12 @@
     "build": "cd services/ui && npm run build",
     "start": "cd services/ui && npm run start",
     "lint": "cd services/ui && npm run lint",
-    "test:env": "cd services/ui && node -e \"console.log('Environment check passed')\"",
-    "test:smoke": "cd services/ui && npm run build"
+    "test:env": "cd services/ui && npm run test:env",
+    "test:db": "cd services/ui && npm run test:db",
+    "test:smoke": "cd services/ui && npm run build",
+    "test:all": "npm run test:env && npm run lint && npm run test:smoke",
+    "precommit": "npm run lint && npm run test:env",
+    "predeploy": "npm run test:all"
   },
   "devDependencies": {
     "@railway/cli": "^3.0.0"

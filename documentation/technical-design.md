@@ -23,12 +23,11 @@ Veritas is built as a modern web application using a simplified, single-service 
 - **Build Tool**: Turbopack (development)
 
 ### Backend & Data
-- **Database Primary**: Railway PostgreSQL (production)
-- **Database Secondary**: Supabase PostgreSQL (development/fallback)
+- **Database**: Railway PostgreSQL (production)
 - **Database Client**: PostgreSQL native client with connection pooling
 - **ORM**: Direct SQL queries with prepared statements
-- **Authentication**: Supabase Auth (prepared, not yet implemented)
-- **File Storage**: Supabase Storage (for future use)
+- **Authentication**: To be implemented (future)
+- **File Storage**: To be implemented (future)
 
 ### Infrastructure & Deployment
 - **Platform**: Railway (cost-optimized cloud hosting)
@@ -79,7 +78,7 @@ Veritas is built as a modern web application using a simplified, single-service 
 ┌─────────────────────────────────────────────────────────────┐
 │                    DATA LAYER                               │
 ├─────────────────────────────────────────────────────────────┤
-│            Railway PostgreSQL (Primary)                     │
+│            Railway PostgreSQL                               │
 │  │                                                          │
 │  ├── Factoids (Core content with full-text search)         │
 │  ├── Sources (News source tracking)                        │
@@ -88,46 +87,26 @@ Veritas is built as a modern web application using a simplified, single-service 
 │  ├── Advanced Full-text Search (GIN indexes)               │
 │  ├── Connection Pooling & Performance Optimization         │
 │  └── Row-level Security (RLS)                              │
-│                                                            │
-│            Supabase PostgreSQL (Fallback)                   │
-│  │                                                          │
-│  ├── Same schema compatibility                             │
-│  ├── Development environment support                       │
-│  └── Migration pathway                                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Database Provider Architecture
+## Database Architecture
 
-### Multi-Provider Support
+### Railway PostgreSQL Database
 
-The system now supports seamless switching between database providers based on environment configuration:
+The system uses Railway PostgreSQL as the primary database with the following features:
 
-#### Supported Providers
-1. **Railway PostgreSQL** (Primary)
-   - Production environment
-   - Direct PostgreSQL connection with pooling
-   - Advanced full-text search capabilities
-   - Cost-optimized ($3-5/month vs $25-30/month Supabase)
-   - High-performance GIN indexes and optimized queries
+#### Database Features
+- **Production Environment**: Single Railway PostgreSQL instance
+- **Direct PostgreSQL Connection**: Native PostgreSQL client with connection pooling
+- **Advanced Full-text Search**: GIN indexes for optimized search performance
+- **Cost-Optimized**: $3-5/month for current usage requirements
+- **High-Performance**: Optimized queries and proper indexing
 
-2. **Supabase PostgreSQL** (Secondary)
-   - Development and fallback environment
-   - Real-time capabilities
-   - Built-in authentication system
-   - Administrative dashboard
-   - Easy development setup
-
-#### Provider Configuration
+#### Database Configuration
 
 ```typescript
-// lib/database-config.ts
-interface DatabaseConfig {
-  provider: 'railway' | 'supabase';
-  railway?: RailwayConfig;
-  supabase?: SupabaseConfig;
-}
-
+// lib/railway-database.ts
 interface RailwayConfig {
   host: string;
   port: number;
@@ -140,26 +119,26 @@ interface RailwayConfig {
 }
 ```
 
-#### Automatic Provider Detection
+#### Connection Management
 - Environment variable-based configuration
-- Graceful fallback mechanism
-- Runtime provider switching capability
+- Connection pooling for performance
+- SSL-enforced connections
 - Environment validation and health checks
 
 ### API Routes Architecture
 
-#### Railway-Specific Endpoints
+#### Database Endpoints
 ```
-/api/railway/factoids          # GET: All published factoids
-/api/railway/factoids/[id]     # GET: Factoid by ID with relations
-/api/railway/factoids/search   # GET: Full-text search with ranking
-/api/railway/tags              # GET: All active tags with hierarchy
+/api/factoids          # GET: All published factoids
+/api/factoids/[id]     # GET: Factoid by ID with relations
+/api/factoids/search   # GET: Full-text search with ranking
+/api/tags              # GET: All active tags with hierarchy
 ```
 
 #### Data Service Integration
-- Provider-agnostic interface in `lib/data-service.ts`
-- Automatic routing to appropriate backend
-- Consistent data models across providers
+- Type-safe interface in `lib/data-service.ts`
+- Direct API route integration
+- Consistent data models
 - Error handling and retry logic
 
 ## Codebase Structure
@@ -192,11 +171,9 @@ veritas/
 │   │       └── theme-toggle.tsx  # Dark/light mode
 │   │
 │   ├── lib/                      # Utility Libraries
-│   │   ├── data-service.ts       # Database operations (provider-agnostic)
-│   │   ├── database-config.ts    # Database provider configuration
-│   │   ├── postgres-client.ts    # PostgreSQL client with pooling
+│   │   ├── data-service.ts       # Database operations
+│   │   ├── railway-database.ts   # Railway PostgreSQL client with pooling
 │   │   ├── input-validation.ts   # Security & validation utilities
-│   │   ├── supabase.ts           # Supabase client config
 │   │   ├── rtl-utils.ts          # Right-to-left support
 │   │   ├── utils.ts              # General utilities
 │   │   └── mock-data.ts          # Development data
@@ -219,9 +196,9 @@ veritas/
 │
 ├── database/                     # Database Management
 │   ├── migrations/               # SQL Migration Files
-│   │   └── veritas-migration.sql # Original Supabase schema
-│   ├── railway-schema.sql        # Railway PostgreSQL optimized schema
-│   └── migrate-to-railway.js     # Migration script with data transfer
+│   │   └── veritas-migration.sql # Database schema migration
+│   ├── railway-schema.sql        # Railway PostgreSQL schema
+│   └── migrate-to-railway.js     # Migration script
 │
 ├── infrastructure/               # Deployment Configuration
 │   └── railway.toml              # Railway deployment config
@@ -257,63 +234,175 @@ The database follows a **factoid-centric design** optimized for news aggregation
 - title: VARCHAR(500) - Factoid headline
 - description: TEXT - Brief summary
 - bullet_points: TEXT[] - Key facts array
-- language: ENUM('en', 'he', 'ar', 'other')
+- language: VARCHAR(10) - Language code ('en', 'he', 'ar', 'other')
 - confidence_score: DECIMAL(3,2) - Reliability (0.00-1.00)
-- status: ENUM('draft', 'published', 'archived', 'flagged')
-- created_at: TIMESTAMP
-- updated_at: TIMESTAMP
-- title_description_fts: TSVECTOR - Full-text search
+- status: VARCHAR(50) - Status ('draft', 'published', 'archived', 'flagged')
+- search_vector: TSVECTOR - Full-text search (auto-maintained)
+- created_at: TIMESTAMP WITH TIME ZONE
+- updated_at: TIMESTAMP WITH TIME ZONE
 ```
 
 **sources** (News source tracking)
 ```sql
 - id: UUID (Primary Key)
 - name: VARCHAR(200) - Source name
-- domain: VARCHAR(100) - Website domain
+- domain: VARCHAR(100) - Website domain (unique)
 - url: VARCHAR(500) - Source homepage
 - description: TEXT - Source description
 - icon_url: VARCHAR(500) - Source logo
+- twitter_handle: VARCHAR(100) - Twitter account
+- profile_photo_url: VARCHAR(500) - Profile image
 - is_active: BOOLEAN - Source status
+- created_at: TIMESTAMP WITH TIME ZONE
+- updated_at: TIMESTAMP WITH TIME ZONE
+```
+
+**scraped_content** (Raw content from sources)
+```sql
+- id: UUID (Primary Key)
+- source_id: UUID (Foreign Key → sources.id)
+- source_url: VARCHAR(500) - Original article URL
+- title: TEXT - Article title
+- content: TEXT - Article content
+- author: VARCHAR(200) - Article author
+- publication_date: TIMESTAMP WITH TIME ZONE
+- content_type: VARCHAR(50) - Content type ('article', 'social_post', 'video', 'other')
+- language: VARCHAR(10) - Language code
+- processing_status: VARCHAR(50) - Processing status ('pending', 'processing', 'completed', 'failed')
+- created_at: TIMESTAMP WITH TIME ZONE
+- updated_at: TIMESTAMP WITH TIME ZONE
 ```
 
 **tags** (Hierarchical categorization)
 ```sql
 - id: UUID (Primary Key)
 - name: VARCHAR(100) - Tag name
-- slug: VARCHAR(100) - URL-friendly name
+- slug: VARCHAR(100) - URL-friendly name (unique)
 - description: TEXT - Tag description
-- parent_id: UUID - Hierarchy support
-- level: INTEGER - Hierarchy depth
+- parent_id: UUID (Foreign Key → tags.id) - Hierarchy support
+- level: INTEGER - Hierarchy depth (0-10)
 - is_active: BOOLEAN - Tag status
+- created_at: TIMESTAMP WITH TIME ZONE
+- updated_at: TIMESTAMP WITH TIME ZONE
 ```
 
 **factoid_tags** (Many-to-many relationships)
 ```sql
-- factoid_id: UUID (Foreign Key)
-- tag_id: UUID (Foreign Key)
-- confidence_score: DECIMAL(3,2) - Tag relevance
+- id: UUID (Primary Key)
+- factoid_id: UUID (Foreign Key → factoids.id)
+- tag_id: UUID (Foreign Key → tags.id)
+- confidence_score: DECIMAL(3,2) - Tag relevance (0.00-1.00)
+- created_at: TIMESTAMP WITH TIME ZONE
+- UNIQUE(factoid_id, tag_id)
 ```
 
 **factoid_sources** (Source attribution)
 ```sql
-- factoid_id: UUID (Foreign Key)
-- scraped_content_id: UUID (Foreign Key)
-- relevance_score: DECIMAL(3,2) - Source relevance
+- id: UUID (Primary Key)
+- factoid_id: UUID (Foreign Key → factoids.id)
+- scraped_content_id: UUID (Foreign Key → scraped_content.id)
+- relevance_score: DECIMAL(3,2) - Source relevance (0.00-1.00)
+- created_at: TIMESTAMP WITH TIME ZONE
+- UNIQUE(factoid_id, scraped_content_id)
+```
+
+#### User Management Tables (Authentication Ready)
+
+**users** (User accounts)
+```sql
+- id: UUID (Primary Key)
+- email: VARCHAR(255) - User email (unique)
+- username: VARCHAR(100) - Username (unique)
+- full_name: VARCHAR(200) - Full name
+- avatar_url: VARCHAR(500) - Profile image
+- preferences: JSONB - User preferences
+- is_active: BOOLEAN - Account status
+- created_at: TIMESTAMP WITH TIME ZONE
+- updated_at: TIMESTAMP WITH TIME ZONE
+```
+
+**user_subscriptions** (User source subscriptions)
+```sql
+- id: UUID (Primary Key)
+- user_id: UUID (Foreign Key → users.id)
+- source_id: UUID (Foreign Key → sources.id)
+- is_active: BOOLEAN - Subscription status
+- created_at: TIMESTAMP WITH TIME ZONE
+- UNIQUE(user_id, source_id)
+```
+
+**user_tag_preferences** (User tag preferences)
+```sql
+- id: UUID (Primary Key)
+- user_id: UUID (Foreign Key → users.id)
+- tag_id: UUID (Foreign Key → tags.id)
+- preference_type: VARCHAR(50) - Preference ('follow', 'block', 'mute')
+- created_at: TIMESTAMP WITH TIME ZONE
+- UNIQUE(user_id, tag_id)
+```
+
+**user_actions** (Private user actions)
+```sql
+- id: UUID (Primary Key)
+- user_id: UUID (Foreign Key → users.id)
+- factoid_id: UUID (Foreign Key → factoids.id)
+- action_type: VARCHAR(50) - Action ('read', 'bookmark', 'hide', 'report')
+- metadata: JSONB - Additional action data
+- created_at: TIMESTAMP WITH TIME ZONE
+- UNIQUE(user_id, factoid_id, action_type)
+```
+
+**user_interactions** (Public user interactions)
+```sql
+- id: UUID (Primary Key)
+- user_id: UUID (Foreign Key → users.id)
+- factoid_id: UUID (Foreign Key → factoids.id)
+- interaction_type: VARCHAR(50) - Interaction ('like', 'dislike', 'comment')
+- content: TEXT - Comment content (for comments)
+- is_public: BOOLEAN - Visibility setting
+- created_at: TIMESTAMP WITH TIME ZONE
+- updated_at: TIMESTAMP WITH TIME ZONE
 ```
 
 #### Performance Optimizations
 
-**Indexes**
-- Full-text search index on factoids (title + description)
-- Composite indexes on factoid_tags and factoid_sources
-- Date-based indexes for temporal queries
-- Language-specific indexes for multilingual support
+**Full-Text Search**
+- Automated search vector generation with weighted fields:
+  - Title: Weight 'A' (highest priority)
+  - Description: Weight 'B' (medium priority)
+  - Bullet points: Weight 'C' (lower priority)
+- GIN index on search_vector for fast text search
+- Trigger-based automatic search vector updates
+
+**Primary Indexes**
+- **Sources**: domain, is_active, created_at DESC
+- **Scraped Content**: source_id, source_url, processing_status, created_at DESC
+- **Tags**: slug, parent_id, level, is_active, name
+- **Factoids**: status, language, confidence_score DESC, created_at DESC
+- **User Tables**: email, username, is_active for users; user_id, factoid_id for actions
+
+**Composite Indexes for Common Queries**
+- **factoids_status_created_at**: Optimized for published content by date
+- **factoids_status_language**: Optimized for language-specific queries
+- **factoids_status_confidence**: Optimized for high-confidence content
+
+**Relationship Indexes**
+- **factoid_tags**: factoid_id, tag_id, confidence_score DESC
+- **factoid_sources**: factoid_id, scraped_content_id, relevance_score DESC
+- **user_subscriptions**: user_id, source_id for user preferences
+- **user_actions**: user_id, factoid_id, created_at DESC for user history
+
+**Database Functions and Triggers**
+- **update_factoid_search_vector()**: Automatically maintains search vectors
+- **update_updated_at_column()**: Automatically updates timestamp fields
+- **check_tag_hierarchy()**: Prevents circular references in tag hierarchy
 
 **Query Optimization**
 - Batch fetching to prevent N+1 problems
 - Efficient JOIN operations for related data
 - Prepared statements for common queries
 - Connection pooling for scalability
+- Row-level security policies for future authentication
 
 ## Data Service Architecture
 
@@ -456,14 +545,14 @@ getRTLFlexDirection(language: Language): string
 - **Caching**: Browser caching with proper cache headers
 
 ### Database Performance
-- **Connection Pooling**: Supabase connection management
+- **Connection Pooling**: Railway PostgreSQL connection management
 - **Query Optimization**: Batch operations and efficient JOINs
 - **Indexing Strategy**: Full-text search and composite indexes
 - **Data Fetching**: Server-side rendering for better initial load
 
 ### Cost Optimization
 - **Railway Hosting**: $5-10/month for current usage
-- **Supabase Free Tier**: Database and authentication
+- **Railway PostgreSQL**: Cost-optimized database hosting
 - **Efficient Scaling**: Horizontal scaling only when needed
 - **Resource Monitoring**: Track usage to prevent cost surprises
 
