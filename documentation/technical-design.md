@@ -349,6 +349,7 @@ The database follows a **factoid-centric design** optimized for news aggregation
 - action_type: VARCHAR(50) - Action ('read', 'bookmark', 'hide', 'report')
 - metadata: JSONB - Additional action data
 - created_at: TIMESTAMP WITH TIME ZONE
+- updated_at: TIMESTAMP WITH TIME ZONE - Auto-updated via trigger
 - UNIQUE(user_id, factoid_id, action_type)
 ```
 

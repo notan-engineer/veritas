@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS user_actions (
     action_type VARCHAR(50) NOT NULL CHECK (action_type IN ('read', 'bookmark', 'hide', 'report')),
     metadata JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, factoid_id, action_type)
 );
 
