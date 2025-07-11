@@ -30,6 +30,15 @@ export function getTodaysDate(): string {
   return getFormattedDate('short')
 }
 
+// Get today's date in DD-MM-YY format for planning documents
+export function getPlanningDate(): string {
+  const now = new Date()
+  const day = String(now.getDate()).padStart(2, '0')
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const year = String(now.getFullYear()).slice(-2)
+  return `${day}-${month}-${year}`
+}
+
 // Get current timestamp for data creation
 export function getCurrentTimestamp(): string {
   return new Date().toISOString()

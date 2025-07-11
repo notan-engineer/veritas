@@ -7,7 +7,7 @@ buildCommand = "npm install && npm run build"
 watchPatterns = ["services/ui/**"]
 
 [services.ui.deploy]
-startCommand = "npm run db:init && npm start"
+startCommand = "npm start"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -17,4 +17,21 @@ restartPolicyMaxRetries = 3
 NODE_ENV = "production"
 PORT = "${{PORT}}"
 # DATABASE_URL is automatically provided by Railway PostgreSQL addon
-# No need to explicitly set it in configuration 
+
+[[services]]
+name = "scraper"
+source = "services/scraper"
+
+[services.scraper.build]
+buildCommand = "npm install && npm run build"
+watchPatterns = ["services/scraper/**"]
+
+[services.scraper.deploy]
+startCommand = "npm start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[services.scraper.variables]
+NODE_ENV = "production"
+PORT = "${{PORT}}"
+DATABASE_URL = "${{DATABASE_URL}}" 
