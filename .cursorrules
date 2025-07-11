@@ -1,6 +1,6 @@
 # Veritas Project - AI Development Rules
 
-**Last Updated**: 11-07-25  
+**Last Updated**: 11-07-25 (Use dynamic dates from `lib/utils.ts`)  
 **Project Status**: Maximally simplified (85% complexity reduction), production-ready  
 **For**: AI coding agents and human developers
 
@@ -62,8 +62,9 @@ veritas/
 
 ### 3. Build Validation (CRITICAL)
 - Test after every significant change
+- **CRITICAL**: ALL build commands MUST be run from `services/ui` directory
 - Required: `cd services/ui && npm run build && npm run lint` must pass (PowerShell: use `;` instead of `&&`)
-- **IMPORTANT**: Build commands must be run from `services/ui` directory
+- **NEVER run build from project root** - it will fail
 - Manual testing of changed functionality
 - No commits without successful builds
 
@@ -249,7 +250,8 @@ PORT=${{PORT}}              # Automatically set by Railway
 
 ### Development Commands
 ```bash
-cd services/ui   # CRITICAL: All commands must be run from services/ui directory
+# ⚠️ CRITICAL: ALWAYS cd to services/ui first - builds WILL FAIL from project root
+cd services/ui   
 npm run dev      # Development server
 npm run build    # Production build (MUST pass)
 npm run start    # Production server
@@ -257,6 +259,7 @@ npm run lint     # ESLint check (MUST pass)
 ```
 
 **PowerShell Note**: Use separate commands: `cd services/ui; npm run build; npm run lint`
+**⚠️ NEVER run npm commands from project root - always from services/ui**
 
 ## Deployment (Ultra-simplified)
 

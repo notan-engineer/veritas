@@ -22,11 +22,11 @@
 - Test thoroughly before expanding functionality
 - Document changes immediately
 
-### 3. Build Validation
+### 3. Build Validation ⚠️ CRITICAL
+- **ALWAYS run from `services/ui` directory - builds FAIL from project root**
+- Required: `cd services/ui && npm run build && npm run lint` must pass
 - Test after every significant change
-- Required commands: `cd services/ui && npm run build && npm run lint`
-- **CRITICAL**: All build/lint commands must be run from `services/ui` directory
-- Manual testing of changed functionality
+- Manual testing of changed functionality  
 - No commits without successful builds
 
 ## Current System Architecture
@@ -200,14 +200,16 @@ docs/section-update          # Documentation updates
 
 ## Testing & Quality
 
-### Required Validation
+### Required Validation ⚠️ CRITICAL
 ```bash
-cd services/ui   # CRITICAL: Build must be run from services/ui directory
+# ⚠️ MUST run from services/ui directory - NEVER from project root
+cd services/ui   
 npm run build    # Must pass
 npm run lint     # Must pass
 ```
 
-**PowerShell Note**: Use separate commands: `cd services/ui; npm run build; npm run lint`
+**PowerShell**: `cd services/ui; npm run build; npm run lint`
+**⚠️ Commands WILL FAIL if run from project root**
 
 ### Manual Testing Checklist
 - [ ] Homepage loads and displays factoids

@@ -20,18 +20,20 @@
 - **Database**: Railway PostgreSQL with direct connection pooling
 - **Deployment**: Railway (single service, minimal configuration)
 
-### File Structure (Simplified)
+### File Structure (Ultra-Simplified)
 ```
 veritas/
-├── railway.toml              # Minimal deployment config
-├── services/ui/              # Single Next.js service
-│   ├── app/                 # App Router pages & API routes
-│   ├── components/ui/       # Essential UI components only
-│   ├── lib/                 # Core utilities & data services
-│   └── public/              # Static assets
-├── database/                # Schema & migration files
-└── documentation/           # Project documentation
+├── railway.toml              # Deployment config (7 lines only)
+├── services/ui/              # ONLY remaining service (others removed)
+│   ├── app/                 # App Router (2 API routes, 3 pages)
+│   ├── components/ui/       # 6 essential components only
+│   ├── lib/                 # 5 core utilities (data, dates, RTL)
+│   └── public/              # Static assets only
+├── database/                # Single schema file + migrations
+└── documentation/           # 4 core docs + planning/
 ```
+
+**⚠️ CRITICAL**: All npm commands must run from `services/ui` directory
 
 ## Database Architecture (Simplified)
 
@@ -148,7 +150,7 @@ PORT=${{PORT}}              # Automatically set by Railway
 ### Core Principles
 1. **Simplicity First** - Implement only what's needed
 2. **Incremental Growth** - Add features when actually required
-3. **Build Validation** - Test after every change (`cd services/ui && npm run build && npm run lint`)
+3. **Build Validation** - ⚠️ CRITICAL: Test from `services/ui` directory (`cd services/ui && npm run build && npm run lint`)
 4. **Documentation Sync** - Update docs with code changes
 
 ### Adding New Features
