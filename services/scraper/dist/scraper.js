@@ -175,9 +175,9 @@ class VeritasScraper {
             await this.crawler.run();
             // Return basic article data (enhanced by crawler handler)
             return {
-                sourceUrl: rssItem.link,
+                sourceUrl: rssItem.link || '',
                 title: rssItem.title || 'No title',
-                content: rssItem.contentSnippet || rssItem.content || 'No content available',
+                content: rssItem.contentSnippet || rssItem.content || rssItem.summary || 'No content available',
                 author: rssItem.creator || rssItem['dc:creator'] || undefined,
                 publicationDate: rssItem.pubDate ? new Date(rssItem.pubDate) : undefined,
                 language: 'en'

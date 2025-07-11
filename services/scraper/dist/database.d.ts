@@ -13,7 +13,10 @@ declare class ScraperDatabase {
     /**
      * Execute a query
      */
-    query(text: string, params?: unknown[]): Promise<any>;
+    query<T = any>(text: string, params?: unknown[]): Promise<{
+        rows: T[];
+        rowCount: number | null;
+    }>;
     /**
      * Upsert news source
      */

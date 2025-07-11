@@ -1,5 +1,5 @@
-import { CheerioCrawler, Configuration } from 'crawlee';
-import RSSParser from 'rss-parser';
+import { CheerioCrawler, Configuration, CheerioCrawlingContext } from 'crawlee';
+import RSSParser, { Item } from 'rss-parser';
 import { v4 as uuidv4 } from 'uuid';
 import { scraperDb } from './database';
 import { 
@@ -150,7 +150,7 @@ export class VeritasScraper {
   /**
    * Process individual RSS item
    */
-  private async processRSSItem(item: any, sourceId: number): Promise<void> {
+  private async processRSSItem(item: Item, sourceId: number): Promise<void> {
     if (!item.link) {
       this.log('warn', 'RSS item missing link, skipping');
       return;
@@ -194,7 +194,7 @@ export class VeritasScraper {
   /**
    * Scrape full article content from URL
    */
-  private async scrapeArticleContent(rssItem: any): Promise<ScrapedArticle | null> {
+  private async scrapeArticleContent(rssItem: Item): Promise<ScrapedArticle | null> {
     try {
       this.currentJob!.results.articlesScraped++;
 
@@ -208,10 +208,10 @@ export class VeritasScraper {
 
       // Return basic article data (enhanced by crawler handler)
       return {
-        sourceUrl: rssItem.link,
+        sourceUrl: rssItem.link || '',
         title: rssItem.title || 'No title',
-        content: rssItem.contentSnippet || rssItem.content || 'No content available',
-        author: rssItem.creator || rssItem['dc:creator'] || undefined,
+        content: (rssItem as any).contentSnippet || (rssItem as any).content || rssItem.summary || 'No content available',
+        author: rssItem.creator || (rssItem as any)['dc:creator'] || undefined,
         publicationDate: rssItem.pubDate ? new Date(rssItem.pubDate) : undefined,
         language: 'en'
       };
@@ -225,7 +225,7 @@ export class VeritasScraper {
   /**
    * Crawlee request handler for article content extraction
    */
-  private async handleArticleScraping({ request, $ }: any): Promise<void> {
+  private async handleArticleScraping({ request, $ }: CheerioCrawlingContext): Promise<void> {
     try {
       // Basic content extraction - can be enhanced later
       const title = $('h1').first().text().trim() || 

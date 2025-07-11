@@ -7,6 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Settings, Bell, Globe, Shield, User, Download, Loader2 } from "lucide-react";
 import Link from "next/link";
 
+interface ScrapingLogDisplay {
+  level: 'info' | 'warn' | 'error';
+  message: string;
+}
+
 export default function SettingsPage() {
   const [isScraping, setIsScraping] = useState(false);
   const [scrapingLogs, setScrapingLogs] = useState<string[]>([]);
@@ -33,10 +38,10 @@ export default function SettingsPage() {
 
       if (result.success) {
         setLastScrapingResult(`✅ Success: ${result.message}`);
-        setScrapingLogs(result.logs.map((log: any) => `${log.level}: ${log.message}`));
+        setScrapingLogs(result.logs.map((log: ScrapingLogDisplay) => `${log.level}: ${log.message}`));
       } else {
         setLastScrapingResult(`❌ Error: ${result.message}`);
-        setScrapingLogs(result.logs?.map((log: any) => `${log.level}: ${log.message}`) || []);
+        setScrapingLogs(result.logs?.map((log: ScrapingLogDisplay) => `${log.level}: ${log.message}`) || []);
       }
     } catch (error) {
       setLastScrapingResult(`❌ Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);

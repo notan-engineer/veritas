@@ -30,7 +30,7 @@ class ScraperDatabase {
                 database: url.pathname.slice(1),
                 user: url.username,
                 password: url.password,
-                ssl: { rejectUnauthorized: false },
+                ssl: { rejectUnauthorized: true },
                 max: 5, // Smaller pool for scraper service
                 min: 1,
                 idleTimeoutMillis: 30000,

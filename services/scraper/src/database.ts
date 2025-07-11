@@ -31,7 +31,7 @@ class ScraperDatabase {
         database: url.pathname.slice(1),
         user: url.username,
         password: url.password,
-        ssl: { rejectUnauthorized: false },
+        ssl: { rejectUnauthorized: true },
         max: 5, // Smaller pool for scraper service
         min: 1,
         idleTimeoutMillis: 30000,
@@ -52,7 +52,7 @@ class ScraperDatabase {
   /**
    * Execute a query
    */
-  async query(text: string, params?: unknown[]): Promise<any> {
+  async query<T = any>(text: string, params?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }> {
     await this.initialize();
     
     if (!this.pool) {
