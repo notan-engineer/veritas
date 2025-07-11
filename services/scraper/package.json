@@ -1,0 +1,38 @@
+{
+  "name": "veritas-scraper",
+  "version": "1.0.0",
+  "description": "Crawlee-based news content scraper for Veritas platform",
+  "main": "dist/scraper.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/scraper.js",
+    "dev": "ts-node src/scraper.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "crawlee": "^3.5.0",
+    "playwright": "^1.40.0",
+    "pg": "^8.12.0",
+    "rss-parser": "^3.13.0",
+    "uuid": "^9.0.0",
+    "@types/pg": "^8.10.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "scraper",
+    "crawlee",
+    "news",
+    "rss",
+    "veritas"
+  ],
+  "author": "Veritas Team",
+  "license": "MIT"
+} 

@@ -1,10 +1,50 @@
+'use client';
+
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings, Bell, Globe, Shield, User } from "lucide-react";
+import { ArrowLeft, Settings, Bell, Globe, Shield, User, Download, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function SettingsPage() {
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapingLogs, setScrapingLogs] = useState<string[]>([]);
+  const [lastScrapingResult, setLastScrapingResult] = useState<string>('');
+
+  const triggerScraping = async (sources: string[]) => {
+    setIsScraping(true);
+    setScrapingLogs([]);
+    setLastScrapingResult('');
+
+    try {
+      const response = await fetch('/api/scraper/trigger', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sources: sources,
+          maxArticles: 3
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setLastScrapingResult(`✅ Success: ${result.message}`);
+        setScrapingLogs(result.logs.map((log: any) => `${log.level}: ${log.message}`));
+      } else {
+        setLastScrapingResult(`❌ Error: ${result.message}`);
+        setScrapingLogs(result.logs?.map((log: any) => `${log.level}: ${log.message}`) || []);
+      }
+    } catch (error) {
+      setLastScrapingResult(`❌ Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setScrapingLogs(['Failed to connect to scraper service']);
+    } finally {
+      setIsScraping(false);
+    }
+  };
   return (
     <div className="max-w-4xl mx-auto space-y-8 px-2 sm:px-0">
       {/* Header */}
@@ -127,6 +167,75 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Content Scraper */}
+      <Card className="bg-blue-50/50 dark:bg-blue-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Content Scraper
+          </CardTitle>
+          <CardDescription>
+            Manually trigger news content collection from RSS feeds
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Button 
+              onClick={() => triggerScraping(['cnn'])}
+              disabled={isScraping}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              {isScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Scrape CNN
+            </Button>
+            <Button 
+              onClick={() => triggerScraping(['foxnews'])}
+              disabled={isScraping}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              {isScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Scrape Fox News
+            </Button>
+            <Button 
+              onClick={() => triggerScraping(['cnn', 'foxnews'])}
+              disabled={isScraping}
+              className="md:col-span-2 flex items-center gap-2"
+            >
+              {isScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Scrape All Sources
+            </Button>
+          </div>
+          
+          {lastScrapingResult && (
+            <div className="mt-4 p-3 bg-background rounded-lg">
+              <p className="text-sm font-medium mb-2">Last Result:</p>
+              <p className="text-sm text-muted-foreground">{lastScrapingResult}</p>
+            </div>
+          )}
+          
+          {scrapingLogs.length > 0 && (
+            <div className="mt-4 p-3 bg-background rounded-lg">
+              <p className="text-sm font-medium mb-2">Scraping Logs:</p>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {scrapingLogs.map((log, index) => (
+                  <p key={index} className="text-xs text-muted-foreground font-mono">
+                    {log}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline">CNN RSS</Badge>
+            <Badge variant="outline">Fox News RSS</Badge>
+            <Badge variant="outline">Mock Mode</Badge>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Development Status */}
       <Card className="bg-muted/30">
