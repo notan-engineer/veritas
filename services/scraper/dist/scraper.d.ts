@@ -7,6 +7,7 @@ export declare class VeritasScraper {
     private rssParser;
     private crawler;
     private currentJob;
+    private scrapedResults;
     private readonly sources;
     constructor();
     /**
@@ -22,13 +23,9 @@ export declare class VeritasScraper {
      */
     private processSingleSource;
     /**
-     * Process individual RSS item
+     * Scrape multiple articles in a batch for better performance
      */
-    private processRSSItem;
-    /**
-     * Scrape full article content from URL
-     */
-    private scrapeArticleContent;
+    private scrapeMultipleArticles;
     /**
      * Crawlee request handler for article content extraction
      */
