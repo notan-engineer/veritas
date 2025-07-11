@@ -7,9 +7,15 @@ import Link from "next/link";
 import { getFactoidById } from "@/lib/data.server";
 import { getRTLClasses, getRTLContainerClasses, getRTLFlexDirection } from "@/lib/rtl-utils";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function ArticlePage({ params }: any) {
-  const factoid = await getFactoidById(params.id);
+interface ArticlePageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default async function ArticlePage({ params }: ArticlePageProps) {
+  const resolvedParams = await params;
+  const factoid = await getFactoidById(resolvedParams.id);
 
   if (!factoid) {
     notFound();

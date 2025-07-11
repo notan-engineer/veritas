@@ -2,15 +2,15 @@ import { Factoid, Tag, Source } from './data-service'
 
 export const mockFactoids: Factoid[] = [
   {
-    id: "nvidia-ai-chip-2024",
-    title: "NVIDIA Announces Revolutionary AI Chip with 10x Performance Boost",
-    description: "NVIDIA has unveiled its latest AI chip, promising unprecedented performance improvements for machine learning workloads.",
+    id: "lorem-ipsum-factoid-1",
+    title: "Lorem Ipsum Dolor Sit Amet Consectetur Adipiscing",
+    description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
     bullet_points: [
-      "New H200 chip delivers 10x faster AI training compared to previous generation",
-      "Features 141GB of HBM3 memory for large language model processing",
-      "Expected to ship in Q2 2024 with major cloud providers already pre-ordering",
-      "Priced at $40,000 per unit, targeting enterprise AI infrastructure",
-      "Compatible with existing CUDA ecosystem for seamless integration"
+      "Ut enim ad minim veniam quis nostrud exercitation ullamco laboris",
+      "Duis aute irure dolor in reprehenderit in voluptate velit esse",
+      "Excepteur sint occaecat cupidatat non proident sunt in culpa",
+      "Sed ut perspiciatis unde omnis iste natus error sit voluptatem",
+      "Neque porro quisquam est qui dolorem ipsum quia dolor sit"
     ],
     language: "en",
     confidence_score: 0.95,
@@ -20,25 +20,25 @@ export const mockFactoids: Factoid[] = [
     tags: [
       {
         id: "tag-1",
-        name: "Technology",
-        slug: "technology",
-        description: "Technology and innovation",
+        name: "Lorem Technology",
+        slug: "lorem-technology",
+        description: "Lorem ipsum technology sample",
         level: 1,
         is_active: true
       },
       {
         id: "tag-2",
-        name: "AI",
-        slug: "ai",
-        description: "Artificial Intelligence",
+        name: "Ipsum AI",
+        slug: "ipsum-ai",
+        description: "Lorem ipsum artificial intelligence sample",
         level: 1,
         is_active: true
       },
       {
         id: "tag-3",
-        name: "Hardware",
-        slug: "hardware",
-        description: "Computer hardware and devices",
+        name: "Dolor Hardware",
+        slug: "dolor-hardware",
+        description: "Lorem ipsum hardware sample",
         level: 2,
         is_active: true
       }
@@ -46,24 +46,24 @@ export const mockFactoids: Factoid[] = [
     sources: [
       {
         id: "source-1",
-        name: "TechCrunch",
-        domain: "techcrunch.com",
-        url: "https://techcrunch.com",
-        description: "Technology news and analysis",
+        name: "Lorem News",
+        domain: "lorem-news.example",
+        url: "https://lorem-news.example",
+        description: "Lorem ipsum news source sample",
         is_active: true
       }
     ]
   },
   {
-    id: "fed-interest-rates-december",
-    title: "Federal Reserve Maintains Interest Rates at 5.25-5.50%",
-    description: "The Federal Reserve has decided to keep interest rates unchanged, signaling a cautious approach to monetary policy.",
+    id: "lorem-ipsum-factoid-2",
+    title: "Sed Do Eiusmod Tempor Incididunt Ut Labore",
+    description: "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam quis nostrud exercitation.",
     bullet_points: [
-      "Federal funds rate remains at 5.25-5.50% for the third consecutive meeting",
-      "Fed Chair Powell indicates potential rate cuts in 2024 if inflation continues to decline",
-      "Core inflation rate at 3.1%, down from 4.1% in September",
-      "Unemployment rate stable at 3.7%, showing strong labor market",
-      "Markets react positively with S&P 500 gaining 1.2% following announcement"
+      "Lorem ipsum dolor sit amet consectetur adipiscing elit sed",
+      "Do eiusmod tempor incididunt ut labore et dolore magna aliqua",
+      "Ut enim ad minim veniam quis nostrud exercitation ullamco",
+      "Laboris nisi ut aliquip ex ea commodo consequat duis",
+      "Aute irure dolor in reprehenderit in voluptate velit esse"
     ],
     language: "en",
     confidence_score: 0.92,
@@ -73,17 +73,17 @@ export const mockFactoids: Factoid[] = [
     tags: [
       {
         id: "tag-4",
-        name: "Finance",
-        slug: "finance",
-        description: "Financial news and markets",
+        name: "Consectetur Finance",
+        slug: "consectetur-finance",
+        description: "Lorem ipsum finance sample",
         level: 1,
         is_active: true
       },
       {
         id: "tag-5",
-        name: "Economy",
-        slug: "economy",
-        description: "Economic news and trends",
+        name: "Adipiscing Economy",
+        slug: "adipiscing-economy",
+        description: "Lorem ipsum economy sample",
         level: 2,
         is_active: true
       }
@@ -91,24 +91,24 @@ export const mockFactoids: Factoid[] = [
     sources: [
       {
         id: "source-2",
-        name: "Reuters",
-        domain: "reuters.com",
-        url: "https://reuters.com",
-        description: "International news and business",
+        name: "Ipsum Today",
+        domain: "ipsum-today.example",
+        url: "https://ipsum-today.example",
+        description: "Lorem ipsum daily news sample",
         is_active: true
       }
     ]
   },
   {
-    id: "spacex-starlink-launch",
-    title: "SpaceX Successfully Launches 60 Starlink Satellites",
-    description: "SpaceX has completed another successful Starlink mission, expanding global internet coverage.",
+    id: "lorem-ipsum-factoid-3",
+    title: "Ut Enim Ad Minim Veniam Quis Nostrud",
+    description: "Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
     bullet_points: [
-      "Falcon 9 rocket launches 60 Starlink satellites from Cape Canaveral",
-      "First stage booster successfully lands on drone ship for 15th time",
-      "Satellites deployed at 550km altitude for optimal internet coverage",
-      "Starlink constellation now exceeds 4,000 active satellites",
-      "Service now available in 60+ countries with 2+ million subscribers"
+      "Cillum dolore eu fugiat nulla pariatur excepteur sint occaecat",
+      "Cupidatat non proident sunt in culpa qui officia deserunt",
+      "Mollit anim id est laborum sed ut perspiciatis unde omnis",
+      "Iste natus error sit voluptatem accusantium doloremque laudantium",
+      "Totam rem aperiam eaque ipsa quae ab illo inventore"
     ],
     language: "en",
     confidence_score: 0.94,
@@ -118,17 +118,17 @@ export const mockFactoids: Factoid[] = [
     tags: [
       {
         id: "tag-6",
-        name: "Space",
-        slug: "space",
-        description: "Space exploration and astronomy",
+        name: "Veniam Space",
+        slug: "veniam-space",
+        description: "Lorem ipsum space sample",
         level: 1,
         is_active: true
       },
       {
         id: "tag-1",
-        name: "Technology",
-        slug: "technology",
-        description: "Technology and innovation",
+        name: "Lorem Technology",
+        slug: "lorem-technology",
+        description: "Lorem ipsum technology sample",
         level: 1,
         is_active: true
       }
@@ -136,24 +136,24 @@ export const mockFactoids: Factoid[] = [
     sources: [
       {
         id: "source-3",
-        name: "The Verge",
-        domain: "theverge.com",
-        url: "https://theverge.com",
-        description: "Technology, science, art, and culture",
+        name: "Dolor Weekly",
+        domain: "dolor-weekly.example",
+        url: "https://dolor-weekly.example",
+        description: "Lorem ipsum weekly publication sample",
         is_active: true
       }
     ]
   },
   {
-    id: "cop28-climate-agreement",
-    title: "COP28 Reaches Historic Agreement on Fossil Fuel Phase-Out",
-    description: "World leaders at COP28 have agreed to transition away from fossil fuels, marking a significant climate milestone.",
+    id: "lorem-ipsum-factoid-4",
+    title: "Duis Aute Irure Dolor In Reprehenderit",
+    description: "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
     bullet_points: [
-      "195 countries agree to 'transition away from fossil fuels' by 2050",
-      "Establishes $100 billion climate fund for developing nations",
-      "Sets target of 60% reduction in global emissions by 2035",
-      "Requires regular reporting on climate action progress",
-      "Creates framework for carbon trading and offset mechanisms"
+      "Excepteur sint occaecat cupidatat non proident sunt in culpa",
+      "Qui officia deserunt mollit anim id est laborum sed ut",
+      "Perspiciatis unde omnis iste natus error sit voluptatem",
+      "Accusantium doloremque laudantium totam rem aperiam eaque",
+      "Ipsa quae ab illo inventore veritatis et quasi architecto"
     ],
     language: "en",
     confidence_score: 0.91,
@@ -163,9 +163,9 @@ export const mockFactoids: Factoid[] = [
     tags: [
       {
         id: "tag-7",
-        name: "Environment",
-        slug: "environment",
-        description: "Environmental news and climate",
+        name: "Irure Environment",
+        slug: "irure-environment",
+        description: "Lorem ipsum environment sample",
         level: 1,
         is_active: true
       }
@@ -173,24 +173,24 @@ export const mockFactoids: Factoid[] = [
     sources: [
       {
         id: "source-4",
-        name: "Bloomberg",
-        domain: "bloomberg.com",
-        url: "https://bloomberg.com",
-        description: "Business and financial news",
+        name: "Elit Business",
+        domain: "elit-business.example",
+        url: "https://elit-business.example",
+        description: "Lorem ipsum business news sample",
         is_active: true
       }
     ]
   },
   {
-    id: "israel-tech-startup-funding",
-    title: "ישראל: חברות טכנולוגיה גייסו 2.5 מיליארד דולר ברבעון האחרון",
-    description: "אקוסיסטם הסטארט-אפים הישראלי ממשיך לפרוח עם גיוסים משמעותיים בחברות בינה מלאכותית וסייבר.",
+    id: "lorem-ipsum-factoid-5",
+    title: "אמת לורם איפסום דולור סיט אמט",
+    description: "לורם איפסום דולור סיט אמט, קונסקטטור אדיפיסינג אלית סד דו איוסמוד טמפור אינסידידונט.",
     bullet_points: [
-      "חברות טכנולוגיה ישראליות גייסו 2.5 מיליארד דולר ברבעון הרביעי של 2024",
-      "חברות בינה מלאכותית הובילו עם 40% מהגיוסים הכוללים",
-      "חברות סייבר גייסו 800 מיליון דולר, עלייה של 25% מהרבעון הקודם",
-      "מרכזי פיתוח של חברות בינלאומיות גדולות נפתחים בתל אביב וירושלים",
-      "הממשלה הכריזה על תכנית חדשה לתמיכה בחברות טכנולוגיה צעירות"
+      "אוט לבוריס ניסי אוט אליקיפ אקס אע קומודו קונסקוואט",
+      "דויס אוטה אירורה דולור אין רפרהנדריט אין וולופטטה",
+      "וליט אסה צילום דולורה אאו פוגיאט נולה פריאטור",
+      "אקספטיר סינט אוקיקאט קופידאטאט נון פרוידנט",
+      "סונט אין קולפא קווי אופיסיה דסרונט מולית אנים"
     ],
     language: "he",
     confidence_score: 0.88,
@@ -200,25 +200,25 @@ export const mockFactoids: Factoid[] = [
     tags: [
       {
         id: "tag-8",
-        name: "ישראל",
-        slug: "israel",
-        description: "Israeli news and developments",
+        name: "לורם ישראל",
+        slug: "lorem-israel",
+        description: "לורם איפסום ישראל דוגמא",
         level: 1,
         is_active: true
       },
       {
         id: "tag-1",
-        name: "Technology",
-        slug: "technology",
-        description: "Technology and innovation",
+        name: "Lorem Technology",
+        slug: "lorem-technology",
+        description: "Lorem ipsum technology sample",
         level: 1,
         is_active: true
       },
       {
         id: "tag-9",
-        name: "Startups",
-        slug: "startups",
-        description: "Startup companies and funding",
+        name: "Dolor Startups",
+        slug: "dolor-startups",
+        description: "Lorem ipsum startups sample",
         level: 2,
         is_active: true
       }
@@ -226,10 +226,10 @@ export const mockFactoids: Factoid[] = [
     sources: [
       {
         id: "source-5",
-        name: "Ynet",
-        domain: "ynet.co.il",
-        url: "https://ynet.co.il",
-        description: "Israeli news portal",
+        name: "איפסום חדשות",
+        domain: "ipsum-news.example",
+        url: "https://ipsum-news.example",
+        description: "לורם איפסום חדשות דוגמא",
         is_active: true
       }
     ]
@@ -239,73 +239,73 @@ export const mockFactoids: Factoid[] = [
 export const mockTags: Tag[] = [
   {
     id: "tag-1",
-    name: "Technology",
-    slug: "technology",
-    description: "Technology and innovation",
+    name: "Lorem Technology",
+    slug: "lorem-technology",
+    description: "Lorem ipsum technology sample",
     level: 1,
     is_active: true
   },
   {
     id: "tag-2",
-    name: "AI",
-    slug: "ai",
-    description: "Artificial Intelligence",
+    name: "Ipsum AI",
+    slug: "ipsum-ai",
+    description: "Lorem ipsum artificial intelligence sample",
     level: 1,
     is_active: true
   },
   {
     id: "tag-3",
-    name: "Hardware",
-    slug: "hardware",
-    description: "Computer hardware and devices",
+    name: "Dolor Hardware",
+    slug: "dolor-hardware",
+    description: "Lorem ipsum hardware sample",
     level: 2,
     is_active: true
   },
   {
     id: "tag-4",
-    name: "Finance",
-    slug: "finance",
-    description: "Financial news and markets",
+    name: "Consectetur Finance",
+    slug: "consectetur-finance",
+    description: "Lorem ipsum finance sample",
     level: 1,
     is_active: true
   },
   {
     id: "tag-5",
-    name: "Economy",
-    slug: "economy",
-    description: "Economic news and trends",
+    name: "Adipiscing Economy",
+    slug: "adipiscing-economy",
+    description: "Lorem ipsum economy sample",
     level: 2,
     is_active: true
   },
   {
     id: "tag-6",
-    name: "Space",
-    slug: "space",
-    description: "Space exploration and astronomy",
+    name: "Veniam Space",
+    slug: "veniam-space",
+    description: "Lorem ipsum space sample",
     level: 1,
     is_active: true
   },
   {
     id: "tag-7",
-    name: "Environment",
-    slug: "environment",
-    description: "Environmental news and climate",
+    name: "Irure Environment",
+    slug: "irure-environment",
+    description: "Lorem ipsum environment sample",
     level: 1,
     is_active: true
   },
   {
     id: "tag-8",
-    name: "ישראל",
-    slug: "israel",
-    description: "Israeli news and developments",
+    name: "לורם ישראל",
+    slug: "lorem-israel",
+    description: "לורם איפסום ישראל דוגמא",
     level: 1,
     is_active: true
   },
   {
     id: "tag-9",
-    name: "Startups",
-    slug: "startups",
-    description: "Startup companies and funding",
+    name: "Dolor Startups",
+    slug: "dolor-startups",
+    description: "Lorem ipsum startups sample",
     level: 2,
     is_active: true
   }
@@ -314,42 +314,42 @@ export const mockTags: Tag[] = [
 export const mockSources: Source[] = [
   {
     id: "source-1",
-    name: "TechCrunch",
-    domain: "techcrunch.com",
-    url: "https://techcrunch.com",
-    description: "Technology news and analysis",
+    name: "Lorem News",
+    domain: "lorem-news.example",
+    url: "https://lorem-news.example",
+    description: "Lorem ipsum news source sample",
     is_active: true
   },
   {
     id: "source-2",
-    name: "Reuters",
-    domain: "reuters.com",
-    url: "https://reuters.com",
-    description: "International news and business",
+    name: "Ipsum Today",
+    domain: "ipsum-today.example",
+    url: "https://ipsum-today.example",
+    description: "Lorem ipsum daily news sample",
     is_active: true
   },
   {
     id: "source-3",
-    name: "The Verge",
-    domain: "theverge.com",
-    url: "https://theverge.com",
-    description: "Technology, science, art, and culture",
+    name: "Dolor Weekly",
+    domain: "dolor-weekly.example",
+    url: "https://dolor-weekly.example",
+    description: "Lorem ipsum weekly publication sample",
     is_active: true
   },
   {
     id: "source-4",
-    name: "Bloomberg",
-    domain: "bloomberg.com",
-    url: "https://bloomberg.com",
-    description: "Business and financial news",
+    name: "Elit Business",
+    domain: "elit-business.example",
+    url: "https://elit-business.example",
+    description: "Lorem ipsum business news sample",
     is_active: true
   },
   {
     id: "source-5",
-    name: "Ynet",
-    domain: "ynet.co.il",
-    url: "https://ynet.co.il",
-    description: "Israeli news portal",
+    name: "איפסום חדשות",
+    domain: "ipsum-news.example",
+    url: "https://ipsum-news.example",
+    description: "לורם איפסום חדשות דוגמא",
     is_active: true
   }
 ]

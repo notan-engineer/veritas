@@ -135,8 +135,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 ## Database Development Guidelines
 
+### Current Railway PostgreSQL Schema
+The system uses Railway PostgreSQL with a **factoid-centric design** optimized for news aggregation:
+
+**Core Tables:**
+- **`factoids`** - Primary content (UUID, title VARCHAR(500), description TEXT, bullet_points TEXT[], language, confidence_score DECIMAL(3,2), status, search_vector TSVECTOR)
+- **`sources`** - News sources (UUID, name, domain UNIQUE, url, description, is_active)
+- **`scraped_content`** - Raw content from sources (UUID, source_id FK, source_url, title, content, processing_status)
+- **`tags`** - Hierarchical categorization (UUID, name, slug UNIQUE, parent_id FK, level INTEGER 0-10)
+- **`factoid_tags`** - Many-to-many factoid-tag relationships with confidence_score
+- **`factoid_sources`** - Many-to-many factoid-source relationships with relevance_score
+
+**User Management (Authentication Ready):**
+- **`users`** - User accounts (UUID, email UNIQUE, username UNIQUE, preferences JSONB)
+- **`user_subscriptions`** - User source subscriptions
+- **`user_tag_preferences`** - User tag preferences (follow/block/mute)
+- **`user_actions`** - Private actions (read/bookmark/hide/report)
+- **`user_interactions`** - Public interactions (like/dislike/comment)
+
+**Performance Features:**
+- Full-text search with GIN indexes and weighted search vectors
+- Comprehensive indexing for all common query patterns
+- Row-level security policies configured
+- Automatic timestamp updates and search vector maintenance
+- Connection pooling and query optimization
+
 ### Data Models
-The system uses a **factoid-centric design** with these core interfaces:
+TypeScript interfaces aligned with database schema:
 
 ```typescript
 interface Factoid {
@@ -171,6 +196,7 @@ interface Source {
   url: string
   description?: string
   relevance_score?: number
+  scraped_content?: ScrapedContent
 }
 ```
 

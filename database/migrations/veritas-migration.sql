@@ -237,236 +237,69 @@ CREATE POLICY "Allow public read access to factoid_sources" ON factoid_sources F
 CREATE POLICY "Allow public read access to factoid_tags" ON factoid_tags FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to generated_images" ON generated_images FOR SELECT USING (true);
 
--- Create user-specific policies (temporary - will be updated when auth is implemented)
--- Note: These policies restrict access to authenticated users only
-CREATE POLICY "Users can manage their own actions" ON user_actions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-CREATE POLICY "Users can manage their own interactions" ON user_interactions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-CREATE POLICY "Users can manage their own tag preferences" ON user_tag_preferences FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-CREATE POLICY "Users can provide feedback" ON llm_feedback FOR ALL USING (auth.uid() IS NOT NULL AND (user_id IS NULL OR user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-
--- Insert sample data for testing
-INSERT INTO sources (name, domain, url, description, is_active) VALUES
-('TechCrunch', 'techcrunch.com', 'https://techcrunch.com', 'Technology news and analysis', true),
-('Reuters', 'reuters.com', 'https://reuters.com', 'International news and business', true),
-('The Verge', 'theverge.com', 'https://theverge.com', 'Technology, science, art, and culture', true),
-('Bloomberg', 'bloomberg.com', 'https://bloomberg.com', 'Business and financial news', true),
-('Ynet', 'ynet.co.il', 'https://ynet.co.il', 'Israeli news portal', true),
-('Globes', 'globes.co.il', 'https://globes.co.il', 'Israeli business news', true);
-
--- Insert sample tags
-INSERT INTO tags (name, slug, description, level) VALUES
-('Technology', 'technology', 'Technology and innovation', 1),
-('AI', 'ai', 'Artificial Intelligence', 1),
-('Finance', 'finance', 'Financial news and markets', 1),
-('Space', 'space', 'Space exploration and astronomy', 1),
-('Environment', 'environment', 'Environmental news and climate', 1),
-('Israel', 'israel', 'Israeli news and developments', 1),
-('Hardware', 'hardware', 'Computer hardware and devices', 2),
-('Software', 'software', 'Software and applications', 2),
-('Startups', 'startups', 'Startup companies and funding', 2),
-('Economy', 'economy', 'Economic news and trends', 2);
-
--- Set up tag hierarchy (only if parent_id column exists)
-DO $$
+-- Create Railway PostgreSQL compatible session functions
+-- These replace Supabase-specific auth.uid() function
+CREATE OR REPLACE FUNCTION set_current_user(uid UUID) RETURNS VOID AS $$
 BEGIN
-    -- Check if parent_id column exists before updating
-    IF EXISTS (
-        SELECT FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-        AND table_name = 'tags' 
-        AND column_name = 'parent_id'
-    ) THEN
-        UPDATE tags SET parent_id = (SELECT id FROM tags WHERE slug = 'technology') WHERE slug IN ('ai', 'hardware', 'software');
-        UPDATE tags SET parent_id = (SELECT id FROM tags WHERE slug = 'finance') WHERE slug = 'economy';
-        UPDATE tags SET level = 2 WHERE parent_id IS NOT NULL;
-    END IF;
-END $$;
+  PERFORM set_config('app.current_user', uid::TEXT, TRUE);
+END;
+$$ LANGUAGE plpgsql;
 
--- Insert sample scraped content
-INSERT INTO scraped_content (source_id, source_url, title, content, author, publication_date, content_type, language, processing_status) VALUES
-(
-  (SELECT id FROM sources WHERE domain = 'techcrunch.com'),
-  'https://techcrunch.com/2024/nvidia-ai-chip',
-  'NVIDIA Announces Revolutionary AI Chip with 10x Performance Boost',
-  'NVIDIA has unveiled its latest AI chip, promising unprecedented performance improvements for machine learning workloads. The new H200 chip delivers 10x faster AI training compared to previous generation and features 141GB of HBM3 memory for large language model processing.',
-  'John Smith',
-  '2024-12-15T10:30:00Z',
-  'article',
-  'en',
-  'completed'
-),
-(
-  (SELECT id FROM sources WHERE domain = 'reuters.com'),
-  'https://reuters.com/business/fed-interest-rates',
-  'Federal Reserve Maintains Interest Rates at 5.25-5.50%',
-  'The Federal Reserve has decided to keep interest rates unchanged, signaling a cautious approach to monetary policy. Federal funds rate remains at 5.25-5.50% for the third consecutive meeting.',
-  'Jane Doe',
-  '2024-12-14T14:00:00Z',
-  'article',
-  'en',
-  'completed'
-),
-(
-  (SELECT id FROM sources WHERE domain = 'ynet.co.il'),
-  'https://ynet.co.il/tech/article/rk8h8h9',
-  'ישראל: חברות טכנולוגיה גייסו 2.5 מיליארד דולר ברבעון האחרון',
-  'אקוסיסטם הסטארט-אפים הישראלי ממשיך לפרוח עם גיוסים משמעותיים בחברות בינה מלאכותית וסייבר. חברות טכנולוגיה ישראליות גייסו 2.5 מיליארד דולר ברבעון הרביעי של 2024.',
-  'ישראל ישראלי',
-  '2024-12-15T08:30:00Z',
-  'article',
-  'he',
-  'completed'
+CREATE OR REPLACE FUNCTION get_current_user() RETURNS UUID AS $$
+BEGIN
+  RETURN NULLIF(current_setting('app.current_user', TRUE), '')::UUID;
+EXCEPTION
+  WHEN others THEN
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create user-specific policies (Railway PostgreSQL compatible)
+-- Note: These policies will be activated when authentication is implemented
+CREATE POLICY "Users can manage their own actions" ON user_actions FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
 );
 
--- Insert sample factoids
-INSERT INTO factoids (title, description, bullet_points, language, confidence_score, status) VALUES
-(
-  'NVIDIA Announces Revolutionary AI Chip with 10x Performance Boost',
-  'NVIDIA has unveiled its latest AI chip, promising unprecedented performance improvements for machine learning workloads.',
-  ARRAY[
-    'New H200 chip delivers 10x faster AI training compared to previous generation',
-    'Features 141GB of HBM3 memory for large language model processing',
-    'Expected to ship in Q2 2024 with major cloud providers already pre-ordering',
-    'Priced at $40,000 per unit, targeting enterprise AI infrastructure',
-    'Compatible with existing CUDA ecosystem for seamless integration'
-  ],
-  'en',
-  0.95,
-  'published'
-),
-(
-  'Federal Reserve Maintains Interest Rates at 5.25-5.50%',
-  'The Federal Reserve has decided to keep interest rates unchanged, signaling a cautious approach to monetary policy.',
-  ARRAY[
-    'Federal funds rate remains at 5.25-5.50% for the third consecutive meeting',
-    'Fed Chair Powell indicates potential rate cuts in 2024 if inflation continues to decline',
-    'Core inflation rate at 3.1%, down from 4.1% in September',
-    'Unemployment rate stable at 3.7%, showing strong labor market',
-    'Markets react positively with S&P 500 gaining 1.2% following announcement'
-  ],
-  'en',
-  0.92,
-  'published'
-),
-(
-  'ישראל: חברות טכנולוגיה גייסו 2.5 מיליארד דולר ברבעון האחרון',
-  'אקוסיסטם הסטארט-אפים הישראלי ממשיך לפרוח עם גיוסים משמעותיים בחברות בינה מלאכותית וסייבר.',
-  ARRAY[
-    'חברות טכנולוגיה ישראליות גייסו 2.5 מיליארד דולר ברבעון הרביעי של 2024',
-    'חברות בינה מלאכותית הובילו עם 40% מהגיוסים הכוללים',
-    'חברות סייבר גייסו 800 מיליון דולר, עלייה של 25% מהרבעון הקודם',
-    'מרכזי פיתוח של חברות בינלאומיות גדולות נפתחים בתל אביב וירושלים',
-    'הממשלה הכריזה על תכנית חדשה לתמיכה בחברות טכנולוגיה צעירות'
-  ],
-  'he',
-  0.88,
-  'published'
+CREATE POLICY "Users can manage their own interactions" ON user_interactions FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
 );
 
--- Link factoids to sources
--- Note: This uses exact title matching for sample data only
--- In production, use explicit ID references or fuzzy matching for reliability
-INSERT INTO factoid_sources (factoid_id, scraped_content_id, relevance_score)
-SELECT 
-  f.id,
-  sc.id,
-  CASE 
-    WHEN f.title = sc.title THEN 0.95 -- Exact match
-    WHEN f.title ILIKE '%' || substring(sc.title from 1 for 50) || '%' THEN 0.85 -- Partial match
-    ELSE 0.75 -- Fuzzy match
-  END as relevance_score
-FROM factoids f
-JOIN scraped_content sc ON (
-  f.title = sc.title 
-  OR f.title ILIKE '%' || substring(sc.title from 1 for 50) || '%'
-  OR sc.title ILIKE '%' || substring(f.title from 1 for 50) || '%'
-)
-WHERE sc.processing_status = 'completed';
-
--- Link factoids to tags using improved mapping approach
--- Create temporary mapping table for maintainable tag linking
-CREATE TEMP TABLE factoid_tag_mappings (
-    factoid_pattern TEXT NOT NULL,
-    tag_slug TEXT NOT NULL,
-    confidence_score DECIMAL(3,2) DEFAULT 0.9,
-    match_field TEXT DEFAULT 'title' CHECK (match_field IN ('title', 'description', 'content')),
-    notes TEXT -- for documentation
+CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
 );
 
--- Insert mapping rules (organized by category for better maintainability)
-INSERT INTO factoid_tag_mappings (factoid_pattern, tag_slug, confidence_score, match_field, notes) VALUES
--- AI and Technology patterns
-('%NVIDIA%', 'ai', 0.95, 'title', 'NVIDIA is primarily an AI hardware company'),
-('%NVIDIA%', 'technology', 0.9, 'title', 'NVIDIA is a technology company'),
-('%NVIDIA%', 'hardware', 0.85, 'title', 'NVIDIA makes hardware'),
-('%AI%', 'ai', 0.9, 'title', 'Direct AI mention'),
-('%artificial intelligence%', 'ai', 0.95, 'title', 'Full AI term'),
-('%machine learning%', 'ai', 0.85, 'title', 'ML is subset of AI'),
-('%chip%', 'hardware', 0.8, 'title', 'Chip indicates hardware'),
-('%processor%', 'hardware', 0.8, 'title', 'Processor indicates hardware'),
-('%GPU%', 'hardware', 0.85, 'title', 'GPU is hardware'),
+CREATE POLICY "Users can manage their own tag preferences" ON user_tag_preferences FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
+);
 
--- Finance and Economy patterns
-('%Federal Reserve%', 'finance', 0.95, 'title', 'Fed is financial institution'),
-('%Federal Reserve%', 'economy', 0.9, 'title', 'Fed affects economy'),
-('%interest rate%', 'finance', 0.9, 'title', 'Interest rates are financial'),
-('%interest rate%', 'economy', 0.85, 'title', 'Interest rates affect economy'),
-('%inflation%', 'economy', 0.9, 'title', 'Inflation is economic indicator'),
-('%monetary policy%', 'finance', 0.9, 'title', 'Monetary policy is financial'),
-('%stock market%', 'finance', 0.95, 'title', 'Stock market is financial'),
-('%S&P 500%', 'finance', 0.9, 'title', 'S&P 500 is financial index'),
+CREATE POLICY "Users can provide feedback" ON llm_feedback FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id IS NULL OR 
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
+);
 
--- Israeli and Hebrew patterns
-('%ישראל%', 'israel', 0.95, 'title', 'Israel in Hebrew'),
-('%טכנולוגיה%', 'technology', 0.9, 'title', 'Technology in Hebrew'),
-('%סטארט-אפים%', 'startups', 0.95, 'title', 'Startups in Hebrew'),
-('%בינה מלאכותית%', 'ai', 0.95, 'title', 'AI in Hebrew'),
-('%סייבר%', 'technology', 0.85, 'title', 'Cyber in Hebrew'),
-('%הייטק%', 'technology', 0.9, 'title', 'Hi-tech in Hebrew'),
+-- Schema creation complete
+-- No sample data inserted - use application logic to populate database
 
--- Startup and business patterns
-('%startup%', 'startups', 0.9, 'title', 'Direct startup mention'),
-('%funding%', 'startups', 0.8, 'title', 'Funding often relates to startups'),
-('%venture capital%', 'startups', 0.85, 'title', 'VC relates to startups'),
-('%IPO%', 'finance', 0.9, 'title', 'IPO is financial event'),
-('%acquisition%', 'startups', 0.7, 'title', 'Acquisitions often involve startups'),
+-- Database schema is now ready for production use
+-- Sample data removed - database will be populated via application logic
 
--- Space and environment patterns (for future content)
-('%space%', 'space', 0.9, 'title', 'Direct space mention'),
-('%NASA%', 'space', 0.95, 'title', 'NASA is space agency'),
-('%satellite%', 'space', 0.85, 'title', 'Satellites are space technology'),
-('%climate%', 'environment', 0.9, 'title', 'Climate is environmental'),
-('%renewable energy%', 'environment', 0.85, 'title', 'Renewable energy is environmental');
-
--- Apply the improved tag linking logic
-INSERT INTO factoid_tags (factoid_id, tag_id, confidence_score)
-SELECT 
-    factoid_id,
-    tag_id,
-    MAX(confidence_score) as confidence_score  -- Take the highest confidence score for each factoid-tag pair
-FROM (
-    SELECT DISTINCT
-        f.id as factoid_id,
-        t.id as tag_id,
-        m.confidence_score
-    FROM factoids f
-    JOIN factoid_tag_mappings m ON 
-        CASE 
-            WHEN m.match_field = 'title' THEN f.title ILIKE m.factoid_pattern
-            WHEN m.match_field = 'description' THEN f.description ILIKE m.factoid_pattern
-            ELSE f.title ILIKE m.factoid_pattern OR f.description ILIKE m.factoid_pattern
-        END
-    JOIN tags t ON t.slug = m.tag_slug AND t.is_active = true
-    WHERE f.status = 'published'
-) matches
-GROUP BY factoid_id, tag_id
-ON CONFLICT (factoid_id, tag_id) DO UPDATE SET
-    confidence_score = EXCLUDED.confidence_score,
-    created_at = NOW();
-
--- Clean up temporary table
-DROP TABLE factoid_tag_mappings;
+-- Data relationships will be established via application logic
+-- No sample linking data created in migration
 
 -- Commit the transaction
 COMMIT;
