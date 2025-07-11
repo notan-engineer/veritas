@@ -249,8 +249,9 @@ CREATE INDEX IF NOT EXISTS idx_tags_active ON tags(id) WHERE is_active = true;
 CREATE INDEX IF NOT EXISTS idx_sources_active ON sources(id) WHERE is_active = true;
 
 -- ADDED: User table indexes (optimized - removed low-cardinality boolean indexes)
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE username IS NOT NULL;
+-- Note: email and username columns already indexed via UNIQUE CITEXT constraints
+-- Removed idx_users_email - redundant with email UNIQUE constraint
+-- Removed idx_users_username - redundant with username UNIQUE constraint
 -- Removed idx_users_active - boolean index provides minimal benefit
 
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON user_subscriptions(user_id);
@@ -440,6 +441,77 @@ CREATE POLICY "Users can read interactions" ON user_interactions
       user_id = get_current_user_id() OR 
       (is_public = true AND EXISTS (SELECT 1 FROM factoids WHERE factoids.id = factoid_id AND factoids.status = 'published'))
     )
+  );
+
+-- Write access policies for authenticated users to manage their own data
+-- Users table: Allow profile updates only (account creation/deletion handled by auth system)
+CREATE POLICY "Users can update their own profile" ON users 
+  FOR UPDATE USING (
+    get_current_user_id() IS NOT NULL AND id = get_current_user_id()
+  );
+
+-- User subscriptions: Full CRUD access to own subscriptions
+CREATE POLICY "Users can create their own subscriptions" ON user_subscriptions 
+  FOR INSERT WITH CHECK (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can update their own subscriptions" ON user_subscriptions 
+  FOR UPDATE USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can delete their own subscriptions" ON user_subscriptions 
+  FOR DELETE USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+-- User tag preferences: Full CRUD access to own preferences
+CREATE POLICY "Users can create their own tag preferences" ON user_tag_preferences 
+  FOR INSERT WITH CHECK (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can update their own tag preferences" ON user_tag_preferences 
+  FOR UPDATE USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can delete their own tag preferences" ON user_tag_preferences 
+  FOR DELETE USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+-- User actions: Full CRUD access to own actions
+CREATE POLICY "Users can create their own actions" ON user_actions 
+  FOR INSERT WITH CHECK (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can update their own actions" ON user_actions 
+  FOR UPDATE USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can delete their own actions" ON user_actions 
+  FOR DELETE USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+-- User interactions: Full CRUD access to own interactions
+CREATE POLICY "Users can create their own interactions" ON user_interactions 
+  FOR INSERT WITH CHECK (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can update their own interactions" ON user_interactions 
+  FOR UPDATE USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
+  );
+
+CREATE POLICY "Users can delete their own interactions" ON user_interactions 
+  FOR DELETE USING (
+    get_current_user_id() IS NOT NULL AND user_id = get_current_user_id()
   );
 
 -- Analyze tables for optimal query planning

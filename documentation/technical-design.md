@@ -570,6 +570,7 @@ The system includes several performance optimizations:
 - Removed redundant `idx_sources_domain` index since `domain CITEXT NOT NULL UNIQUE` automatically creates a unique index
 - Retained `idx_sources_active_domain` partial index for optimizing active domain queries
 - Eliminated low-cardinality boolean indexes that provide minimal performance benefit
+- Removed redundant `idx_users_email` and `idx_users_username` indexes since UNIQUE CITEXT constraints already provide indexing
 
 ## Security Architecture
 
@@ -613,6 +614,29 @@ checkRateLimit(config: RateLimitConfig): { allowed: boolean }
 - **Environment Isolation**: Separate development/production
 - **Secure Headers**: Security headers via Next.js
 - **Rate Limiting**: Protection against abuse
+
+### Row Level Security (RLS) Policies
+
+**Current Status**: Partially implemented with authentication-ready architecture
+
+**Public Access Policies** (Anonymous users):
+- Read access to published factoids and their relationships
+- Read access to active sources and tags
+- Read access to completed scraped content
+
+**Authenticated User Policies** (When authentication is implemented):
+- **Users Table**: UPDATE access to own profile (account creation/deletion handled by auth system)
+- **User Subscriptions**: Full CRUD access to own subscriptions
+- **User Tag Preferences**: Full CRUD access to own tag preferences  
+- **User Actions**: Full CRUD access to own private actions (read/bookmark/hide/report)
+- **User Interactions**: Full CRUD access to own interactions (like/dislike/comment)
+- **Data Isolation**: All user data strictly isolated by user ID using `get_current_user_id()` function
+
+**Security Features**:
+- All policies enforce user authentication via `get_current_user_id() IS NOT NULL`
+- User data access restricted to row ownership (`user_id = get_current_user_id()`)
+- Public interactions visible only for published factoids
+- Prevents data leakage between users and unauthorized access
 
 ## Development Workflow
 
