@@ -307,11 +307,12 @@ CREATE POLICY "Allow public read access to factoid tags" ON factoid_tags FOR SEL
 CREATE POLICY "Allow public read access to factoid sources" ON factoid_sources FOR SELECT USING (true);
 
 -- User-specific policies (for future authentication)
-CREATE POLICY "Users can read their own data" ON users FOR SELECT USING (true); -- Will be restricted when auth is implemented
-CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions FOR ALL USING (true); -- Will be restricted when auth is implemented
-CREATE POLICY "Users can manage their own tag preferences" ON user_tag_preferences FOR ALL USING (true); -- Will be restricted when auth is implemented
-CREATE POLICY "Users can manage their own actions" ON user_actions FOR ALL USING (true); -- Will be restricted when auth is implemented
-CREATE POLICY "Users can manage their own interactions" ON user_interactions FOR ALL USING (true); -- Will be restricted when auth is implemented
+-- SECURITY: Restricted to SELECT only until authentication is implemented
+CREATE POLICY "Users can read their own data" ON users FOR SELECT USING (true);
+CREATE POLICY "Users can read their own subscriptions" ON user_subscriptions FOR SELECT USING (true);
+CREATE POLICY "Users can read their own tag preferences" ON user_tag_preferences FOR SELECT USING (true);
+CREATE POLICY "Users can read their own actions" ON user_actions FOR SELECT USING (true);
+CREATE POLICY "Users can read their own interactions" ON user_interactions FOR SELECT USING (true);
 
 -- Analyze tables for optimal query planning
 ANALYZE sources;

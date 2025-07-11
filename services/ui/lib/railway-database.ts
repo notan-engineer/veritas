@@ -31,8 +31,8 @@ class RailwayDatabase {
    * Get PostgreSQL Pool class (server-side only)
    */
   private getPoolClass(): new (config: object) => Pool {
-    // Dynamic import for server-side only to prevent browser bundling
-    const pg = eval('require')('pg');
+    // Direct require for server-side only - environment checks are already in place
+    const pg = require('pg');
     return pg.Pool;
   }
 

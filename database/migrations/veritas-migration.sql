@@ -237,13 +237,60 @@ CREATE POLICY "Allow public read access to factoid_sources" ON factoid_sources F
 CREATE POLICY "Allow public read access to factoid_tags" ON factoid_tags FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to generated_images" ON generated_images FOR SELECT USING (true);
 
--- Create user-specific policies (temporary - will be updated when auth is implemented)
--- Note: These policies restrict access to authenticated users only
-CREATE POLICY "Users can manage their own actions" ON user_actions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-CREATE POLICY "Users can manage their own interactions" ON user_interactions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-CREATE POLICY "Users can manage their own tag preferences" ON user_tag_preferences FOR ALL USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
-CREATE POLICY "Users can provide feedback" ON llm_feedback FOR ALL USING (auth.uid() IS NOT NULL AND (user_id IS NULL OR user_id = auth.uid() OR auth.uid() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')));
+-- Create Railway PostgreSQL compatible session functions
+-- These replace Supabase-specific auth.uid() function
+CREATE OR REPLACE FUNCTION set_current_user(uid UUID) RETURNS VOID AS $$
+BEGIN
+  PERFORM set_config('app.current_user', uid::TEXT, TRUE);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_current_user() RETURNS UUID AS $$
+BEGIN
+  RETURN NULLIF(current_setting('app.current_user', TRUE), '')::UUID;
+EXCEPTION
+  WHEN others THEN
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create user-specific policies (Railway PostgreSQL compatible)
+-- Note: These policies will be activated when authentication is implemented
+CREATE POLICY "Users can manage their own actions" ON user_actions FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
+);
+
+CREATE POLICY "Users can manage their own interactions" ON user_interactions FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
+);
+
+CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
+);
+
+CREATE POLICY "Users can manage their own tag preferences" ON user_tag_preferences FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
+);
+
+CREATE POLICY "Users can provide feedback" ON llm_feedback FOR ALL USING (
+  get_current_user() IS NOT NULL AND (
+    user_id IS NULL OR 
+    user_id = get_current_user() OR 
+    get_current_user() IN (SELECT id FROM users WHERE email LIKE '%@admin.%')
+  )
+);
 
 -- Schema creation complete
 -- No sample data inserted - use application logic to populate database

@@ -391,7 +391,7 @@ services/ui/app/              # Next.js App Router pages
 
 ```bash
 # Required environment variables
-DATABASE_URL=postgresql://username:password@host:port/database
+DATABASE_URL=postgresql://<username>:<password>@<host>:<port>/<database>
 DATABASE_PROVIDER=railway
 
 # Development commands

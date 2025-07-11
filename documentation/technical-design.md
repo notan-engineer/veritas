@@ -65,7 +65,7 @@ Veritas is built as a modern web application using a simplified, single-service 
 │  │                                                          │
 │  ├── App Router (SSR/SSG)                                  │
 │  ├── API Routes (Server-side logic)                        │
-│  │   ├── /api/railway/* (Railway PostgreSQL endpoints)     │
+│  │   ├── /api/* (Railway PostgreSQL endpoints)             │
 │  │   └── Database Provider Switch                          │
 │  ├── Component Library (shadcn/ui)                         │
 │  ├── Data Service Layer (Provider Agnostic)                │
