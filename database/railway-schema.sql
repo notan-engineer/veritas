@@ -397,11 +397,12 @@ CREATE POLICY "Allow public read access to published factoid sources" ON factoid
 
 -- Create Railway PostgreSQL compatible session functions for user authentication
 -- These functions manage user session state for RLS policies
+-- SECURITY: set_current_user_id is restricted to authorized roles to prevent impersonation
 CREATE OR REPLACE FUNCTION set_current_user_id(uid UUID) RETURNS VOID AS $$
 BEGIN
   PERFORM set_config('app.current_user_id', uid::TEXT, TRUE);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION get_current_user_id() RETURNS UUID AS $$
 BEGIN
@@ -410,7 +411,18 @@ EXCEPTION
   WHEN others THEN
     RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create auth role for secure function execution
+CREATE ROLE IF NOT EXISTS veritas_auth_role;
+
+-- Restrict function access to prevent user impersonation
+-- Remove public execute privileges and grant only to auth role
+REVOKE ALL ON FUNCTION set_current_user_id(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION set_current_user_id(UUID) TO veritas_auth_role;
+
+-- Allow public access to get_current_user_id for RLS policies
+GRANT EXECUTE ON FUNCTION get_current_user_id() TO PUBLIC;
 
 -- User-specific policies with proper access control
 -- SECURITY: Users can only access their own data when authenticated

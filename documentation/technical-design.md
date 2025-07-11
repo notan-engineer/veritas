@@ -637,6 +637,12 @@ checkRateLimit(config: RateLimitConfig): { allowed: boolean }
 - User data access restricted to row ownership (`user_id = get_current_user_id()`)
 - Public interactions visible only for published factoids
 - Prevents data leakage between users and unauthorized access
+- **CRITICAL**: `set_current_user_id()` function secured with SECURITY DEFINER and restricted execute privileges to prevent user impersonation
+
+**Session Management Functions**:
+- `set_current_user_id(uuid)`: Sets user session (SECURITY DEFINER, restricted to `veritas_auth_role`)
+- `get_current_user_id()`: Retrieves current user session (public access for RLS policies)
+- Authentication system must use `veritas_auth_role` to call session functions securely
 
 ## Development Workflow
 
