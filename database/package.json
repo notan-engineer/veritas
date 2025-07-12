@@ -1,0 +1,12 @@
+{
+  "name": "veritas-db-cleanup",
+  "version": "1.0.0",
+  "description": "Database cleanup utilities for Veritas",
+  "main": "cleanup-db.js",
+  "scripts": {
+    "cleanup": "node cleanup-db.js"
+  },
+  "dependencies": {
+    "pg": "^8.12.0"
+  }
+} 
