@@ -123,6 +123,16 @@ interface Source {
 - **Data Services** (`data-service.ts`, `data.server.ts`) - API & server data
 - **Date Utilities** (`utils.ts`) - Dynamic date generation
 
+## Railway Infrastructure
+
+### Railway Services Architecture
+The project uses three Railway services:
+- **UI Service**: Next.js application (main service)
+- **Scraper Service**: Crawlee-based content scraping service
+- **Database Service**: PostgreSQL instance (shared by all services)
+
+**Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, deployment procedures, environment variables, and troubleshooting. This file is git-ignored and contains sensitive project information.
+
 ## Deployment (Ultra-simplified)
 
 ### Railway Configuration (`railway.toml`)
