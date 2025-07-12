@@ -98,7 +98,7 @@ class RailwayDatabase {
       database: config.database,
       user: config.user,
       password: config.password,
-      ssl: config.ssl ? { rejectUnauthorized: false } : false,
+      // No SSL configuration - let Railway handle it internally
       
       // Connection pool settings
       max: parseInt(process.env.DATABASE_POOL_MAX || '20'),
