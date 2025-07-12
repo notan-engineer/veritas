@@ -85,8 +85,7 @@ class ScraperDatabase {
         name = EXCLUDED.name,
         url = EXCLUDED.url,
         description = EXCLUDED.description,
-        is_active = EXCLUDED.is_active,
-        updated_at = CURRENT_TIMESTAMP
+        is_active = EXCLUDED.is_active
       RETURNING id
     `;
     
