@@ -18,6 +18,7 @@ class ScraperDatabase {
     }
 
     console.log('[Scraper DB] Initializing connection pool...');
+    console.log(`[Scraper DB] DATABASE_URL format: ${process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':***@')}`);
     
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL environment variable is required');
@@ -25,13 +26,16 @@ class ScraperDatabase {
 
     try {
       const url = new URL(process.env.DATABASE_URL);
+      console.log(`[Scraper DB] Connecting to: ${url.hostname}:${url.port}/${url.pathname.slice(1)}`);
+      console.log(`[Scraper DB] SSL Configuration: { rejectUnauthorized: false }`);
+      
       this.pool = new Pool({
         host: url.hostname,
         port: parseInt(url.port) || 5432,
         database: url.pathname.slice(1),
         user: url.username,
         password: url.password,
-        ssl: { rejectUnauthorized: true },
+        ssl: { rejectUnauthorized: false }, // Allow Railway's self-signed certificates
         max: 5, // Smaller pool for scraper service
         min: 1,
         idleTimeoutMillis: 30000,
@@ -39,9 +43,10 @@ class ScraperDatabase {
       });
 
       // Test connection
+      console.log('[Scraper DB] Testing database connection...');
       await this.pool.query('SELECT 1');
       this.isInitialized = true;
-      console.log('✅ [Scraper DB] Database connection pool initialized');
+      console.log('✅ [Scraper DB] Database connection pool initialized successfully');
     } catch (error) {
       console.error('❌ [Scraper DB] Failed to connect:', error);
       this.pool = null;
