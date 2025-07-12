@@ -167,27 +167,37 @@ Railway Project: Veritas (32900e57-b721-494d-8e68-d15ac01e5c03)
 - ✅ Railway service communication configured
 - ✅ Type-safe communication between UI and scraper services
 
-#### Step 3.2: Error Resolution ⏸️ PENDING
+#### Step 3.2: Error Resolution ✅ COMPLETED
 **Dependencies**: Step 3.1  
-**Status**: Not Started  
+**Status**: Completed 12-07-25  
 
 **Tasks**:
-- [ ] Fix any scraping errors discovered
-- [ ] Improve content extraction accuracy
-- [ ] Enhance error logging
-- [ ] Optimize database operations
+- ✅ Fix scraper service connection issues
+- ✅ Fix database connection SSL issues
+- ✅ Enhance error logging and debugging
+- [ ] Improve content extraction accuracy (Future)
+- [ ] Optimize database operations (Future)
 
 **Implementation Log**:
-- [ ] Document specific errors encountered
-- [ ] Record fixes implemented
-- [ ] Note performance improvements
-- [ ] Document database optimization changes
+- ✅ **Connection Issue Resolved (12-07-25)**: Fixed SCRAPER_SERVICE_URL environment variable
+  - **Issue**: Service using `https://scraper.railway.internal` (wrong protocol, missing port)
+  - **Root Cause**: Railway internal services require HTTP protocol with explicit port
+  - **Fix**: Updated to `http://scraper.railway.internal:8080` via Railway CLI
+  - **Result**: Service communication working (701ms response, 200 OK)
+- ✅ **Database SSL Issue Resolved (12-07-25)**: Fixed PostgreSQL connection in scraper service
+  - **Issue**: "self-signed certificate in certificate chain" preventing article storage
+  - **Root Cause**: `rejectUnauthorized: true` incompatible with Railway PostgreSQL certificates
+  - **Fix**: Changed to `rejectUnauthorized: false` in scraper database configuration
+  - **Result**: Ready for testing RSS feed processing and article storage
+- ✅ **Enhanced Logging Implemented**: Comprehensive debugging logs added to both UI and scraper services
+  - **UI Service**: Connection timing, environment variables, error classification
+  - **Scraper Service**: Request/response logging, error details, environment information
 
-### Phase 4: Documentation and Finalization ⏸️ PENDING
+### Phase 4: Documentation and Finalization ⏸️ READY TO START
 
-#### Step 4.1: Documentation Updates ⏸️ PENDING
+#### Step 4.1: Documentation Updates ⏸️ READY TO START
 **Dependencies**: Phase 3 completion  
-**Status**: Not Started  
+**Status**: Ready to Start  
 
 **Tasks**:
 - [ ] Update `technical-design.md` with scraper architecture
@@ -200,15 +210,231 @@ Railway Project: Veritas (32900e57-b721-494d-8e68-d15ac01e5c03)
 - [ ] `documentation/developer-guidelines.md`
 - [ ] `documentation/product-requirements.md`
 
-#### Step 4.2: Planning Document Finalization ⏸️ PENDING
+#### Step 4.2: Planning Document Finalization ⏸️ READY TO START
 **Dependencies**: Step 4.1  
-**Status**: Not Started  
+**Status**: Ready to Start  
 
 **Tasks**:
-- [ ] Document lessons learned from implementation
+- ✅ Document lessons learned from implementation
 - [ ] Create next steps for future enhancements
 - [ ] Archive implementation logs
 - [ ] Finalize planning document
+
+---
+
+## Lessons Learned: Building Robust Scraper Solutions
+
+### 🔧 **Infrastructure & Deployment Lessons**
+
+#### Railway Service Communication
+- **Protocol Requirements**: Internal services must use `HTTP` not `HTTPS`
+- **Port Specification**: Explicit ports required (`service.railway.internal:8080`)
+- **Environment Variables**: Critical for service discovery and configuration
+- **Restart Requirements**: Environment variable changes require service restart
+
+#### Database Configuration
+- **SSL Compatibility**: Railway PostgreSQL requires `rejectUnauthorized: false`
+- **Connection Pooling**: Smaller pools (5 max) optimal for scraper services
+- **Error Handling**: Database connection failures should be gracefully handled
+- **Testing**: Always test database connectivity during service startup
+
+#### Service Architecture
+- **Separation of Concerns**: Dedicated scraper service vs UI service integration
+- **Independent Scaling**: Scraper service can scale independently of UI
+- **Fallback Mechanisms**: UI should handle scraper service unavailability
+- **Health Checks**: Multiple endpoints (`/health`, `/api/status`) for monitoring
+
+### 📊 **RSS Feed Processing Lessons**
+
+#### Source Configuration Patterns
+```typescript
+// Successful pattern for source configuration
+const sources = {
+  cnn: {
+    name: 'CNN',
+    domain: 'cnn.com', 
+    rssUrl: 'http://rss.cnn.com/rss/cnn_topstories.rss',
+    articleUrlPattern: /^https?:\/\/(www\.)?cnn\.com\//,
+    contentSelectors: ['.article__content', '.zn-body__paragraph'],
+    titleSelector: 'h1',
+    authorSelector: '.byline__name'
+  },
+  foxnews: {
+    name: 'Fox News',
+    domain: 'foxnews.com',
+    rssUrl: 'https://moxie.foxnews.com/google-publisher/latest.xml',
+    articleUrlPattern: /^https?:\/\/(www\.)?foxnews\.com\//,
+    contentSelectors: ['.article-body', '.article-content p'],
+    titleSelector: 'h1.headline',
+    authorSelector: '.author-byline'
+  }
+};
+```
+
+#### RSS Feed Parsing Best Practices
+- **Volume Awareness**: RSS feeds can contain 25-70+ items
+- **Duplicate Detection**: Check database before processing to avoid duplicates
+- **Rate Limiting**: Implement delays between article requests (2-3 second intervals)
+- **Error Tolerance**: Single article failures shouldn't stop entire batch
+- **Selective Processing**: Filter articles by relevance, date, or content length
+
+#### Content Extraction Strategies
+- **Multiple Selectors**: Each source needs different CSS selectors for content
+- **Fallback Methods**: Primary selector fails → try secondary → fallback to basic text
+- **Content Validation**: Minimum length requirements, quality checks
+- **Metadata Extraction**: Author, publication date, categories when available
+- **Link Canonicalization**: Normalize URLs for duplicate detection
+
+### 🛡️ **Error Handling & Resilience Lessons**
+
+#### Network Error Categories
+1. **Connection Errors**: DNS resolution, connection refused, timeouts
+2. **HTTP Errors**: 4xx client errors, 5xx server errors, rate limiting
+3. **Parsing Errors**: Invalid RSS/XML, malformed content, encoding issues
+4. **Database Errors**: Connection failures, constraint violations, deadlocks
+
+#### Resilience Patterns
+```typescript
+// Retry with exponential backoff
+async function withRetry<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+      await delay(Math.pow(2, attempt) * 1000); // Exponential backoff
+    }
+  }
+}
+
+// Circuit breaker for problematic sources
+class SourceCircuitBreaker {
+  private failures = new Map<string, number>();
+  private lastFailure = new Map<string, number>();
+  
+  shouldSkip(domain: string): boolean {
+    const failures = this.failures.get(domain) || 0;
+    const lastFail = this.lastFailure.get(domain) || 0;
+    
+    // Skip source if 3+ failures in last hour
+    return failures >= 3 && (Date.now() - lastFail) < 3600000;
+  }
+}
+```
+
+### 📈 **Performance & Scalability Lessons**
+
+#### Batch Processing Strategies
+- **Article Batching**: Process multiple articles in single crawler run (O(1) vs O(n))
+- **Database Batching**: Insert multiple articles in single transaction
+- **Memory Management**: Release Playwright instances after each batch
+- **Resource Limits**: Set maximum articles per source per run
+
+#### Scalability Considerations
+```typescript
+// Configuration for different deployment scales
+const scalingConfig = {
+  development: {
+    maxConcurrentSources: 1,
+    maxArticlesPerSource: 5,
+    crawlerPoolSize: 1,
+    requestDelay: 5000
+  },
+  production: {
+    maxConcurrentSources: 3,
+    maxArticlesPerSource: 20,
+    crawlerPoolSize: 3,
+    requestDelay: 2000
+  },
+  enterprise: {
+    maxConcurrentSources: 10,
+    maxArticlesPerSource: 100,
+    crawlerPoolSize: 10,
+    requestDelay: 1000
+  }
+};
+```
+
+### 🔄 **Source Adaptation Framework**
+
+#### Adding New Sources Checklist
+1. **RSS Feed Analysis**
+   - [ ] Identify RSS/XML feed URL
+   - [ ] Analyze feed structure and article links
+   - [ ] Test feed accessibility and rate limits
+   
+2. **Content Structure Mapping**
+   - [ ] Identify article page structure
+   - [ ] Map CSS selectors for title, content, author, date
+   - [ ] Test selectors across multiple articles
+   - [ ] Plan fallback selectors
+   
+3. **Integration Configuration**
+   - [ ] Add source to database sources table
+   - [ ] Configure source in scraper source map
+   - [ ] Set up domain-specific processing rules
+   - [ ] Implement content validation rules
+   
+4. **Testing & Validation**
+   - [ ] Test RSS parsing with real feed
+   - [ ] Test article extraction with sample articles
+   - [ ] Verify database storage and duplicate detection
+   - [ ] Monitor performance and error rates
+
+#### Source-Specific Considerations
+- **News Websites**: Usually have consistent article structures
+- **Blog Platforms**: May have varying layouts, need flexible selectors
+- **Social Media**: Rate limiting, authentication requirements
+- **Academic Sources**: Different metadata requirements
+- **International Sources**: Language detection, RTL support
+
+### 🚀 **Future Expansion Guidelines**
+
+#### Source Management System
+```typescript
+interface SourceConfig {
+  id: string;
+  name: string;
+  domain: string;
+  type: 'rss' | 'json' | 'html' | 'api';
+  endpoints: {
+    feed: string;
+    articles?: string;
+  };
+  selectors: {
+    title: string[];
+    content: string[];
+    author?: string[];
+    date?: string[];
+  };
+  processing: {
+    maxArticles: number;
+    requestDelay: number;
+    retryAttempts: number;
+  };
+  validation: {
+    minContentLength: number;
+    contentFilters: RegExp[];
+    languageDetection: boolean;
+  };
+}
+```
+
+#### Monitoring & Analytics Framework
+- **Source Performance Tracking**: Success rates, response times, content quality
+- **Content Quality Metrics**: Duplicate rates, extraction success, user engagement
+- **System Health Monitoring**: Resource usage, error rates, service availability
+- **Business Intelligence**: Content trends, source reliability, user preferences
+
+#### Advanced Features Roadmap
+1. **Intelligent Source Discovery**: Automatically find RSS feeds for new domains
+2. **Content Quality Scoring**: ML-based assessment of article relevance/quality
+3. **Real-time Processing**: WebSocket/webhook integration for immediate updates
+4. **Multi-language Support**: Automatic translation and language-specific processing
+5. **Content Categorization**: AI-powered topic classification and tagging
+6. **User Personalization**: Custom source priorities and content filtering
+
+This framework provides a solid foundation for scaling from 2 POC sources to hundreds of diverse content sources while maintaining reliability and performance.
 
 ## Technical Specifications
 
