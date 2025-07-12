@@ -21,10 +21,7 @@ export async function GET(): Promise<NextResponse> {
                    'name', t.name,
                    'slug', t.slug,
                    'description', t.description,
-                   'parent_id', t.parent_id,
-                   'level', t.level,
-                   'is_active', t.is_active,
-                   'confidence_score', ft.confidence_score
+                   'is_active', t.is_active
                  )
                ) as tags
         FROM factoid_tags ft
@@ -42,10 +39,7 @@ export async function GET(): Promise<NextResponse> {
                    'url', s.url,
                    'description', s.description,
                    'icon_url', s.icon_url,
-                   'twitter_handle', s.twitter_handle,
-                   'profile_photo_url', s.profile_photo_url,
                    'is_active', s.is_active,
-                   'relevance_score', fs.relevance_score,
                    'scraped_content', json_build_object(
                      'id', sc.id,
                      'source_url', sc.source_url,

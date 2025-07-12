@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-node_modules/
+/node_modules
 /.pnp
 .pnp.js
 
@@ -9,7 +9,7 @@ node_modules/
 /coverage
 
 # next.js
-.next/
+/.next/
 /out/
 
 # production
@@ -26,9 +26,6 @@ yarn-error.log*
 
 # local env files
 .env*.local
-.env.development.local
-.env.test.local
-.env.production.local
 
 # vercel
 .vercel
@@ -37,17 +34,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Railway
-.railway/
-railway.json
-.railway.json
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Logs
-logs
-*.log
+# Railway interface documentation (contains sensitive project info)
+documentation/railway-interface.md

@@ -24,10 +24,7 @@ export interface Tag {
   name: string;
   slug: string;
   description?: string;
-  parent_id?: string;
-  level: number;
   is_active: boolean;
-  confidence_score?: number;
 }
 
 export interface Source {
@@ -37,8 +34,6 @@ export interface Source {
   url: string;
   description?: string;
   icon_url?: string;
-  twitter_handle?: string;
-  profile_photo_url?: string;
   is_active: boolean;
   scraped_content?: {
     id: string;
@@ -50,7 +45,6 @@ export interface Source {
     content_type: string;
     language: string;
   };
-  relevance_score?: number;
 }
 
 async function handleApiResponse<T>(response: Response): Promise<T> {

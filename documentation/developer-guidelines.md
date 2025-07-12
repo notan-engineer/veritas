@@ -219,6 +219,16 @@ npm run lint     # Must pass
 - [ ] RTL languages display correctly
 - [ ] Mobile responsive design
 
+## Railway Infrastructure
+
+### Railway Services
+The project uses three Railway services:
+- **UI Service**: Next.js application
+- **Scraper Service**: Crawlee-based content scraping  
+- **Database Service**: PostgreSQL instance
+
+**Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, deployment procedures, and troubleshooting. This file is git-ignored and contains sensitive project information.
+
 ## Deployment
 
 ### Process

@@ -192,6 +192,16 @@ Language: Auto-detected with proper formatting
 - **Secondary**: Complement to social media news consumption
 - **Tertiary**: Research tool for students and professionals
 
+## Infrastructure & Deployment
+
+### Railway Services Architecture
+The platform runs on three Railway services:
+- **UI Service**: Next.js application serving the user interface
+- **Scraper Service**: Crawlee-based content scraping service
+- **Database Service**: PostgreSQL instance for data storage
+
+**Reference**: See `documentation/railway-interface.md` for complete Railway infrastructure management, CLI commands, and deployment procedures. This file is git-ignored and contains sensitive project information.
+
 ## Current Status Summary
 
 **Operational**: Core MVP with essential features  
