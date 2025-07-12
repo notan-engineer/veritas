@@ -23,7 +23,6 @@ export const mockFactoids: Factoid[] = [
         name: "Lorem Technology",
         slug: "lorem-technology",
         description: "Lorem ipsum technology sample",
-        level: 0,
         is_active: true
       },
       {
@@ -31,7 +30,6 @@ export const mockFactoids: Factoid[] = [
         name: "Ipsum AI",
         slug: "ipsum-ai",
         description: "Lorem ipsum artificial intelligence sample",
-        level: 0,
         is_active: true
       },
       {
@@ -39,7 +37,6 @@ export const mockFactoids: Factoid[] = [
         name: "Dolor Hardware",
         slug: "dolor-hardware",
         description: "Lorem ipsum hardware sample",
-        level: 0,
         is_active: true
       }
     ],
@@ -76,7 +73,6 @@ export const mockFactoids: Factoid[] = [
         name: "Consectetur Finance",
         slug: "consectetur-finance",
         description: "Lorem ipsum finance sample",
-        level: 0,
         is_active: true
       },
       {
@@ -84,7 +80,6 @@ export const mockFactoids: Factoid[] = [
         name: "Adipiscing Economy",
         slug: "adipiscing-economy",
         description: "Lorem ipsum economy sample",
-        level: 0,
         is_active: true
       }
     ],
@@ -121,7 +116,6 @@ export const mockFactoids: Factoid[] = [
         name: "Veniam Space",
         slug: "veniam-space",
         description: "Lorem ipsum space sample",
-        level: 0,
         is_active: true
       },
       {
@@ -129,7 +123,6 @@ export const mockFactoids: Factoid[] = [
         name: "Lorem Technology",
         slug: "lorem-technology",
         description: "Lorem ipsum technology sample",
-        level: 0,
         is_active: true
       }
     ],
@@ -166,7 +159,6 @@ export const mockFactoids: Factoid[] = [
         name: "Irure Environment",
         slug: "irure-environment",
         description: "Lorem ipsum environment sample",
-        level: 0,
         is_active: true
       }
     ],
@@ -203,7 +195,6 @@ export const mockFactoids: Factoid[] = [
         name: "לורם ישראל",
         slug: "lorem-israel",
         description: "לורם איפסום ישראל דוגמא",
-        level: 0,
         is_active: true
       },
       {
@@ -211,7 +202,6 @@ export const mockFactoids: Factoid[] = [
         name: "Lorem Technology",
         slug: "lorem-technology",
         description: "Lorem ipsum technology sample",
-        level: 0,
         is_active: true
       },
       {
@@ -219,7 +209,6 @@ export const mockFactoids: Factoid[] = [
         name: "Dolor Startups",
         slug: "dolor-startups",
         description: "Lorem ipsum startups sample",
-        level: 0,
         is_active: true
       }
     ],
@@ -242,7 +231,6 @@ export const mockTags: Tag[] = [
     name: "Lorem Technology",
     slug: "lorem-technology",
     description: "Lorem ipsum technology sample",
-    level: 0,
     is_active: true
   },
   {
@@ -250,7 +238,6 @@ export const mockTags: Tag[] = [
     name: "Ipsum AI",
     slug: "ipsum-ai",
     description: "Lorem ipsum artificial intelligence sample",
-    level: 0,
     is_active: true
   },
   {
@@ -258,7 +245,6 @@ export const mockTags: Tag[] = [
     name: "Dolor Hardware",
     slug: "dolor-hardware",
     description: "Lorem ipsum hardware sample",
-    level: 0,
     is_active: true
   },
   {
@@ -266,7 +252,6 @@ export const mockTags: Tag[] = [
     name: "Consectetur Finance",
     slug: "consectetur-finance",
     description: "Lorem ipsum finance sample",
-    level: 0,
     is_active: true
   },
   {
@@ -274,7 +259,6 @@ export const mockTags: Tag[] = [
     name: "Adipiscing Economy",
     slug: "adipiscing-economy",
     description: "Lorem ipsum economy sample",
-    level: 0,
     is_active: true
   },
   {
@@ -282,7 +266,6 @@ export const mockTags: Tag[] = [
     name: "Veniam Space",
     slug: "veniam-space",
     description: "Lorem ipsum space sample",
-    level: 0,
     is_active: true
   },
   {
@@ -290,7 +273,6 @@ export const mockTags: Tag[] = [
     name: "Irure Environment",
     slug: "irure-environment",
     description: "Lorem ipsum environment sample",
-    level: 0,
     is_active: true
   },
   {
@@ -298,7 +280,6 @@ export const mockTags: Tag[] = [
     name: "לורם ישראל",
     slug: "lorem-israel",
     description: "לורם איפסום ישראל דוגמא",
-    level: 0,
     is_active: true
   },
   {
@@ -306,7 +287,6 @@ export const mockTags: Tag[] = [
     name: "Dolor Startups",
     slug: "dolor-startups",
     description: "Lorem ipsum startups sample",
-    level: 0,
     is_active: true
   }
 ]
