@@ -52,7 +52,7 @@ class RailwayDatabase {
           database: url.pathname.slice(1),
           user: url.username,
           password: url.password,
-          ssl: false // Try without SSL for Railway internal connections
+          ssl: { rejectUnauthorized: false } // Railway PostgreSQL SSL configuration
         };
       } catch (error) {
         console.error('[DB] Error parsing DATABASE_URL:', error);

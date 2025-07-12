@@ -167,16 +167,16 @@ Railway Project: Veritas (32900e57-b721-494d-8e68-d15ac01e5c03)
 - ✅ Railway service communication configured
 - ✅ Type-safe communication between UI and scraper services
 
-#### Step 3.2: Error Resolution ✅ COMPLETED
+#### Step 3.2: Error Resolution ⏸️ REVERTED TO WORKING STATE
 **Dependencies**: Step 3.1  
-**Status**: Completed 12-07-25  
+**Status**: Reverted SSL changes, back to working configuration (12-07-25)  
 
 **Tasks**:
 - ✅ Fix scraper service connection issues
-- ✅ Fix database connection SSL issues  
-- ✅ Enhance error logging and debugging
-- ✅ Identify and resolve lorem ipsum content issue
-- ✅ Apply final SSL fix with sslmode=disable parameter
+- ✅ Revert all SSL configuration changes to working state  
+- ✅ Remove sslmode=disable parameter from DATABASE_URL
+- ✅ Restore original working database configuration
+- [ ] Debug scraper service issues with working configuration
 - [ ] Improve content extraction accuracy (Future)
 - [ ] Optimize database operations (Future)
 
@@ -186,36 +186,26 @@ Railway Project: Veritas (32900e57-b721-494d-8e68-d15ac01e5c03)
   - **Root Cause**: Railway internal services require HTTP protocol with explicit port
   - **Fix**: Updated to `http://scraper.railway.internal:8080` via Railway CLI
   - **Result**: Service communication working (1229ms response, 200 OK)
-- ✅ **Database SSL Issue Resolved (12-07-25)**: Applied comprehensive SSL fix
-  - **Issue**: "self-signed certificate in certificate chain" preventing article storage
-  - **Root Cause**: PostgreSQL client attempting SSL connections to Railway internal database
-  - **Failed Attempts**: `rejectUnauthorized: false`, `ssl: false`, removing SSL config entirely
-  - **Final Solution**: Added `?sslmode=disable` parameter to DATABASE_URL for both services
-  - **Result**: Forces PostgreSQL client to completely avoid SSL connections
-- ✅ **Lorem Ipsum Content Issue Resolved (12-07-25)**: Fixed mock data fallback behavior
-  - **Issue**: UI showing lorem ipsum instead of real scraped content
-  - **Root Cause**: API endpoint `/api/factoids` falling back to mock data when database fails
-  - **Resolution**: Resolved automatically with database SSL fix
-- ✅ **Enhanced Logging Implemented**: Comprehensive debugging logs added to both UI and scraper services
-  - **UI Service**: Connection timing, environment variables, error classification
-  - **Scraper Service**: Request/response logging, database connection details, RSS parsing status
-  - **Results**: Successfully identified all issues through detailed logging
-
-**Final SSL Fix Details**: 
-- Removed all SSL configuration from database clients in both services
-- Added `?sslmode=disable` parameter to DATABASE_URL for both UI and scraper services
-- This forces PostgreSQL client library to never attempt SSL connections
-- Services automatically restart to pick up new environment variables
+- ✅ **SSL Configuration Reverted (12-07-25)**: Reverted all SSL changes to working state
+  - **Issue**: SSL configuration changes broke UI service database connectivity
+  - **Root Cause**: SSL changes interfered with working Railway PostgreSQL connection  
+  - **Revert Actions**:
+    - Restored `ssl: { rejectUnauthorized: false }` in UI service database config
+    - Restored `ssl: { rejectUnauthorized: false }` in scraper service database config
+    - Removed `?sslmode=disable` parameter from DATABASE_URL (both services)
+    - Back to original working DATABASE_URL: `postgresql://postgres:...@postgres.railway.internal:5432/railway`
+  - **Result**: UI service should now connect to database properly (no more lorem ipsum)
 
 **Current Status (12-07-25)**:
-- ✅ **Service Communication**: Working perfectly (1229ms, 200 OK)
+- ✅ **Service Communication**: Working (HTTP connection established)
 - ✅ **RSS Feed Parsing**: Working (CNN: 69 items, Fox News: 25 items)
-- ✅ **Database SSL Issue**: Comprehensively resolved with sslmode=disable
-- ✅ **Both Services Deployed**: With complete SSL fix applied
-- ✅ **Environment Variables**: Updated with sslmode=disable parameter
-- ⏸️ **Testing Required**: Manual scraper test to verify complete functionality
+- ✅ **SSL Configuration**: Reverted to working state
+- ✅ **DATABASE_URL**: Cleaned (removed sslmode=disable parameter)
+- ✅ **UI Service**: Should connect to database properly (no mock data fallback)
+- ⏸️ **Testing Required**: Verify UI shows real content instead of lorem ipsum
+- ⏸️ **Scraper Service**: Test with reverted SSL configuration
 
-**Next Action**: Test scraper functionality to confirm SSL errors eliminated and real content storage
+**Next Action**: Test UI service to confirm lorem ipsum issue resolved, then test scraper with clean configuration
 
 ### Phase 4: Documentation and Finalization ⏸️ READY TO START
 
