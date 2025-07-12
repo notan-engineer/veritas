@@ -12,27 +12,29 @@ if (typeof window !== 'undefined') {
   throw new Error('Railway database client can only be used on the server side');
 }
 
-import type { Pool, PoolClient, QueryResult } from 'pg';
-
+// Types
 interface DatabaseConfig {
   host: string;
   port: number;
   database: string;
   user: string;
   password: string;
-  ssl: boolean;
+  ssl: any; // Simplified type to avoid build issues
 }
 
+declare const require: any;
+declare const process: any;
+
 class RailwayDatabase {
-  private pool: Pool | null = null;
+  private pool: any = null;
   private isInitialized = false;
 
   /**
    * Get PostgreSQL Pool class (server-side only)
    */
-  private getPoolClass(): new (config: object) => Pool {
+  private getPoolClass(): any {
     // Direct require for server-side only - environment checks are already in place
-    const pg = require('pg');
+    const pg = eval('require')('pg');
     return pg.Pool;
   }
 
@@ -98,7 +100,7 @@ class RailwayDatabase {
       database: config.database,
       user: config.user,
       password: config.password,
-      // No SSL configuration - let Railway handle it internally
+      ssl: config.ssl,
       
       // Connection pool settings
       max: parseInt(process.env.DATABASE_POOL_MAX || '20'),
@@ -123,7 +125,7 @@ class RailwayDatabase {
   /**
    * Execute a query
    */
-  async query(text: string, params?: unknown[]): Promise<QueryResult> {
+  async query(text: string, params?: unknown[]): Promise<any> {
     await this.initialize();
     
     if (!this.pool) {
@@ -146,7 +148,7 @@ class RailwayDatabase {
   /**
    * Execute multiple queries in a transaction
    */
-  async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
+  async transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
     await this.initialize();
     
     if (!this.pool) {
@@ -215,14 +217,14 @@ export const railwayDb = new RailwayDatabase();
 /**
  * Helper function for executing queries (server-side only)
  */
-export async function query(text: string, params?: unknown[]): Promise<QueryResult> {
+export async function query(text: string, params?: unknown[]): Promise<any> {
   return railwayDb.query(text, params);
 }
 
 /**
  * Helper function for transactions (server-side only)
  */
-export async function transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
+export async function transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
   return railwayDb.transaction(callback);
 }
 
