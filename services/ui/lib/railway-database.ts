@@ -52,7 +52,7 @@ class RailwayDatabase {
           database: url.pathname.slice(1),
           user: url.username,
           password: url.password,
-          ssl: true // Railway requires SSL
+          ssl: false // Try without SSL for Railway internal connections
         };
       } catch (error) {
         console.error('[DB] Error parsing DATABASE_URL:', error);
