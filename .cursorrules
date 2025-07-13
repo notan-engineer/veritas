@@ -178,12 +178,16 @@ import { getRTLClasses, getRTLContainerClasses } from "@/lib/rtl-utils"
 ```
 
 ### Date Handling (Required)
-```typescript
-import { getFormattedDate } from "@/lib/utils"
+```bash
+# ✅ Use terminal command to get current date (never hardcode dates)
+# For planning documents (DD-MM-YY format):
+Get-Date -Format "dd-MM-yy"
 
-// ✅ Use dynamic dates (never hardcode dates)
-const date = getFormattedDate('display') // "July 11, 2025"
-const shortDate = getFormattedDate('short') // "2025-07-11"
+# For display purposes:
+Get-Date -Format "MMMM dd, yyyy"  # "July 13, 2025"
+
+# For short format:
+Get-Date -Format "yyyy-MM-dd"     # "2025-07-13"
 ```
 
 ## AI Agent Specific Guidelines
@@ -248,6 +252,18 @@ The project uses three Railway services:
 - **Database Service**: PostgreSQL instance
 
 **Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, and deployment procedures. This file is git-ignored and contains sensitive project information.
+
+### PostgreSQL Database Access (Critical Guidelines)
+**✅ WORKING CONNECTION METHODS:**
+1. **Railway CLI (Interactive)**: `railway connect` → select 'db' service
+2. **Direct psql (Scripts/Files)**: `psql "postgresql://postgres:PASSWORD@mainline.proxy.rlwy.net:PORT/railway" -f script.sql`
+3. **pgAdmin (GUI)**: Use public connection details from `railway variables`
+
+**⚠️ CRITICAL NOTES:**
+- **PUBLIC URL REQUIRED**: Use `mainline.proxy.rlwy.net` (public) NOT `postgres.railway.internal` (internal-only)
+- **Script Execution**: Use `-f` flag for executing .sql files directly
+- **Migration Safety**: Always test on development database first, have rollback scripts ready
+- **Constraint Syntax**: PostgreSQL may not support `ADD CONSTRAINT IF NOT EXISTS` - use DO blocks instead
 
 ## Environment & Configuration
 

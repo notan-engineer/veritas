@@ -557,4 +557,4 @@ GET /api/status          # Current scraping job status
 
 **Note**: This planning document reflects the current implementation status and is ready for continuation with Phase 3.2 and Phase 4 completion.
 
-**Date Format**: All dates use DD-MM-YY format for consistency, referencing `getPlanningDate()` from `services/ui/lib/utils.ts` for current dates. 
+**Date Format**: All dates use DD-MM-YY format for consistency, using terminal command `Get-Date -Format "dd-MM-yy"` to get current dates. 

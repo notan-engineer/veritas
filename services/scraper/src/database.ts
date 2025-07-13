@@ -1,5 +1,12 @@
 import { Pool, PoolClient } from 'pg';
-import { NewsSource, ScrapedContent } from './types';
+import { 
+  NewsSource, 
+  ScrapedContent, 
+  EnhancedScrapingJob, 
+  ScrapingLogEntry, 
+  SourceScrapingConfig,
+  CrawleeClassification 
+} from './types';
 
 /**
  * Database client for Veritas scraper service
@@ -151,6 +158,195 @@ class ScraperDatabase {
       description: row.description,
       isActive: row.is_active
     };
+  }
+
+  // ===============================================
+  // ENHANCED SCHEMA METHODS
+  // ===============================================
+
+  /**
+   * Create a new scraping job
+   */
+  async createScrapingJob(job: Omit<EnhancedScrapingJob, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    await this.initialize();
+    
+    const query = `
+      INSERT INTO scraping_jobs (
+        triggered_at, completed_at, status, sources_requested, 
+        articles_per_source, total_articles_scraped, total_errors, job_logs
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
+    `;
+    
+    const values = [
+      job.triggeredAt,
+      job.completedAt || null,
+      job.status,
+      job.sourcesRequested,
+      job.articlesPerSource,
+      job.totalArticlesScraped,
+      job.totalErrors,
+      job.jobLogs || null
+    ];
+    
+    const result = await this.query<{ id: string }>(query, values);
+    if (result.rows.length === 0) {
+      throw new Error('Failed to create scraping job - no ID returned');
+    }
+    return result.rows[0].id;
+  }
+
+  /**
+   * Update scraping job status and stats
+   */
+  async updateScrapingJob(
+    jobId: string, 
+    updates: Partial<Pick<EnhancedScrapingJob, 'status' | 'completedAt' | 'totalArticlesScraped' | 'totalErrors' | 'jobLogs'>>
+  ): Promise<void> {
+    await this.initialize();
+    
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+    
+    if (updates.status !== undefined) {
+      updateFields.push(`status = $${paramIndex++}`);
+      values.push(updates.status);
+    }
+    
+    if (updates.completedAt !== undefined) {
+      updateFields.push(`completed_at = $${paramIndex++}`);
+      values.push(updates.completedAt);
+    }
+    
+    if (updates.totalArticlesScraped !== undefined) {
+      updateFields.push(`total_articles_scraped = $${paramIndex++}`);
+      values.push(updates.totalArticlesScraped);
+    }
+    
+    if (updates.totalErrors !== undefined) {
+      updateFields.push(`total_errors = $${paramIndex++}`);
+      values.push(updates.totalErrors);
+    }
+    
+    if (updates.jobLogs !== undefined) {
+      updateFields.push(`job_logs = $${paramIndex++}`);
+      values.push(updates.jobLogs);
+    }
+    
+    if (updateFields.length === 0) return;
+    
+    values.push(jobId);
+    const query = `UPDATE scraping_jobs SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`;
+    
+    await this.query(query, values);
+  }
+
+  /**
+   * Add log entry for a scraping job
+   */
+  async addScrapingLog(log: Omit<ScrapingLogEntry, 'id'>): Promise<void> {
+    await this.initialize();
+    
+    const query = `
+      INSERT INTO scraping_logs (job_id, source_id, log_level, message, timestamp, additional_data)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `;
+    
+    const values = [
+      log.jobId,
+      log.sourceId || null,
+      log.logLevel,
+      log.message,
+      log.timestamp,
+      log.additionalData ? JSON.stringify(log.additionalData) : null
+    ];
+    
+    await this.query(query, values);
+  }
+
+  /**
+   * Insert enhanced scraped content with new fields
+   */
+  async insertEnhancedScrapedContent(content: Omit<ScrapedContent, 'id' | 'createdAt'>): Promise<string> {
+    await this.initialize();
+    
+    const query = `
+      INSERT INTO scraped_content (
+        source_id, source_url, title, content, author, publication_date,
+        content_type, language, processing_status, category, tags, 
+        full_html, crawlee_classification, content_hash
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id
+    `;
+    
+    const values = [
+      content.sourceId,
+      content.sourceUrl,
+      content.title,
+      content.content,
+      content.author || null,
+      content.publicationDate || null,
+      content.contentType,
+      content.language,
+      content.processingStatus,
+      content.category || null,
+      content.tags || null,
+      content.fullHtml || null,
+      content.crawleeClassification ? JSON.stringify(content.crawleeClassification) : null,
+      content.contentHash || null
+    ];
+    
+    const result = await this.query<{ id: string }>(query, values);
+    if (result.rows.length === 0) {
+      throw new Error('Failed to insert enhanced scraped content - no ID returned');
+    }
+    return result.rows[0].id;
+  }
+
+  /**
+   * Check if content exists by hash (for duplicate detection)
+   */
+  async contentExistsByHash(contentHash: string): Promise<boolean> {
+    await this.initialize();
+    
+    const query = 'SELECT 1 FROM scraped_content WHERE content_hash = $1 LIMIT 1';
+    const result = await this.query(query, [contentHash]);
+    
+    return result.rows.length > 0;
+  }
+
+  /**
+   * Get enabled sources for scraping
+   */
+  async getEnabledSources(): Promise<NewsSource[]> {
+    await this.initialize();
+    
+    const query = `
+      SELECT id, name, domain, url, description, icon_url, is_active,
+             rss_url, scraping_config, last_scraped_at, success_rate, is_enabled, created_at
+      FROM sources 
+      WHERE is_enabled = true AND is_active = true
+      ORDER BY success_rate DESC, name ASC
+    `;
+    
+    const result = await this.query<any>(query);
+    
+    return result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      domain: row.domain,
+      url: row.url,
+      description: row.description,
+      iconUrl: row.icon_url,
+      isActive: row.is_active,
+      rssUrl: row.rss_url,
+      scrapingConfig: row.scraping_config ? JSON.parse(row.scraping_config) : undefined,
+      lastScrapedAt: row.last_scraped_at,
+      successRate: parseFloat(row.success_rate),
+      isEnabled: row.is_enabled,
+      createdAt: row.created_at
+    }));
   }
 
   /**
