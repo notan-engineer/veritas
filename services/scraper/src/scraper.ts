@@ -2,6 +2,12 @@ import { CheerioCrawler, Configuration, CheerioCrawlingContext } from 'crawlee';
 import RSSParser, { Item } from 'rss-parser';
 import { v4 as uuidv4 } from 'uuid';
 import { scraperDb } from './database';
+import { jobManager } from './job-manager';
+import { contentClassifier } from './content-classifier';
+import { duplicateDetector } from './duplicate-detector';
+import { sourceManager } from './source-manager';
+import { resourceMonitor } from './resource-monitor';
+import { cleanupManager } from './cleanup-manager';
 import { 
   RSSItem, 
   ScrapedArticle, 
@@ -12,122 +18,247 @@ import {
 } from './types';
 
 /**
- * Main scraper service for Veritas platform
- * Handles RSS feed parsing and article content extraction
+ * Enhanced scraper service for Veritas platform
+ * Handles RSS feed parsing, content classification, and duplicate detection
  */
 export class VeritasScraper {
   private rssParser: RSSParser;
   private crawler: CheerioCrawler;
-  private currentJob: ScrapingJob | null = null;
+  private currentJobId: string | null = null;
   private scrapedResults: Map<string, ScrapedArticle> = new Map();
 
-  // Predefined news sources
-  private readonly sources: Omit<NewsSource, 'id'>[] = [
-    {
-      name: 'CNN',
-      domain: 'cnn.com',
-      url: 'http://rss.cnn.com/rss/cnn_topstories.rss',
-      description: 'CNN Top Stories RSS Feed',
-      isActive: true
-    },
-    {
-      name: 'Fox News',
-      domain: 'foxnews.com', 
-      url: 'https://moxie.foxnews.com/google-publisher/latest.xml',
-      description: 'Fox News Latest RSS Feed',
-      isActive: true
-    }
-  ];
+  // Note: Sources are now managed dynamically via sourceManager
+  // Default sources will be initialized on startup if none exist
 
   constructor() {
     this.rssParser = new RSSParser();
     
-    // Configure Crawlee for minimal, respectful scraping
+    // Configure Crawlee for enhanced scraping with performance optimizations
     this.crawler = new CheerioCrawler({
-      requestHandlerTimeoutSecs: 30,
-      maxRequestRetries: 2,
-      requestHandler: this.handleArticleScraping.bind(this),
+      requestHandlerTimeoutSecs: 45,
+      maxRequestRetries: 3,
+      maxConcurrency: 5, // Limit concurrent requests for better resource management
+      requestHandler: this.handleEnhancedArticleScraping.bind(this),
+      maxRequestsPerMinute: 120, // Rate limiting
+      autoscaledPoolOptions: {
+        maxConcurrency: 5,
+        minConcurrency: 1,
+        systemStatusOptions: {
+          maxEventLoopOverloadedRatio: 0.8,
+          maxCpuOverloadedRatio: 0.9,
+          maxMemoryOverloadedRatio: 0.8,
+        },
+      },
+    });
+
+    // Set up job manager event listeners
+    this.setupJobManagerIntegration();
+    
+    // Initialize source manager
+    this.initializeSourceManager();
+    
+    // Start resource monitoring
+    this.initializeResourceMonitoring();
+    
+    // Initialize cleanup manager
+    this.initializeCleanupManager();
+  }
+
+  /**
+   * Setup job manager integration
+   */
+  private setupJobManagerIntegration(): void {
+    // Listen for source processing requests from job manager
+    jobManager.on('process-source', async (jobId: string, sourceName: string) => {
+      this.currentJobId = jobId;
+      try {
+        await this.processSingleSource(sourceName);
+        await jobManager.signalSourceCompleted(jobId, sourceName);
+      } catch (error) {
+        await jobManager.signalSourceCompleted(jobId, sourceName, error instanceof Error ? error : new Error('Unknown error'));
+      }
     });
   }
 
   /**
-   * Main scraping method
+   * Initialize source manager
    */
-  async scrapeContent(request: TriggerScrapingRequest): Promise<ScrapingJob> {
-    const jobId = uuidv4();
+  private initializeSourceManager(): void {
+    // Start source health monitoring
+    sourceManager.startHealthMonitoring();
     
-    this.currentJob = {
-      id: jobId,
-      sources: request.sources,
-      maxArticles: request.maxArticles || 3,
-      status: 'running',
-      startTime: new Date(),
-      logs: [],
-      results: {
-        articlesScraped: 0,
-        articlesStored: 0,
-        errors: 0
+    console.log('[VeritasScraper] Source manager initialized');
+  }
+
+  /**
+   * Initialize resource monitoring
+   */
+  private initializeResourceMonitoring(): void {
+    // Start resource monitoring with 60-second intervals
+    resourceMonitor.startMonitoring(60000);
+    
+    // Listen for resource alerts
+    resourceMonitor.on('alert', (alert) => {
+      console.warn(`[VeritasScraper] Resource alert: ${alert.message}`);
+      
+      // Log critical alerts
+      if (alert.level === 'critical') {
+        console.error(`[VeritasScraper] Critical resource alert: ${alert.message}`, {
+          type: alert.type,
+          timestamp: alert.timestamp,
+          metrics: alert.metrics,
+        });
       }
-    };
+    });
+    
+    // Listen for metrics updates
+    resourceMonitor.on('metrics', (metrics) => {
+      // Record performance metrics - use simple count for now
+      resourceMonitor.recordJobCount(this.currentJobId ? 1 : 0);
+      resourceMonitor.recordArticleCount(this.scrapedResults.size);
+    });
+    
+    console.log('[VeritasScraper] Resource monitoring initialized');
+  }
 
-    this.log('info', 'Starting scraping job', jobId);
-
+  /**
+   * Initialize cleanup manager
+   */
+  private async initializeCleanupManager(): Promise<void> {
     try {
-      // Setup sources in database
+      // Initialize cleanup manager
+      await cleanupManager.initialize();
+      
+      // Add compression support to database
+      await scraperDb.addCompressionSupport();
+      
+      // Set up cleanup manager event listeners
+      cleanupManager.on('cleanup-completed', (result) => {
+        console.log(`[VeritasScraper] Cleanup completed: ${(result.totalSpaceSaved / 1024 / 1024).toFixed(2)}MB saved`);
+      });
+      
+      cleanupManager.on('cleanup-error', (error) => {
+        console.error(`[VeritasScraper] Cleanup error: ${error.error}`);
+      });
+      
+      console.log('[VeritasScraper] Cleanup manager initialized');
+    } catch (error) {
+      console.error('[VeritasScraper] Failed to initialize cleanup manager:', error);
+    }
+  }
+
+  /**
+   * Enhanced scraping method using job management
+   */
+  async scrapeContent(request: TriggerScrapingRequest): Promise<{ jobId: string; message: string }> {
+    try {
+      // Setup sources in database first
       await this.setupSources();
 
-      // Process each requested source
-      for (const sourceName of request.sources) {
-        await this.processSingleSource(sourceName);
-      }
-
-      this.currentJob.status = 'completed';
-      this.currentJob.endTime = new Date();
-      this.log('info', `Scraping completed. Articles: ${this.currentJob.results.articlesStored}`, jobId);
+      // Queue job with job manager
+      const jobId = await jobManager.queueJob(request);
+      
+      return {
+        jobId,
+        message: `Scraping job ${jobId} queued for ${request.sources.length} sources`
+      };
 
     } catch (error) {
-      this.currentJob.status = 'failed';
-      this.currentJob.endTime = new Date();
-      this.log('error', `Scraping failed: ${error instanceof Error ? error.message : 'Unknown error'}`, jobId);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[VeritasScraper] Failed to queue scraping job:', errorMessage);
+      
+      return {
+        jobId: '',
+        message: `Failed to start scraping job: ${errorMessage}`
+      };
     }
-
-    return this.currentJob;
   }
 
   /**
-   * Setup news sources in database
+   * Setup default news sources in database if none exist
    */
   private async setupSources(): Promise<void> {
-    for (const source of this.sources) {
-      try {
-        await scraperDb.upsertSource(source);
-        this.log('info', `Source setup completed: ${source.name}`);
-      } catch (error) {
-        this.log('error', `Failed to setup source ${source.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    try {
+      // Check if any sources exist
+      const existingSources = await sourceManager.getAllSources();
+      
+      if (existingSources.length === 0) {
+        console.log('[VeritasScraper] No sources found, creating default sources...');
+        
+        // Create default sources
+        const defaultSources = [
+          {
+            name: 'CNN',
+            domain: 'cnn.com',
+            url: 'http://rss.cnn.com/rss/cnn_topstories.rss',
+            rssUrl: 'http://rss.cnn.com/rss/cnn_topstories.rss',
+            description: 'CNN Top Stories RSS Feed'
+          },
+          {
+            name: 'Fox News',
+            domain: 'foxnews.com',
+            url: 'https://moxie.foxnews.com/google-publisher/latest.xml',
+            rssUrl: 'https://moxie.foxnews.com/google-publisher/latest.xml',
+            description: 'Fox News Latest RSS Feed'
+          },
+          {
+            name: 'BBC News',
+            domain: 'bbc.com',
+            url: 'http://feeds.bbci.co.uk/news/rss.xml',
+            rssUrl: 'http://feeds.bbci.co.uk/news/rss.xml',
+            description: 'BBC News RSS Feed'
+          },
+          {
+            name: 'Reuters',
+            domain: 'reuters.com',
+            url: 'https://feeds.reuters.com/reuters/topNews',
+            rssUrl: 'https://feeds.reuters.com/reuters/topNews',
+            description: 'Reuters Top News RSS Feed'
+          }
+        ];
+
+        for (const sourceData of defaultSources) {
+          try {
+            await sourceManager.createSource(sourceData);
+            console.log(`[VeritasScraper] Default source created: ${sourceData.name}`);
+          } catch (error) {
+            console.error(`[VeritasScraper] Failed to create default source ${sourceData.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+      } else {
+        console.log(`[VeritasScraper] Found ${existingSources.length} existing sources`);
       }
+    } catch (error) {
+      console.error('[VeritasScraper] Failed to setup sources:', error);
     }
   }
 
   /**
-   * Process RSS feed for a single source
+   * Process RSS feed for a single source with enhanced capabilities
    */
   private async processSingleSource(sourceName: string): Promise<void> {
-    const source = this.sources.find(s => 
+    // Get active sources from source manager
+    const allSources = await sourceManager.getAllSources({ 
+      activeOnly: true, 
+      enabledOnly: true 
+    });
+    
+    const source = allSources.find(s => 
       s.name.toLowerCase() === sourceName.toLowerCase() || 
       s.domain.includes(sourceName.toLowerCase())
     );
 
     if (!source) {
-      this.log('warn', `Source not found: ${sourceName}`);
+      console.log(`[VeritasScraper] Source not found: ${sourceName}`);
       return;
     }
 
-    this.log('info', `Processing RSS feed: ${source.name}`);
+    console.log(`[VeritasScraper] Processing RSS feed: ${source.name}`);
 
     try {
       // Parse RSS feed
-      const feed = await this.rssParser.parseURL(source.url);
-      this.log('info', `RSS feed parsed. Found ${feed.items.length} items`, source.domain);
+      const feed = await this.rssParser.parseURL(source.rssUrl || source.url);
+      console.log(`[VeritasScraper] RSS feed parsed. Found ${feed.items.length} items from ${source.domain}`);
 
       // Get database source
       const dbSource = await scraperDb.getSourceByDomain(source.domain);
@@ -135,62 +266,98 @@ export class VeritasScraper {
         throw new Error(`Database source not found for ${source.domain}`);
       }
 
-      // Process articles (limited by maxArticles)
-      const itemsToProcess = feed.items.slice(0, this.currentJob!.maxArticles);
+      // Process articles (limited by maxArticles - default 3)
+      const maxArticles = 3; // Default value
+      const itemsToProcess = feed.items.slice(0, maxArticles);
       
-      // Filter out items that already exist in database
+      // Enhanced duplicate detection
       const newItems: Item[] = [];
       for (const item of itemsToProcess) {
-        if (item.link && !(await scraperDb.contentExists(item.link))) {
-          newItems.push(item);
-        } else {
-          this.log('info', `Content already exists, skipping: ${item.link}`);
-        }
-      }
+        if (item.link) {
+          const duplicateCheck = await duplicateDetector.checkForDuplicate({
+            url: item.link,
+            title: item.title || 'No title',
+            content: (item as any).contentSnippet || (item as any).content || item.summary || 'No content',
+            author: item.creator || (item as any)['dc:creator'],
+            publishDate: item.pubDate ? new Date(item.pubDate) : undefined
+          });
 
-      if (newItems.length > 0) {
-        // Batch process all new articles
-        const scrapedArticles = await this.scrapeMultipleArticles(newItems);
-        
-        // Store results in database
-        for (const article of scrapedArticles) {
-          try {
-            await scraperDb.insertScrapedContent({
-              sourceId: dbSource.id,
-              sourceUrl: article.sourceUrl,
-              title: article.title,
-              content: article.content,
-              author: article.author,
-              publicationDate: article.publicationDate,
-              contentType: 'article',
-              language: article.language,
-              processingStatus: 'completed'
-            });
-
-            this.currentJob!.results.articlesStored++;
-            this.log('info', `Article stored: ${article.title.substring(0, 50)}...`);
-          } catch (error) {
-            this.currentJob!.results.errors++;
-            this.log('error', `Failed to store article ${article.title}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          if (!duplicateCheck.isDuplicate) {
+            newItems.push(item);
+          } else {
+            console.log(`[VeritasScraper] Duplicate content detected (${duplicateCheck.duplicateType}): ${item.link}`);
           }
         }
       }
 
+      if (newItems.length > 0) {
+        // Batch process all new articles with enhanced scraping
+        const scrapedArticles = await this.scrapeMultipleArticles(newItems);
+        
+        // Store results in database with enhanced schema using batch operations
+        const contentToInsert = scrapedArticles.map(article => ({
+          sourceId: dbSource.id!,
+          sourceUrl: article.sourceUrl,
+          title: article.title,
+          content: article.content,
+          author: article.author,
+          publicationDate: article.publicationDate,
+          contentType: 'article' as const,
+          language: article.language,
+          processingStatus: 'completed' as const,
+          category: article.category,
+          tags: article.tags,
+          fullHtml: article.fullHtml,
+          crawleeClassification: article.crawleeClassification,
+          contentHash: article.contentHash
+        }));
+
+        console.log(`[VeritasScraper] Batch inserting ${contentToInsert.length} articles`);
+        
+        // Use batch insert for better performance
+        const batchResult = await scraperDb.batchInsertScrapedContent(contentToInsert);
+        
+        const articlesProcessed = batchResult.successful;
+        const errors = batchResult.failed;
+        
+        console.log(`[VeritasScraper] Batch insert completed: ${articlesProcessed} successful, ${errors} failed`);
+        
+        // Log any batch errors
+        if (batchResult.errors.length > 0) {
+          console.error(`[VeritasScraper] Batch insert errors:`, batchResult.errors);
+        }
+        
+        // Record metrics for resource monitoring
+        resourceMonitor.recordArticleCount(articlesProcessed);
+        if (errors > 0) {
+          resourceMonitor.recordErrorCount(errors);
+        }
+
+        // Update job progress
+        if (this.currentJobId) {
+          await jobManager.updateJobProgress(this.currentJobId, articlesProcessed, errors);
+        }
+      }
+
     } catch (error) {
-      this.currentJob!.results.errors++;
-      this.log('error', `Failed to process source ${source.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(`[VeritasScraper] Failed to process source ${source.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Update job progress with error
+      if (this.currentJobId) {
+        await jobManager.updateJobProgress(this.currentJobId, 0, 1);
+      }
     }
   }
 
   /**
-   * Scrape multiple articles in a batch for better performance
+   * Scrape multiple articles in a batch with enhanced processing
    */
   private async scrapeMultipleArticles(rssItems: Item[]): Promise<ScrapedArticle[]> {
     if (rssItems.length === 0) {
       return [];
     }
 
-    this.log('info', `Batch processing ${rssItems.length} articles`);
+    console.log(`[VeritasScraper] Batch processing ${rssItems.length} articles`);
     
     // Clear previous results
     this.scrapedResults.clear();
@@ -214,52 +381,58 @@ export class VeritasScraper {
       // Run crawler once for all articles
       await this.crawler.run();
       
-      // Update counters
-      this.currentJob!.results.articlesScraped += requests.length;
-      
       // Return collected results
       return Array.from(this.scrapedResults.values());
       
     } catch (error) {
-      this.log('error', `Batch scraping failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      this.currentJob!.results.errors += requests.length;
+      console.error(`[VeritasScraper] Batch scraping failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return [];
     }
   }
 
   /**
-   * Crawlee request handler for article content extraction
+   * Enhanced Crawlee request handler for article content extraction with classification
    */
-  private async handleArticleScraping({ request, $ }: CheerioCrawlingContext): Promise<void> {
+  private async handleEnhancedArticleScraping({ request, $ }: CheerioCrawlingContext): Promise<void> {
     try {
       const rssItem = request.userData.rssItem;
       
-      // Extract enhanced content from webpage
-      const extractedTitle = $('h1').first().text().trim() || 
-                           $('title').text().trim();
+      // Use content classifier to extract and classify content
+      const classification = await contentClassifier.classifyContent($, request.url);
       
-      const extractedContent = $('article').text().trim() || 
-                             $('.content').text().trim() || 
-                             $('.story-body').text().trim() ||
-                             $('main').text().trim();
+      // Generate content hash for duplicate detection
+      const contentItem = {
+        url: request.url,
+        title: classification.extractedContent?.title || rssItem.title || 'No title',
+        content: classification.extractedContent?.content || (rssItem as any).contentSnippet || (rssItem as any).content || rssItem.summary || 'No content available',
+        author: classification.extractedContent?.author || rssItem.creator || (rssItem as any)['dc:creator'],
+        publishDate: classification.extractedContent?.publishDate || (rssItem.pubDate ? new Date(rssItem.pubDate) : undefined)
+      };
+      
+      const contentHash = duplicateDetector.generateContentHash(contentItem);
 
-      // Create scraped article with enhanced content
+      // Create enhanced scraped article
       const scrapedArticle: ScrapedArticle = {
         sourceUrl: request.url,
-        title: extractedTitle || rssItem.title || 'No title',
-        content: extractedContent || (rssItem as any).contentSnippet || (rssItem as any).content || rssItem.summary || 'No content available',
-        author: rssItem.creator || (rssItem as any)['dc:creator'] || undefined,
-        publicationDate: rssItem.pubDate ? new Date(rssItem.pubDate) : undefined,
-        language: 'en'
+        title: contentItem.title,
+        content: contentItem.content,
+        author: contentItem.author,
+        publicationDate: contentItem.publishDate,
+        language: classification.extractedContent?.language || 'en',
+        category: classification.category,
+        tags: classification.tags,
+        fullHtml: $('html').html() || undefined,
+        crawleeClassification: classification.crawleeClassification,
+        contentHash: contentHash
       };
 
       // Store result in Map for collection
       this.scrapedResults.set(request.url, scrapedArticle);
 
-      this.log('info', `Content extracted from ${request.url}: ${scrapedArticle.title.substring(0, 50)}...`);
+      console.log(`[VeritasScraper] Enhanced content extracted from ${request.url}: ${scrapedArticle.title.substring(0, 50)}... (${classification.contentType})`);
 
     } catch (error) {
-      this.log('warn', `Content extraction failed for ${request.url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.warn(`[VeritasScraper] Enhanced content extraction failed for ${request.url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       
       // Store fallback article data even if extraction failed
       const rssItem = request.userData.rssItem;
@@ -277,28 +450,41 @@ export class VeritasScraper {
   }
 
   /**
-   * Log scraping activity
+   * Get current job status from job manager
    */
-  private log(level: 'info' | 'warn' | 'error', message: string, source?: string): void {
-    const logEntry: ScrapingLog = {
-      timestamp: new Date(),
-      level,
-      message,
-      source
-    };
-
-    if (this.currentJob) {
-      this.currentJob.logs.push(logEntry);
-    }
-
-    console.log(`[Scraper ${level.toUpperCase()}] ${message}${source ? ` (${source})` : ''}`);
+  getCurrentJob(): string | null {
+    return this.currentJobId;
   }
 
   /**
-   * Get current job status
+   * Get job status from job manager
    */
-  getCurrentJob(): ScrapingJob | null {
-    return this.currentJob;
+  getJobStatus(jobId: string) {
+    return jobManager.getJobStatus(jobId);
+  }
+
+  /**
+   * Get job queue status
+   */
+  getQueueStatus() {
+    return jobManager.getQueueStatus();
+  }
+
+  /**
+   * Get available sources for scraping
+   */
+  async getAvailableSources() {
+    return await sourceManager.getAllSources({ 
+      activeOnly: true, 
+      enabledOnly: true 
+    });
+  }
+
+  /**
+   * Get source manager instance
+   */
+  getSourceManager() {
+    return sourceManager;
   }
 }
 

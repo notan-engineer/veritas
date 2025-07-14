@@ -11,6 +11,7 @@
 
 # next.js
 /.next/
+**/.next/
 /out/
 
 # production
@@ -38,3 +39,6 @@ next-env.d.ts
 
 # Railway interface documentation (contains sensitive project info)
 documentation/railway-interface.md
+
+# Post-merge branch update commands (internal development use)
+documentation/post-merge-branch-update.md

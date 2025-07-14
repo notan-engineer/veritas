@@ -160,12 +160,16 @@ import { getRTLClasses, getRTLContainerClasses } from "@/lib/rtl-utils"
 ```
 
 ### Date Handling
-```typescript
-import { getFormattedDate } from "@/lib/utils"
+```bash
+# ✅ Use terminal command to get current date (never hardcode dates)
+# For planning documents (DD-MM-YY format):
+Get-Date -Format "dd-MM-yy"
 
-// ✅ Use dynamic dates
-const date = getFormattedDate('display') // "July 11, 2025"
-const shortDate = getFormattedDate('short') // "2025-07-11"
+# For display purposes:
+Get-Date -Format "MMMM dd, yyyy"  # "July 13, 2025"
+
+# For short format:
+Get-Date -Format "yyyy-MM-dd"     # "2025-07-13"
 ```
 
 ## Branching & Workflow

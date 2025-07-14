@@ -24,20 +24,34 @@ export interface ScrapedArticle {
   author?: string
   publicationDate?: Date
   language: string
+  // Enhanced fields
+  category?: string
+  tags?: string[]
+  fullHtml?: string
+  crawleeClassification?: CrawleeClassification
+  contentHash?: string
 }
 
 export interface NewsSource {
-  id?: number
+  id?: string
   name: string
   domain: string
   url: string
   description: string
+  iconUrl?: string
   isActive: boolean
+  // Enhanced source management fields
+  rssUrl?: string
+  scrapingConfig?: SourceScrapingConfig
+  lastScrapedAt?: Date
+  successRate?: number
+  isEnabled?: boolean
+  createdAt?: Date
 }
 
 export interface ScrapedContent {
-  id?: number
-  sourceId: number
+  id?: string
+  sourceId: string
   sourceUrl: string
   title: string
   content: string
@@ -46,8 +60,13 @@ export interface ScrapedContent {
   contentType: 'article' | 'rss-item'
   language: string
   processingStatus: 'pending' | 'processing' | 'completed' | 'failed'
+  // Enhanced content fields
+  category?: string
+  tags?: string[]
+  fullHtml?: string
+  crawleeClassification?: CrawleeClassification
+  contentHash?: string
   createdAt?: Date
-  updatedAt?: Date
 }
 
 export interface ScrapingJob {
@@ -80,6 +99,47 @@ export interface ScrapingConfig {
   userAgent: string
   retryAttempts: number
   respectRobotsTxt: boolean
+}
+
+// Enhanced interfaces for new schema
+export interface SourceScrapingConfig {
+  maxArticles?: number
+  respectRobotsTxt?: boolean
+  delayBetweenRequests?: number
+  userAgent?: string
+  timeout?: number
+}
+
+export interface CrawleeClassification {
+  contentType: string
+  confidence: number
+  metadata: Record<string, any>
+  extractedAt: Date
+}
+
+// Enhanced job tracking interfaces
+export interface EnhancedScrapingJob {
+  id: string
+  triggeredAt: Date
+  completedAt?: Date
+  status: 'running' | 'completed' | 'failed' | 'cancelled'
+  sourcesRequested: string[]
+  articlesPerSource: number
+  totalArticlesScraped: number
+  totalErrors: number
+  jobLogs?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface ScrapingLogEntry {
+  id: string
+  jobId: string
+  sourceId?: string
+  logLevel: 'debug' | 'info' | 'warning' | 'error' | 'critical'
+  message: string
+  timestamp: Date
+  additionalData?: Record<string, any>
 }
 
 export interface TriggerScrapingRequest {
