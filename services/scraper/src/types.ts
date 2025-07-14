@@ -24,6 +24,12 @@ export interface ScrapedArticle {
   author?: string
   publicationDate?: Date
   language: string
+  // Enhanced fields
+  category?: string
+  tags?: string[]
+  fullHtml?: string
+  crawleeClassification?: CrawleeClassification
+  contentHash?: string
 }
 
 export interface NewsSource {
