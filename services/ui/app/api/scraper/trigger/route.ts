@@ -28,9 +28,9 @@ async function validateSources(sources: string[]): Promise<{ validSources: strin
   const invalidSources: string[] = [];
   
   try {
-    // Get all active sources from database
+    // Get all sources from database
     const { railwayDb } = await import('@/lib/railway-database');
-    const result = await railwayDb.query('SELECT id, name, domain FROM sources WHERE is_active = true');
+    const result = await railwayDb.query('SELECT id, name, domain FROM sources');
     const dbSources = result.rows;
     
     for (const sourceIdentifier of sources) {

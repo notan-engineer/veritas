@@ -38,7 +38,7 @@ interface JobHistory {
   id: string;
   triggeredAt: string;
   completedAt?: string;
-  status: 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'running' | 'completed' | 'failed' | 'cancelled' | 'in progress' | 'successful';
   sourcesRequested: string[];
   articlesPerSource: number;
   totalArticlesScraped: number;
@@ -253,10 +253,12 @@ export function HealthDashboard() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'successful':
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'failed':
         return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'in progress':
       case 'running':
         return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
       case 'cancelled':
@@ -268,15 +270,20 @@ export function HealthDashboard() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
+      successful: "default",
       completed: "default",
       failed: "destructive",
+      "in progress": "secondary",
       running: "secondary",
       cancelled: "outline"
     } as const;
     
+    const displayStatus = status === 'completed' ? 'successful' : 
+                         status === 'running' ? 'in progress' : status;
+    
     return (
       <Badge variant={variants[status as keyof typeof variants] || "outline"}>
-        {status}
+        {displayStatus}
       </Badge>
     );
   };
@@ -493,7 +500,7 @@ export function HealthDashboard() {
                           >
                             <Eye className="h-3 w-3" />
                           </Button>
-                          {job.status === 'running' && (
+                          {(job.status === 'running' || job.status === 'in progress') && (
                             <Button
                               variant="destructive"
                               size="sm"
