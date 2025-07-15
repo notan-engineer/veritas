@@ -30,7 +30,7 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
   const [availableSources, setAvailableSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
-  const [jobStatus, setJobStatus] = useState<'idle' | 'running' | 'completed' | 'failed'>('idle');
+  const [jobStatus, setJobStatus] = useState<'idle' | 'running' | 'completed' | 'failed' | 'in progress' | 'successful'>('idle');
   const [jobProgress, setJobProgress] = useState(0);
   const [jobDetails, setJobDetails] = useState<{
     totalArticles: number;
@@ -78,7 +78,7 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
             setJobProgress(job.progress || 0);
             
             // Update job details
-            if (job.status === 'completed' || job.status === 'failed') {
+            if (job.status === 'completed' || job.status === 'successful' || job.status === 'failed') {
               setJobDetails({
                 totalArticles: job.totalArticlesScraped || 0,
                 duration: job.duration || 0,
@@ -86,7 +86,7 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
               });
               
               // Clear current job after completion
-              if (job.status === 'completed') {
+              if (job.status === 'completed' || job.status === 'successful') {
                 setTimeout(() => {
                   setCurrentJobId(null);
                   setJobStatus('idle');
@@ -187,26 +187,26 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
     <div className="relative">
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        disabled={isTriggering || jobStatus === 'running'}
+        disabled={isTriggering || jobStatus === 'running' || jobStatus === 'in progress'}
         className="flex items-center gap-2"
       >
-        {isTriggering || jobStatus === 'running' ? (
+        {isTriggering || jobStatus === 'running' || jobStatus === 'in progress' ? (
           <Loader2 className="h-4 w-4 animate-spin" />
-        ) : jobStatus === 'completed' ? (
+        ) : jobStatus === 'completed' || jobStatus === 'successful' ? (
           <Activity className="h-4 w-4 text-green-500" />
         ) : jobStatus === 'failed' ? (
           <Activity className="h-4 w-4 text-red-500" />
         ) : (
           <Play className="h-4 w-4" />
         )}
-        {isTriggering || jobStatus === 'running' ? 'Running...' : 
-         jobStatus === 'completed' ? 'Completed' :
+        {isTriggering || jobStatus === 'running' || jobStatus === 'in progress' ? 'In Progress...' : 
+         jobStatus === 'completed' || jobStatus === 'successful' ? 'Successful' :
          jobStatus === 'failed' ? 'Failed' : 'Trigger Job'}
         <ChevronDown className="h-4 w-4" />
       </Button>
 
       {/* Job Status Display */}
-      {jobStatus === 'running' && (
+      {(jobStatus === 'running' || jobStatus === 'in progress') && (
         <div className="absolute top-full right-0 z-40 mt-1 bg-white border rounded-lg shadow-lg p-2 min-w-48">
           <div className="flex items-center gap-2 text-sm">
             <Loader2 className="h-3 w-3 animate-spin" />

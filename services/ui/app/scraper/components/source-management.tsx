@@ -187,21 +187,7 @@ export function SourceManagement() {
     });
   };
 
-  const getHealthBadge = (source: Source) => {
-    if (!source.health) return null;
-    
-    return source.health.isHealthy ? (
-      <Badge variant="default" className="text-xs">
-        <CheckCircle className="h-3 w-3 mr-1" />
-        Healthy
-      </Badge>
-    ) : (
-      <Badge variant="destructive" className="text-xs">
-        <XCircle className="h-3 w-3 mr-1" />
-        Unhealthy
-      </Badge>
-    );
-  };
+
 
   if (loading) {
     return (
@@ -257,10 +243,6 @@ export function SourceManagement() {
                     <th className="text-left py-3 px-2 font-medium text-sm">Source</th>
                     <th className="text-left py-3 px-2 font-medium text-sm">Domain</th>
                     <th className="text-left py-3 px-2 font-medium text-sm">Status</th>
-                    <th className="text-left py-3 px-2 font-medium text-sm">Health</th>
-                    <th className="text-left py-3 px-2 font-medium text-sm">Success Rate</th>
-                    <th className="text-left py-3 px-2 font-medium text-sm">Response Time</th>
-                    <th className="text-left py-3 px-2 font-medium text-sm">Last Scraped</th>
                     <th className="text-right py-3 px-2 font-medium text-sm">Actions</th>
                   </tr>
                 </thead>
@@ -295,24 +277,6 @@ export function SourceManagement() {
                         <Badge variant="default" className="text-xs">
                           Active
                         </Badge>
-                      </td>
-                      <td className="py-3 px-2">
-                        {getHealthBadge(source)}
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="text-sm font-medium">
-                          N/A
-                        </div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="text-sm">
-                          {source.health ? `${source.health.averageResponseTime}ms` : 'N/A'}
-                        </div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Never</span>
-                        </div>
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex items-center justify-end gap-1">
@@ -398,7 +362,7 @@ export function SourceManagement() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="CNN News"
                     required
                   />
@@ -410,7 +374,7 @@ export function SourceManagement() {
                     type="text"
                     value={formData.domain}
                     onChange={(e) => setFormData({...formData, domain: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="cnn.com"
                     required
                   />
@@ -422,7 +386,7 @@ export function SourceManagement() {
                     type="url"
                     value={formData.rssUrl}
                     onChange={(e) => setFormData({...formData, rssUrl: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="https://feeds.cnn.com/rss/edition.rss"
                     required
                   />
@@ -435,7 +399,7 @@ export function SourceManagement() {
                       type="text"
                       value={formData.userAgent}
                       onChange={(e) => setFormData({...formData, userAgent: e.target.value})}
-                      className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       placeholder="Veritas-Scraper/1.0"
                     />
                   </div>
@@ -446,7 +410,7 @@ export function SourceManagement() {
                       type="number"
                       value={formData.timeoutMs}
                       onChange={(e) => setFormData({...formData, timeoutMs: parseInt(e.target.value) || 30000})}
-                      className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       min="1000"
                       max="60000"
                       placeholder="30000"
@@ -461,7 +425,7 @@ export function SourceManagement() {
                       type="number"
                       value={formData.delayBetweenRequests}
                       onChange={(e) => setFormData({...formData, delayBetweenRequests: parseInt(e.target.value) || 1000})}
-                      className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       min="0"
                       max="10000"
                       placeholder="1000"
