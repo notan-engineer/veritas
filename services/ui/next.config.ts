@@ -17,18 +17,12 @@ const nextConfig: NextConfig = {
     unoptimized: true // Railway handles image optimization
   },
 
-  // Build performance optimizations
-  swcMinify: true, // Use SWC for minification (faster than Terser)
-  
-  // Experimental features for faster builds
-  experimental: {
-    // Use Turbopack for faster development builds
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js'
-        }
+  // Turbopack configuration (moved from experimental.turbo)
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js'
       }
     }
   },

@@ -279,21 +279,50 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         }
       }
     } catch (error) {
-      console.log('Scraper service unavailable, using mock data');
+      console.log('Scraper service unavailable, no monitoring data available');
     }
 
-    // Return mock data based on type
-    let mockData: any = mockSystemHealth;
-    if (type === 'errors') mockData = mockErrorReport;
-    else if (type === 'performance') mockData = mockPerformanceMetrics;
-
-    // Update timestamp for all mock data
-    mockData.timestamp = new Date().toISOString();
+    // Return minimal data based on type instead of mock data
+    let minimalData: any;
+    
+    if (type === 'errors') {
+      minimalData = {
+        errorCount: 0,
+        errorRate: 0,
+        recentErrors: [],
+        errorCategories: {},
+        timestamp: new Date().toISOString()
+      };
+    } else if (type === 'performance') {
+      minimalData = {
+        responseTime: 0,
+        throughput: 0,
+        errorRate: 0,
+        systemResources: {
+          memory: 0,
+          cpu: 0,
+          disk: 0
+        },
+        timestamp: new Date().toISOString()
+      };
+    } else {
+      // Default health data
+      minimalData = {
+        status: 'unavailable',
+        uptime: 0,
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        services: {
+          scraper: 'unavailable',
+          database: 'unknown'
+        }
+      };
+    }
 
     return NextResponse.json({
       success: true,
-      data: mockData,
-      message: `Mock ${type} data returned`
+      data: minimalData,
+      message: `No ${type} data available - scraper service unavailable`
     });
 
   } catch (error) {

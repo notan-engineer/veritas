@@ -417,69 +417,87 @@ export function HealthDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {jobHistory.map((job) => (
-              <div
-                key={job.id}
-                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(job.status)}
-                  <div>
-                    <div className="font-medium text-sm">{job.id}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {job.sourcesRequested.join(', ')} • {job.articlesPerSource} articles/source
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="text-sm font-medium">
-                      {job.totalArticlesScraped} articles
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {job.totalErrors} errors
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    {getStatusBadge(job.status)}
-                    {job.duration && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {formatDuration(job.duration)}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyJobLogs(job.id)}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedJob(job.id)}
-                    >
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {jobHistory.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Activity className="h-8 w-8 mx-auto mb-2" />
-                <p>No jobs have been triggered yet</p>
-                <p className="text-sm">Use the Trigger Job button to start scraping</p>
-              </div>
-            )}
-          </div>
+          {jobHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Activity className="h-8 w-8 mx-auto mb-2" />
+              <p>No jobs have been triggered yet</p>
+              <p className="text-sm">Use the Trigger Job button to start scraping</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-2 font-medium text-sm">Status</th>
+                    <th className="text-left py-3 px-2 font-medium text-sm">Job ID</th>
+                    <th className="text-left py-3 px-2 font-medium text-sm">Sources</th>
+                    <th className="text-center py-3 px-2 font-medium text-sm">Articles</th>
+                    <th className="text-center py-3 px-2 font-medium text-sm">Errors</th>
+                    <th className="text-center py-3 px-2 font-medium text-sm">Duration</th>
+                    <th className="text-center py-3 px-2 font-medium text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobHistory.map((job) => (
+                    <tr key={job.id} className="border-b hover:bg-muted/50">
+                      <td className="py-3 px-2">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(job.status)}
+                          {getStatusBadge(job.status)}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="font-medium text-sm">{job.id}</div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="text-sm">
+                          {job.sourcesRequested.join(', ')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {job.articlesPerSource} per source
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <div className="text-sm font-medium">
+                          {job.totalArticlesScraped}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <div className="text-sm">
+                          {job.totalErrors}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <div className="text-sm">
+                          {job.duration ? formatDuration(job.duration) : '-'}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="flex justify-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyJobLogs(job.id)}
+                            title="Copy logs"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedJob(job.id)}
+                            title="View details"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

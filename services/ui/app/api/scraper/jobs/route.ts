@@ -98,23 +98,14 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         });
       }
     } catch (error) {
-      console.log('Scraper service unavailable, using mock data');
+      console.log('Scraper service unavailable, no job tracking available');
     }
 
-    // Filter mock data
-    let filteredJobs = mockJobHistory;
-    
-    if (status) {
-      filteredJobs = filteredJobs.filter(job => job.status === status);
-    }
-
-    // Apply pagination
-    const paginatedJobs = filteredJobs.slice(offset, offset + limit);
-
+    // Return empty result since no job tracking is implemented in current schema
     return NextResponse.json({
       success: true,
-      data: paginatedJobs,
-      message: `Retrieved ${paginatedJobs.length} jobs (mock data)`
+      data: [],
+      message: 'No job history available - scraper service unavailable and job tracking not implemented'
     });
 
   } catch (error) {

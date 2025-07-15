@@ -47,7 +47,10 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
         const result = await response.json();
         
         if (result.success) {
-          setAvailableSources(result.data.sources || []);
+          const sources = result.data.sources || [];
+          setAvailableSources(sources);
+          // Select all sources by default
+          setSelectedSources(sources.map((source: Source) => source.id));
         } else {
           console.error('Failed to load sources:', result.error);
         }
@@ -139,11 +142,11 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
       const result = await response.json();
       
       if (result.success) {
-        setCurrentJobId(result.data.jobId);
+        setCurrentJobId(result.jobId);
         setJobStatus('running');
       } else {
         setJobStatus('failed');
-        alert(`Failed to trigger job: ${result.error}`);
+        alert(`Failed to trigger job: ${result.message || result.error}`);
       }
     } catch (error) {
       console.error('Error triggering job:', error);
@@ -244,19 +247,18 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
             {/* Articles per source */}
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Articles per source: {articlesPerSource}
+                Articles per source
               </label>
               <input
-                type="range"
+                type="number"
                 min="1"
-                max="10"
                 value={articlesPerSource}
-                onChange={(e) => setArticlesPerSource(parseInt(e.target.value))}
-                className="w-full"
+                onChange={(e) => setArticlesPerSource(parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2 border border-border rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Enter number of articles"
               />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                <span>1</span>
-                <span>10</span>
+              <div className="text-xs text-muted-foreground mt-1">
+                Enter the number of articles to scrape per source
               </div>
             </div>
 
@@ -276,19 +278,23 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
                   {availableSources.map((source) => (
                     <div
                       key={source.id}
-                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedSources.includes(source.id)
+                          ? 'bg-blue-50 border-blue-300 dark:bg-blue-950 dark:border-blue-700'
+                          : 'hover:bg-muted/50'
+                      }`}
                       onClick={() => handleSourceToggle(source.id)}
                     >
-                      <div className="flex items-center gap-2 flex-1">
-                        <input
-                          type="checkbox"
-                          checked={selectedSources.includes(source.id)}
-                          onChange={() => handleSourceToggle(source.id)}
-                          className="rounded"
-                        />
+                      <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{source.name}</span>
+                            <span className={`font-medium text-sm ${
+                              selectedSources.includes(source.id) 
+                                ? 'text-blue-700 dark:text-blue-300' 
+                                : ''
+                            }`}>
+                              {source.name}
+                            </span>
                             <Badge variant="outline" className="text-xs">
                               {source.successRate}% success
                             </Badge>
@@ -297,6 +303,13 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
                             {source.domain}
                           </div>
                         </div>
+                        {selectedSources.includes(source.id) && (
+                          <div className="text-blue-600 dark:text-blue-400">
+                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

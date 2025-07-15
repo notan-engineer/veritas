@@ -368,10 +368,10 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
       {/* Navigation */}
       <div className="flex justify-between pt-6 sm:pt-8">
-        <Link href="/scraper">
+        <Link href="/scraper?tab=content">
           <Button variant="outline" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+            Back to Content
           </Button>
         </Link>
         
