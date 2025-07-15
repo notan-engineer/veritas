@@ -4,6 +4,28 @@
 **Project Status**: Maximally simplified (85% complexity reduction), production-ready  
 **For**: AI coding agents and human developers
 
+## 🚀 TOKEN OPTIMIZATION FRAMEWORK (HIGHEST PRIORITY)
+
+**⚠️ MANDATORY: Follow all procedures in the cursor optimization framework**
+
+📖 **Master Guide**: @.notes/cursor-master-guide.md  
+🎯 **Quick Start**: @.notes/START-HERE.md
+
+**Core Rules (ALWAYS ACTIVE):**
+1. **Context**: Use @file NEVER @folder
+2. **Sessions**: One task = One session
+3. **Tabs**: Keep 3-5 files maximum
+4. **Builds**: ALWAYS from services/ui directory
+5. **Docs**: Reference @docs, never include full content
+
+**Before ANY work, check the framework for:**
+- [BASIC] procedures for your task type
+- Context selection templates
+- Session management triggers
+- Error resolution patterns
+
+---
+
 ## Project Context
 
 **Veritas** is a lean news aggregation platform presenting verified information as structured "factoids". The system was recently simplified through massive code reduction (2,235+ lines removed) while maintaining 100% functionality.

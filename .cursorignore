@@ -1,0 +1,73 @@
+# Cursor Token Optimization - .cursorignore
+# Excludes high-token, low-value files to reduce context consumption
+
+# Build Artifacts & Dependencies (High Token Cost)
+**/node_modules
+**/dist
+**/build
+.next/
+/out/
+**/.cache
+**/coverage
+
+# Large Configuration/Lock Files (Low Value, High Tokens)
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# Extensive Documentation (Reference via @Docs instead)
+# Exclude completed planning documents and large historical files
+documentation/planning/*DONE.md
+documentation/planning/08-07-25*.md
+documentation/planning/10-07-25*.md
+documentation/planning/11-01-25*.md
+documentation/removed-code-and-features.md
+documentation/prds/*.md
+
+# Database Scripts (Usually irrelevant for application logic)
+database/migrations/*.sql
+database/cleanup-*.sql
+database/cleanup-db.js
+
+# Generated Files and Caches
+**/.env*.local
+**/.DS_Store
+**/Thumbs.db
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# IDE and Editor Files
+**/.vscode/settings.json
+**/.idea/
+**/*.swp
+**/*.swo
+**/*.tmp
+**/*.temp
+
+# Additional Veritas-Specific High-Token Files
+services/ui/public/*.svg
+services/ui/public/*.png
+services/ui/public/*.ico
+services/scraper/node_modules
+
+# Git and Version Control
+.git/
+**/.gitignore
+
+# Testing and Coverage
+**/jest.config.js
+**/coverage/
+**/*.test.js
+**/*.spec.js
+
+# Build Configuration (Usually stable, rarely needed)
+**/webpack.config.js
+**/vite.config.js
+**/rollup.config.js
+
+# Documentation Assets
+**/images/
+**/screenshots/
+**/diagrams/ 
