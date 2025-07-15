@@ -206,16 +206,59 @@ docs/section-update          # Documentation updates
 
 ### Required Validation ⚠️ CRITICAL
 ```bash
-# ⚠️ MUST run from services/ui directory - NEVER from project root
+# ⚠️ UI Service - MUST run from services/ui directory
 cd services/ui   
 npm run build    # Must pass
 npm run lint     # Must pass
+
+# ⚠️ Scraper Service - MUST run from services/scraper directory  
+cd services/scraper
+npm run build    # Must pass
 ```
 
-**PowerShell**: `cd services/ui; npm run build; npm run lint`
+**PowerShell**: 
+- UI: `cd services/ui; npm run build; npm run lint`
+- Scraper: `cd services/scraper; npm run build`
+
 **⚠️ Commands WILL FAIL if run from project root**
 
+### Scraper Service Development
+
+#### Build & Development Commands
+```bash
+# Development
+cd services/scraper
+npm run dev      # Development server with ts-node
+npm run build    # TypeScript compilation to dist/
+npm run start    # Production server from dist/
+npm run clean    # Remove dist/ directory
+```
+
+#### Scraper Testing Workflow
+1. **Local Development**: Test scraper endpoints using `/health` and `/api/status`
+2. **Content Scraping**: Verify RSS feed parsing and article extraction
+3. **Database Integration**: Confirm content storage and retrieval
+4. **Error Handling**: Test error recovery and monitoring systems
+5. **Resource Monitoring**: Check memory usage and cleanup operations
+6. **Service Communication**: Test UI ↔ Scraper API integration
+
+#### Monitoring & Debugging
+- **Health Dashboard**: Use `/scraper` UI for real-time monitoring
+- **Logs**: Check Railway logs for both services during development
+- **Error Tracking**: Monitor error rates and recovery statistics
+- **Performance**: Track job execution times and resource usage
+- **Database**: Verify content insertion and source management
+
+#### Adding New Scraper Features
+1. **Source Management**: Add new RSS feeds via source manager
+2. **Content Classification**: Enhance classification algorithms
+3. **Error Handling**: Add new error categories and recovery strategies
+4. **Monitoring**: Extend health checks and performance metrics
+5. **Cleanup Policies**: Configure automated content management
+
 ### Manual Testing Checklist
+
+#### UI Service Testing
 - [ ] Homepage loads and displays factoids
 - [ ] Topic filtering works
 - [ ] Article detail pages load
@@ -223,15 +266,61 @@ npm run lint     # Must pass
 - [ ] RTL languages display correctly
 - [ ] Mobile responsive design
 
+#### Scraper Service Testing
+- [ ] Health endpoint returns comprehensive metrics
+- [ ] Scraping jobs can be triggered and monitored
+- [ ] Content feed displays scraped articles
+- [ ] Source management CRUD operations work
+- [ ] Real-time monitoring updates correctly
+- [ ] Error handling and recovery functions properly
+
+#### Integration Testing
+- [ ] UI ↔ Scraper service communication works
+- [ ] Shared database access functions correctly
+- [ ] Fallback modes activate when services unavailable
+- [ ] Environment variables configured properly
+
 ## Railway Infrastructure
 
 ### Railway Services
 The project uses three Railway services:
-- **UI Service**: Next.js application
-- **Scraper Service**: Crawlee-based content scraping  
-- **Database Service**: PostgreSQL instance
+- **UI Service**: Next.js application (main user interface)
+- **Scraper Service**: Advanced Crawlee-based content aggregation
+- **Database Service**: Shared PostgreSQL instance
 
-**Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, deployment procedures, and troubleshooting. This file is git-ignored and contains sensitive project information.
+### Service Management
+```bash
+# Connect to Railway project
+railway link -p 32900e57-b721-494d-8e68-d15ac01e5c03
+
+# View all services
+railway status
+
+# Deploy specific service
+railway up --service ui
+railway up --service scraper
+
+# View logs for specific service
+railway logs --service ui
+railway logs --service scraper
+
+# Access database
+railway connect --service postgres
+```
+
+### Environment Variables
+Each service has its own environment configuration:
+- **UI Service**: `DATABASE_URL`, `SCRAPER_SERVICE_URL`, `NODE_ENV`, `PORT`
+- **Scraper Service**: `DATABASE_URL`, `NODE_ENV`, `PORT`
+- **Database Service**: Automatically configured by Railway
+
+### Development Workflow
+1. **Local Development**: Both services can run independently
+2. **Database Access**: Both services share the same PostgreSQL instance  
+3. **Service Communication**: UI calls Scraper via HTTP APIs
+4. **Deployment**: Services deploy independently on Railway
+
+**Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, and deployment procedures (git-ignored, contains sensitive information).
 
 ## Deployment
 

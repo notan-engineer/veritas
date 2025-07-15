@@ -18,7 +18,25 @@
 - **Styling**: Tailwind CSS v4 with PostCSS
 - **UI Components**: shadcn/ui (Radix UI primitives)
 - **Database**: Railway PostgreSQL with direct connection pooling
-- **Deployment**: Railway (single service, minimal configuration)
+- **Deployment**: Railway (three-service architecture)
+
+### Service Architecture
+```
+veritas/
+├── services/ui/              # Next.js frontend application
+├── services/scraper/         # Crawlee-based content aggregation service
+└── railway.toml              # Multi-service deployment config
+```
+
+**⚠️ CRITICAL**: All npm commands must run from respective service directories (`services/ui` or `services/scraper`)
+
+### Railway Services Architecture
+The project uses three Railway services:
+- **UI Service**: Next.js application (main user interface)
+- **Scraper Service**: Advanced content aggregation with monitoring dashboard
+- **Database Service**: Shared PostgreSQL instance (used by both services)
+
+**Environment Integration**: Services communicate via HTTP APIs with shared database access
 
 ### File Structure (Ultra-Simplified)
 ```
@@ -90,17 +108,51 @@ interface Source {
 }
 ```
 
-## API Architecture (Minimal)
+## API Architecture (Comprehensive)
 
-### Current Endpoints (2 total)
+### UI Service Endpoints (Core)
 - `GET /api/factoids` - All published factoids with tags/sources
 - `GET /api/tags` - All active tags for filtering
 
-### Removed Endpoints (for simplicity)
-- Authentication endpoints
-- Search endpoints (replaced with client-side filtering)
-- Individual factoid endpoints (use server-side data.server.ts)
-- Debug/health check endpoints
+### Scraper Service Endpoints (Advanced Content Aggregation)
+#### Content Management
+- `POST /api/scrape` - Trigger scraping operations with job management
+- `GET /api/content` - Retrieve scraped content with filtering/pagination
+- `GET /api/content/:id` - Individual article details with metadata
+
+#### Job Management
+- `GET /api/jobs` - List scraping jobs with status tracking
+- `POST /api/jobs` - Trigger new scraping jobs
+- `DELETE /api/jobs/:id` - Cancel running jobs
+
+#### Source Management
+- `GET /api/sources` - List sources with health monitoring
+- `POST /api/sources` - Create new content sources
+- `PUT /api/sources` - Update source configuration
+- `DELETE /api/sources` - Remove sources
+- `PATCH /api/sources` - Batch operations and health checks
+
+#### Monitoring & Health
+- `GET /health` - Service health with comprehensive metrics
+- `GET /api/status` - Current scraping job status
+- `GET /api/monitoring/errors` - Error statistics and tracking
+- `GET /api/monitoring/performance` - System performance metrics
+- `GET /api/monitoring/alerts` - System alerts and threshold monitoring
+- `POST /api/monitoring/recovery` - Recovery management and error resolution
+- `GET /api/monitoring/services` - Individual service health checks
+
+#### Cleanup & Maintenance
+- `POST /api/cleanup/execute` - Execute cleanup policies
+- `GET /api/cleanup/metrics` - Storage metrics and cleanup statistics
+- `GET /api/cleanup/policies` - Available cleanup policies
+
+### UI Service Proxy Endpoints (Scraper Integration)
+- `POST /api/scraper/trigger` - Proxy to scraper service with fallback
+- `GET /api/scraper/jobs` - Job management interface
+- `GET /api/scraper/content` - Content feed interface
+- `GET /api/scraper/sources` - Source management interface
+- `GET /api/scraper/monitoring` - Monitoring dashboard interface
+- `GET /api/scraper/metrics` - Health metrics for dashboard
 
 ## Frontend Architecture
 
@@ -108,6 +160,10 @@ interface Source {
 - **Homepage** (`/`) - Factoid cards with topic filtering
 - **Article Detail** (`/article/[id]`) - Individual factoid display
 - **Settings** (`/settings`) - Theme toggle only
+- **Scraper Dashboard** (`/scraper`) - **NEW**: Comprehensive 3-tab monitoring interface
+  - **Health Dashboard Tab**: Metrics cards, job history, source monitoring
+  - **Content Feed Tab**: Scraped articles feed, individual article viewer
+  - **Source Management Tab**: CRUD operations, health monitoring, RSS validation
 
 ### Core Components (Essential only)
 - `Card` - Primary content container
@@ -116,6 +172,12 @@ interface Source {
 - `Skeleton` - Loading states
 - `Switch` - Settings toggles
 - `ThemeToggle` - Dark/light mode
+
+### Scraper Dashboard Components (Advanced UI)
+- `HealthDashboard` - Real-time metrics, job history, source health monitoring
+- `ContentFeed` - Article feed with filtering, search, and individual viewer
+- `SourceManagement` - Source CRUD with validation, testing, and health checks
+- `JobTrigger` - Job creation interface with source selection and configuration
 
 ### Utilities
 - **RTL Support** (`rtl-utils.ts`) - Hebrew/Arabic text direction
@@ -128,12 +190,37 @@ interface Source {
 ### Railway Services Architecture
 The project uses three Railway services:
 - **UI Service**: Next.js application (main service)
-- **Scraper Service**: Crawlee-based content scraping service
+- **Scraper Service**: Advanced Crawlee-based content aggregation service
 - **Database Service**: PostgreSQL instance (shared by all services)
+
+### Scraper Service Architecture
+```
+services/scraper/
+├── src/
+│   ├── scraper.ts              # Enhanced main scraper with job management
+│   ├── job-manager.ts          # Job queue and execution management
+│   ├── content-classifier.ts   # Content classification and categorization
+│   ├── duplicate-detector.ts   # URL and content-based duplicate prevention
+│   ├── source-manager.ts       # Dynamic source configuration management
+│   ├── resource-monitor.ts     # System resource monitoring
+│   ├── cleanup-manager.ts      # Content cleanup and archival
+│   ├── error-handler.ts        # Comprehensive error handling and recovery
+│   ├── database.ts             # Enhanced database operations
+│   ├── types.ts                # Comprehensive TypeScript interfaces
+│   └── server.ts               # Express HTTP server with monitoring endpoints
+├── package.json                # Crawlee, Playwright, Express dependencies
+└── tsconfig.json               # TypeScript configuration
+```
+
+### Service Communication
+- **HTTP APIs**: Services communicate via REST endpoints
+- **Shared Database**: Both services access same PostgreSQL instance
+- **Environment Variables**: Services configured via Railway environment
+- **Health Monitoring**: Comprehensive health checks across all services
 
 **Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, deployment procedures, environment variables, and troubleshooting. This file is git-ignored and contains sensitive project information.
 
-## Deployment (Ultra-simplified)
+## Deployment (Multi-Service Architecture)
 
 ### Railway Configuration (`railway.toml`)
 ```toml
@@ -146,11 +233,28 @@ buildCommand = "npm install && npm run build"
 
 [services.ui.deploy]
 startCommand = "npm start"
+
+[[services]]
+name = "scraper"
+source = "services/scraper"
+
+[services.scraper.build]
+buildCommand = "npm install && npm run build"
+
+[services.scraper.deploy]
+startCommand = "npm start"
 ```
 
 ### Environment Variables
 ```bash
+# UI Service
 DATABASE_URL=postgresql://... # Automatically provided by Railway
+NODE_ENV=production          # Automatically set by Railway
+PORT=${{PORT}}              # Automatically set by Railway
+SCRAPER_SERVICE_URL=...     # URL of scraper service for API calls
+
+# Scraper Service
+DATABASE_URL=postgresql://... # Shared with UI service
 NODE_ENV=production          # Automatically set by Railway
 PORT=${{PORT}}              # Automatically set by Railway
 ```
@@ -160,8 +264,16 @@ PORT=${{PORT}}              # Automatically set by Railway
 ### Core Principles
 1. **Simplicity First** - Implement only what's needed
 2. **Incremental Growth** - Add features when actually required
-3. **Build Validation** - ⚠️ CRITICAL: Test from `services/ui` directory (`cd services/ui && npm run build && npm run lint`)
+3. **Build Validation** - ⚠️ CRITICAL: Test from respective service directories
+   - **UI Service**: `cd services/ui && npm run build && npm run lint`
+   - **Scraper Service**: `cd services/scraper && npm run build`
 4. **Documentation Sync** - Update docs with code changes
+
+### Multi-Service Development
+- **UI Service**: Standard Next.js development in `services/ui`
+- **Scraper Service**: Node.js/Express development in `services/scraper`
+- **Database Changes**: Update both services when schema changes
+- **API Integration**: Test service-to-service communication
 
 ### Adding New Features
 1. Check `documentation/removed-code-and-features.md` for guidance
@@ -171,54 +283,67 @@ PORT=${{PORT}}              # Automatically set by Railway
 
 ### Database Changes
 1. Create migration script in `database/migrations/`
-2. Update TypeScript interfaces in `lib/data-service.ts`
+2. Update TypeScript interfaces in both services
 3. Test with both mock and real data
 4. Update technical design documentation
 
-## Future Services (Placeholder Ready)
-
-### Scraping Service (Not Implemented)
-- **Purpose**: RSS feed scraping, web content extraction
-- **Tables Ready**: `scraped_content`, `sources`
-- **Implementation**: When content automation needed
-
-### LLM Service (Not Implemented)  
-- **Purpose**: Factoid extraction from scraped content
-- **Integration Points**: `scraped_content` → `factoids`
-- **Implementation**: When content processing needed
-
-## Security & Performance
-
-### Current Security
-- **Input validation** at API boundaries
-- **Environment variables** for secrets
-- **Server-side rendering** for performance
-- **TypeScript strict mode** for type safety
-
-### Performance Optimizations
-- **Minimal bundle size** (essential components only)
-- **Static page generation** where possible
-- **Database connection pooling**
-- **Optimized queries** (no N+1 problems)
-
 ## Monitoring & Maintenance
 
-### Health Checks
-- Build process validates functionality
-- TypeScript compiler catches type errors
-- ESLint ensures code quality
-- Manual testing of core features
+### Advanced Health Monitoring
+- **Scraper Service Health**: Comprehensive health checks with system metrics
+- **Database Connectivity**: Connection pool monitoring and performance tracking
+- **Error Tracking**: Real-time error statistics with categorization and recovery
+- **Resource Monitoring**: Memory, storage, and performance metrics
+- **Job Monitoring**: Scraping job success rates and execution tracking
+- **Source Health**: RSS feed validation and content source monitoring
+
+### Automated Systems
+- **Content Cleanup**: Automated archival and compression policies
+- **Duplicate Detection**: Content hash-based deduplication
+- **Error Recovery**: Automatic retry mechanisms with exponential backoff
+- **Resource Management**: Storage usage monitoring and cleanup triggers
+
+### Developer Tools
+- **Real-time Dashboard**: 3-tab monitoring interface for operations
+- **API Health Checks**: Comprehensive endpoint monitoring
+- **Job Management**: Visual job tracking and cancellation capabilities
+- **Source Testing**: RSS feed validation and source health checks
+
+### Build Validation
+- **UI Service**: TypeScript compiler, ESLint, and build verification
+- **Scraper Service**: TypeScript compiler and build verification
+- **Integration Testing**: Service-to-service communication validation
+- **Manual Testing**: Core functionality verification across services
 
 ### Deployment Process
 1. `git push` to development branch
 2. Manual merge to main (never direct push)
-3. Railway auto-deploys from main
-4. Verify functionality post-deployment
+3. Railway auto-deploys both services from main
+4. Verify functionality across all services post-deployment
+
+## Security & Performance
+
+### Current Security
+- **Input validation** at API boundaries (both services)
+- **Environment variables** for secrets
+- **Server-side rendering** for performance
+- **TypeScript strict mode** for type safety
+- **CORS configuration** for service communication
+- **Error sanitization** to prevent information leakage
+
+### Performance Optimizations
+- **Minimal bundle size** (essential components only)
+- **Static page generation** where possible
+- **Database connection pooling** across services
+- **Optimized queries** (no N+1 problems)
+- **Content compression** and archival systems
+- **Concurrent scraping** with resource management
+- **Rate limiting** for external API calls
 
 ## Project Status Summary
 
-**Completed**: Massive simplification (2,235+ lines removed)  
-**Current**: Core functionality operational  
-**Next**: Ready for incremental feature additions based on user needs
+**Completed**: Advanced content aggregation platform with comprehensive monitoring  
+**Current**: Production-ready with automated content collection and management  
+**Next**: Ready for additional source integration and LLM-based factoid extraction
 
-**Key Achievement**: Reduced complexity by 85% while maintaining 100% functionality. 
+**Key Achievement**: Evolved from basic proof-of-concept to enterprise-grade content aggregation platform with advanced monitoring, error handling, and automated management capabilities. 
