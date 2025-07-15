@@ -22,6 +22,44 @@ interface TriggerScrapingResponse {
   }>;
 }
 
+// Helper function to validate sources against database
+async function validateSources(sources: string[]): Promise<{ validSources: string[], invalidSources: string[] }> {
+  const validSources: string[] = [];
+  const invalidSources: string[] = [];
+  
+  try {
+    // Get all active sources from database
+    const { railwayDb } = await import('@/lib/railway-database');
+    const result = await railwayDb.query('SELECT id, name, domain FROM sources WHERE is_active = true');
+    const dbSources = result.rows;
+    
+    for (const sourceIdentifier of sources) {
+      // Check if the identifier matches any database source by name, domain, or id
+      const matchedSource = dbSources.find((dbSource: any) => 
+        dbSource.id === sourceIdentifier ||
+        dbSource.name.toLowerCase() === sourceIdentifier.toLowerCase() ||
+        dbSource.domain.toLowerCase() === sourceIdentifier.toLowerCase() ||
+        dbSource.domain.includes(sourceIdentifier.toLowerCase()) ||
+        dbSource.name.toLowerCase().includes(sourceIdentifier.toLowerCase())
+      );
+      
+      if (matchedSource) {
+        // Use the source name as the identifier for the scraper
+        validSources.push(matchedSource.name);
+      } else {
+        invalidSources.push(sourceIdentifier);
+      }
+    }
+  } catch (dbError) {
+    console.log('Database unavailable for source validation');
+    
+    // When database is unavailable, we can't validate, so treat as invalid
+    invalidSources.push(...sources);
+  }
+  
+  return { validSources, invalidSources };
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse<TriggerScrapingResponse>> {
   const requestLogs: Array<{
     timestamp: string;
@@ -62,18 +100,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<TriggerSc
       );
     }
 
-    // Validate source names
-    const validSources = ['cnn', 'foxnews', 'fox'];
-    const invalidSources = body.sources.filter(source => 
-      !validSources.some(valid => source.toLowerCase().includes(valid.toLowerCase()))
-    );
-
+    // Validate sources against database
+    const { validSources, invalidSources } = await validateSources(body.sources);
+    
     if (invalidSources.length > 0) {
-      addLog('error', `Invalid sources: ${invalidSources.join(', ')}. Valid sources: cnn, foxnews`);
+      addLog('error', `Invalid sources: ${invalidSources.join(', ')}. These sources are not found in the database or are inactive.`);
       return NextResponse.json(
         {
           success: false,
-          message: `Invalid sources: ${invalidSources.join(', ')}. Valid sources: cnn, foxnews`,
+          message: `Invalid sources: ${invalidSources.join(', ')}. These sources are not found in the database or are inactive.`,
           jobId: '',
           logs: requestLogs
         },
@@ -81,7 +116,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<TriggerSc
       );
     }
 
-    addLog('info', `Valid sources provided: ${body.sources.join(', ')}`);
+    if (validSources.length === 0) {
+      addLog('error', 'No valid sources provided');
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'No valid sources provided',
+          jobId: '',
+          logs: requestLogs
+        },
+        { status: 400 }
+      );
+    }
+
+    addLog('info', `Valid sources found: ${validSources.join(', ')}`);
 
     // Log environment information
     const scraperServiceUrl = process.env.SCRAPER_SERVICE_URL || 'http://localhost:3001';
@@ -92,7 +140,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TriggerSc
     addLog('info', `Scraper service URL: ${scraperServiceUrl}`, 'env');
     addLog('info', `Full target URL: ${scraperServiceUrl}/api/scrape`, 'connection');
 
-    // Call the live scraper service
+    // Call the live scraper service with validated source names
     try {
       addLog('info', `Attempting to connect to scraper service...`, 'connection');
       
@@ -102,7 +150,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<TriggerSc
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          ...body,
+          sources: validSources // Use validated source names
+        }),
         // Add timeout to prevent hanging
         signal: AbortSignal.timeout(30000) // 30 second timeout
       });

@@ -11,7 +11,7 @@ export async function GET(): Promise<NextResponse> {
     const result = await query(`
       SELECT * FROM tags 
       WHERE is_active = true 
-      ORDER BY level ASC, name ASC
+      ORDER BY name ASC
     `);
 
     return NextResponse.json(result.rows);
