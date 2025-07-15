@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { scraperDb } from './database';
-import { NewsSource, SourceScrapingConfig } from './types';
+import { NewsSource } from './types';
 
 export interface SourceValidationResult {
   isValid: boolean;
@@ -39,26 +39,24 @@ export interface SourcePerformanceMetrics {
 export interface CreateSourceRequest {
   name: string;
   domain: string;
-  url: string;
   rssUrl: string;
-  description: string;
   category?: string;
-  scrapingConfig?: SourceScrapingConfig;
-  isActive?: boolean;
-  isEnabled?: boolean;
+  respectRobotsTxt?: boolean;
+  delayBetweenRequests?: number;
+  userAgent?: string;
+  timeoutMs?: number;
 }
 
 export interface UpdateSourceRequest {
   id: string;
   name?: string;
   domain?: string;
-  url?: string;
   rssUrl?: string;
-  description?: string;
   category?: string;
-  scrapingConfig?: SourceScrapingConfig;
-  isActive?: boolean;
-  isEnabled?: boolean;
+  respectRobotsTxt?: boolean;
+  delayBetweenRequests?: number;
+  userAgent?: string;
+  timeoutMs?: number;
 }
 
 /**
@@ -136,12 +134,11 @@ export class SourceManager extends EventEmitter {
       const sourceData: Omit<NewsSource, 'id'> = {
         name: request.name,
         domain: request.domain,
-        url: request.url,
-        description: request.description,
-        isActive: request.isActive ?? true,
         rssUrl: request.rssUrl,
-        scrapingConfig: request.scrapingConfig,
-        isEnabled: request.isEnabled ?? true
+        respectRobotsTxt: request.respectRobotsTxt ?? true,
+        delayBetweenRequests: request.delayBetweenRequests ?? 1000,
+        userAgent: request.userAgent ?? 'Veritas-Scraper/1.0',
+        timeoutMs: request.timeoutMs ?? 30000
       };
 
       const sourceId = await scraperDb.upsertSource(sourceData);
@@ -182,12 +179,11 @@ export class SourceManager extends EventEmitter {
       const updateData: Partial<NewsSource> = {};
       if (request.name !== undefined) updateData.name = request.name;
       if (request.domain !== undefined) updateData.domain = request.domain;
-      if (request.url !== undefined) updateData.url = request.url;
       if (request.rssUrl !== undefined) updateData.rssUrl = request.rssUrl;
-      if (request.description !== undefined) updateData.description = request.description;
-      if (request.scrapingConfig !== undefined) updateData.scrapingConfig = request.scrapingConfig;
-      if (request.isActive !== undefined) updateData.isActive = request.isActive;
-      if (request.isEnabled !== undefined) updateData.isEnabled = request.isEnabled;
+      if (request.respectRobotsTxt !== undefined) updateData.respectRobotsTxt = request.respectRobotsTxt;
+      if (request.delayBetweenRequests !== undefined) updateData.delayBetweenRequests = request.delayBetweenRequests;
+      if (request.userAgent !== undefined) updateData.userAgent = request.userAgent;
+      if (request.timeoutMs !== undefined) updateData.timeoutMs = request.timeoutMs;
 
       await this.updateSourceInDatabase(request.id, updateData);
       
@@ -279,21 +275,20 @@ export class SourceManager extends EventEmitter {
 
       const result = await scraperDb.query<any>(query, params);
       
-      return result.rows.map(row => ({
-        id: row.id,
-        name: row.name,
-        domain: row.domain,
-        url: row.url,
-        description: row.description,
-        iconUrl: row.icon_url,
-        isActive: row.is_active,
-        rssUrl: row.rss_url,
-        scrapingConfig: row.scraping_config ? JSON.parse(row.scraping_config) : undefined,
-        lastScrapedAt: row.last_scraped_at,
-        successRate: parseFloat(row.success_rate),
-        isEnabled: row.is_enabled,
-        createdAt: row.created_at
-      }));
+      return result.rows.map(row => {
+        return {
+          id: row.id,
+          name: row.name,
+          domain: row.domain,
+          iconUrl: row.icon_url,
+          rssUrl: row.rss_url,
+          respectRobotsTxt: row.respect_robots_txt,
+          delayBetweenRequests: row.delay_between_requests,
+          userAgent: row.user_agent,
+          timeoutMs: row.timeout_ms,
+          createdAt: row.created_at
+        };
+      });
 
     } catch (error) {
       console.error('[SourceManager] Failed to get all sources:', error);
@@ -320,21 +315,8 @@ export class SourceManager extends EventEmitter {
       errors.push('Source domain is required');
     }
 
-    if (!data.url || data.url.trim().length === 0) {
-      errors.push('Source URL is required');
-    }
-
     if (!data.rssUrl || data.rssUrl.trim().length === 0) {
       errors.push('RSS URL is required');
-    }
-
-    // URL validation
-    if (data.url) {
-      try {
-        new URL(data.url);
-      } catch {
-        errors.push('Invalid source URL format');
-      }
     }
 
     if (data.rssUrl) {
@@ -429,13 +411,12 @@ export class SourceManager extends EventEmitter {
       const sourceForValidation: CreateSourceRequest = {
         name: source.name,
         domain: source.domain,
-        url: source.url,
-        rssUrl: source.rssUrl || source.url,
-        description: source.description,
+        rssUrl: source.rssUrl || '',
         category: undefined,
-        scrapingConfig: source.scrapingConfig,
-        isActive: source.isActive,
-        isEnabled: source.isEnabled
+        respectRobotsTxt: source.respectRobotsTxt,
+        delayBetweenRequests: source.delayBetweenRequests,
+        userAgent: source.userAgent,
+        timeoutMs: source.timeoutMs
       };
       
       return await this.validateSourceData(sourceForValidation);
@@ -568,7 +549,7 @@ export class SourceManager extends EventEmitter {
         failedArticles: 8,
         duplicateArticles: 25,
         averageProcessingTime: 3500,
-        lastScrapedAt: source.lastScrapedAt,
+        lastScrapedAt: undefined, // No longer tracked in simplified schema
         createdAt: source.createdAt || new Date()
       };
 
@@ -608,34 +589,29 @@ export class SourceManager extends EventEmitter {
       values.push(updateData.domain);
     }
 
-    if (updateData.url !== undefined) {
-      updateFields.push(`url = $${paramIndex++}`);
-      values.push(updateData.url);
-    }
-
     if (updateData.rssUrl !== undefined) {
       updateFields.push(`rss_url = $${paramIndex++}`);
       values.push(updateData.rssUrl);
     }
 
-    if (updateData.description !== undefined) {
-      updateFields.push(`description = $${paramIndex++}`);
-      values.push(updateData.description);
+    if (updateData.respectRobotsTxt !== undefined) {
+      updateFields.push(`respect_robots_txt = $${paramIndex++}`);
+      values.push(updateData.respectRobotsTxt);
     }
 
-    if (updateData.scrapingConfig !== undefined) {
-      updateFields.push(`scraping_config = $${paramIndex++}`);
-      values.push(JSON.stringify(updateData.scrapingConfig));
+    if (updateData.delayBetweenRequests !== undefined) {
+      updateFields.push(`delay_between_requests = $${paramIndex++}`);
+      values.push(updateData.delayBetweenRequests);
     }
 
-    if (updateData.isActive !== undefined) {
-      updateFields.push(`is_active = $${paramIndex++}`);
-      values.push(updateData.isActive);
+    if (updateData.userAgent !== undefined) {
+      updateFields.push(`user_agent = $${paramIndex++}`);
+      values.push(updateData.userAgent);
     }
 
-    if (updateData.isEnabled !== undefined) {
-      updateFields.push(`is_enabled = $${paramIndex++}`);
-      values.push(updateData.isEnabled);
+    if (updateData.timeoutMs !== undefined) {
+      updateFields.push(`timeout_ms = $${paramIndex++}`);
+      values.push(updateData.timeoutMs);
     }
 
     if (updateFields.length === 0) {

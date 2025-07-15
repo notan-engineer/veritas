@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { query } from '@/lib/railway-database';
 
 // Type definitions for API responses
 interface ApiResponse<T = any> {
@@ -98,15 +99,61 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         });
       }
     } catch (error) {
-      console.log('Scraper service unavailable, no job tracking available');
+      console.log('Scraper service unavailable, falling back to database query');
     }
 
-    // Return empty result since no job tracking is implemented in current schema
-    return NextResponse.json({
-      success: true,
-      data: [],
-      message: 'No job history available - scraper service unavailable and job tracking not implemented'
-    });
+    // Fallback: Query database directly if scraper service is unavailable
+    try {
+      let dbQuery = `
+        SELECT 
+          id, triggered_at, completed_at, status, sources_requested, 
+          articles_per_source, total_articles_scraped, total_errors, job_logs,
+          EXTRACT(EPOCH FROM (COALESCE(completed_at, NOW()) - triggered_at)) as duration
+        FROM scraping_jobs 
+      `;
+      
+      const params: any[] = [];
+      if (status) {
+        dbQuery += ' WHERE status = $1';
+        params.push(status);
+      }
+      
+      dbQuery += ' ORDER BY triggered_at DESC LIMIT $' + (params.length + 1);
+      params.push(limit);
+      
+      if (offset > 0) {
+        dbQuery += ' OFFSET $' + (params.length + 1);
+        params.push(offset);
+      }
+      
+      const result = await query(dbQuery, params);
+      
+      const jobs = result.rows.map(row => ({
+        id: row.id,
+        triggeredAt: row.triggered_at,
+        completedAt: row.completed_at,
+        status: row.status,
+        sourcesRequested: row.sources_requested || [],
+        articlesPerSource: row.articles_per_source || 0,
+        totalArticlesScraped: row.total_articles_scraped || 0,
+        totalErrors: row.total_errors || 0,
+        duration: Math.floor(row.duration || 0)
+      }));
+
+      return NextResponse.json({
+        success: true,
+        data: jobs,
+        message: 'Job history retrieved from database (scraper service unavailable)'
+      });
+      
+    } catch (dbError) {
+      console.error('Database query failed:', dbError);
+      return NextResponse.json({
+        success: true,
+        data: [],
+        message: 'No job history available - both scraper service and database unavailable'
+      });
+    }
 
   } catch (error) {
     console.error('[Jobs API] GET error:', error);

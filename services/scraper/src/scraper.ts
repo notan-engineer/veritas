@@ -8,6 +8,7 @@ import { duplicateDetector } from './duplicate-detector';
 import { sourceManager } from './source-manager';
 import { resourceMonitor } from './resource-monitor';
 import { cleanupManager } from './cleanup-manager';
+import { enhancedLogger } from './enhanced-logger';
 import { 
   RSSItem, 
   ScrapedArticle, 
@@ -68,16 +69,27 @@ export class VeritasScraper {
    * Setup job manager integration
    */
   private setupJobManagerIntegration(): void {
+    console.log('[VeritasScraper] Setting up job manager integration and event listeners');
+    
     // Listen for source processing requests from job manager
     jobManager.on('process-source', async (jobId: string, sourceName: string) => {
+      console.log(`[VeritasScraper] Received process-source event for job ${jobId}, source: ${sourceName}`);
       this.currentJobId = jobId;
+      
       try {
+        console.log(`[VeritasScraper] Starting processSingleSource for ${sourceName}`);
         await this.processSingleSource(sourceName);
+        console.log(`[VeritasScraper] Successfully processed source ${sourceName}, signaling completion`);
         await jobManager.signalSourceCompleted(jobId, sourceName);
+        console.log(`[VeritasScraper] Signaled completion for source ${sourceName}`);
       } catch (error) {
+        console.error(`[VeritasScraper] Error processing source ${sourceName}:`, error);
         await jobManager.signalSourceCompleted(jobId, sourceName, error instanceof Error ? error : new Error('Unknown error'));
+        console.log(`[VeritasScraper] Signaled completion with error for source ${sourceName}`);
       }
     });
+    
+    console.log('[VeritasScraper] Job manager integration completed');
   }
 
   /**
@@ -237,19 +249,43 @@ export class VeritasScraper {
    * Process RSS feed for a single source with enhanced capabilities
    */
   private async processSingleSource(sourceName: string): Promise<void> {
-    // Get active sources from source manager
-    const allSources = await sourceManager.getAllSources({ 
-      activeOnly: true, 
-      enabledOnly: true 
-    });
+    console.log(`[VeritasScraper] Starting processSingleSource for: ${sourceName}`);
     
-    const source = allSources.find(s => 
-      s.name.toLowerCase() === sourceName.toLowerCase() || 
-      s.domain.includes(sourceName.toLowerCase())
-    );
+    const startTime = Date.now();
+    let source;
+    
+    try {
+      // Get active sources from source manager
+      console.log(`[VeritasScraper] Fetching all sources from source manager...`);
+      const allSources = await sourceManager.getAllSources({ 
+        activeOnly: true, 
+        enabledOnly: true 
+      });
+      
+      console.log(`[VeritasScraper] Found ${allSources.length} active sources`);
+      
+      source = allSources.find(s => 
+        s.name.toLowerCase() === sourceName.toLowerCase() || 
+        s.domain.includes(sourceName.toLowerCase())
+      );
 
-    if (!source) {
-      console.log(`[VeritasScraper] Source not found: ${sourceName}`);
+      if (!source) {
+        console.error(`[VeritasScraper] Source not found: ${sourceName}. Available sources: ${allSources.map(s => s.name).join(', ')}`);
+        return;
+      }
+
+      console.log(`[VeritasScraper] Found source: ${source.name} (${source.domain}), RSS URL: ${source.rssUrl}`);
+      
+      // Enhanced logging for source start
+      await enhancedLogger.logSourceStart(
+        this.currentJobId || 'unknown',
+        source.id || 'unknown',
+        source.name,
+        source.rssUrl || ''
+      );
+      
+    } catch (error) {
+      console.error(`[VeritasScraper] Error in source lookup for ${sourceName}:`, error);
       return;
     }
 
@@ -257,8 +293,24 @@ export class VeritasScraper {
 
     try {
       // Parse RSS feed
-      const feed = await this.rssParser.parseURL(source.rssUrl || source.url);
+      const rssStartTime = Date.now();
+      const rssUrl = source.rssUrl || '';
+      if (!rssUrl) {
+        throw new Error(`No RSS URL configured for source ${source.name}`);
+      }
+      const feed = await this.rssParser.parseURL(rssUrl);
+      const rssDuration = Date.now() - rssStartTime;
+      
       console.log(`[VeritasScraper] RSS feed parsed. Found ${feed.items.length} items from ${source.domain}`);
+      
+      // Enhanced logging for RSS parse result
+      await enhancedLogger.logRSSParseResult(
+        this.currentJobId || 'unknown',
+        source.id || 'unknown',
+        source.name,
+        feed.items.length,
+        rssDuration
+      );
 
       // Get database source
       const dbSource = await scraperDb.getSourceByDomain(source.domain);
@@ -340,7 +392,18 @@ export class VeritasScraper {
       }
 
     } catch (error) {
+      const duration = Date.now() - startTime;
       console.error(`[VeritasScraper] Failed to process source ${source.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Enhanced logging for RSS parse error
+      await enhancedLogger.logRSSParseResult(
+        this.currentJobId || 'unknown',
+        source.id || 'unknown',
+        source.name,
+        0,
+        duration,
+        error instanceof Error ? error : new Error('Unknown error')
+      );
       
       // Update job progress with error
       if (this.currentJobId) {

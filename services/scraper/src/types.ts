@@ -36,16 +36,13 @@ export interface NewsSource {
   id?: string
   name: string
   domain: string
-  url: string
-  description: string
   iconUrl?: string
-  isActive: boolean
-  // Enhanced source management fields
   rssUrl?: string
-  scrapingConfig?: SourceScrapingConfig
-  lastScrapedAt?: Date
-  successRate?: number
-  isEnabled?: boolean
+  // Flattened scraping config fields
+  respectRobotsTxt?: boolean
+  delayBetweenRequests?: number
+  userAgent?: string
+  timeoutMs?: number
   createdAt?: Date
 }
 
@@ -101,14 +98,8 @@ export interface ScrapingConfig {
   respectRobotsTxt: boolean
 }
 
-// Enhanced interfaces for new schema
-export interface SourceScrapingConfig {
-  maxArticles?: number
-  respectRobotsTxt?: boolean
-  delayBetweenRequests?: number
-  userAgent?: string
-  timeout?: number
-}
+// Scraping configuration is now flattened into NewsSource interface
+// maxArticles is now dynamic based on user input, not stored in database
 
 export interface CrawleeClassification {
   contentType: string

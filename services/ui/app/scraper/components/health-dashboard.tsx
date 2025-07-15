@@ -149,10 +149,10 @@ export function HealthDashboard() {
         const runningJobs = enhancedJobHistory.filter((job: JobHistory) => job.status === 'running');
         if (runningJobs.length > 0) {
           console.log(`[Health Dashboard] ${runningJobs.length} jobs currently running`);
-          // Increase polling frequency for running jobs
-          setPollingInterval(5000); // 5 seconds for active jobs
+          // Reduce polling frequency - less aggressive
+          setPollingInterval(15000); // 15 seconds for active jobs
         } else {
-          setPollingInterval(30000); // 30 seconds for normal monitoring
+          setPollingInterval(60000); // 60 seconds for normal monitoring
         }
 
         setJobHistory(enhancedJobHistory);
@@ -212,44 +212,7 @@ export function HealthDashboard() {
     return () => clearInterval(interval);
   }, [pollingInterval]);
 
-  // Real-time job status streaming
-  useEffect(() => {
-    const streamJobStatus = async () => {
-      try {
-        const response = await fetch('/api/scraper/jobs?status=running');
-        const result = await response.json();
-        
-        if (result.success && result.data.length > 0) {
-          const runningJobs: JobHistory[] = result.data;
-          
-          // Update job history with latest status
-          setJobHistory(prev => 
-            prev.map(job => {
-              const updatedJob = runningJobs.find((rj: JobHistory) => rj.id === job.id);
-              return updatedJob || job;
-            })
-          );
-          
-          // Show notification for new jobs
-          runningJobs.forEach((job: JobHistory) => {
-            if (!jobHistory.some((j: JobHistory) => j.id === job.id)) {
-              setNotification({
-                type: 'info',
-                message: `New job started: ${job.id}`,
-                timestamp: new Date().toISOString()
-              });
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error streaming job status:', error);
-      }
-    };
-
-    // Stream job status more frequently
-    const statusInterval = setInterval(streamJobStatus, 10000); // 10 seconds
-    return () => clearInterval(statusInterval);
-  }, [jobHistory]);
+  // Removed separate job status streaming - now handled in main dashboard data loading
 
   // Error notification system
   useEffect(() => {
@@ -278,7 +241,7 @@ export function HealthDashboard() {
       }
     };
 
-    const errorInterval = setInterval(checkForErrors, 15000); // 15 seconds
+    const errorInterval = setInterval(checkForErrors, 45000); // 45 seconds - less aggressive
     return () => clearInterval(errorInterval);
   }, [lastErrorNotification]);
 
@@ -332,6 +295,46 @@ export function HealthDashboard() {
     } catch (error) {
       console.error('Error copying logs:', error);
       alert('Error copying logs');
+    }
+  };
+
+  const cancelJob = async (jobId: string) => {
+    if (!confirm('Are you sure you want to stop this job?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/scraper/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'cancel',
+          jobId
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setNotification({
+          type: 'info',
+          message: `Job ${jobId} cancelled successfully`,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Refresh job history to show updated status
+        setTimeout(() => {
+          // Trigger a refresh by resetting polling interval
+          setPollingInterval(5000);
+        }, 1000);
+      } else {
+        alert(`Failed to cancel job: ${result.error || result.message}`);
+      }
+    } catch (error) {
+      console.error('Error cancelling job:', error);
+      alert('Error cancelling job');
     }
   };
 
@@ -490,6 +493,16 @@ export function HealthDashboard() {
                           >
                             <Eye className="h-3 w-3" />
                           </Button>
+                          {job.status === 'running' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => cancelJob(job.id)}
+                              title="Stop job"
+                            >
+                              <XCircle className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

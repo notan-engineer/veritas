@@ -73,15 +73,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       const conditions: string[] = [];
       const params: any[] = [];
       
-      if (activeOnly) {
-        conditions.push('is_active = $' + (params.length + 1));
-        params.push(true);
-      }
-      
-      if (enabledOnly) {
-        conditions.push('is_active = $' + (params.length + 1));
-        params.push(true);
-      }
+      // Note: activeOnly and enabledOnly filters removed as we no longer track active/enabled status
+      // All sources in the database are considered active
       
       if (category) {
         conditions.push('name ILIKE $' + (params.length + 1));
@@ -96,18 +89,20 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       
       const result = await railwayDb.query(query, params);
       
-      // Transform database results to match expected interface
+      // Transform database results to match expected interface using simplified schema
       sources = result.rows.map((row: any) => ({
         id: row.id,
         name: row.name,
         domain: row.domain,
-        url: row.url,
-        description: row.description,
-        rssUrl: row.url, // Use main URL as RSS URL for now
-        isActive: row.is_active,
-        isEnabled: row.is_active, // Map is_active to isEnabled
-        successRate: 95.0, // Default success rate
-        lastScrapedAt: row.created_at,
+        rssUrl: row.rss_url,
+        respectRobotsTxt: row.respect_robots_txt || true,
+        delayBetweenRequests: row.delay_between_requests || 1000,
+        userAgent: row.user_agent || 'Veritas-Scraper/1.0',
+        timeoutMs: row.timeout_ms || 30000,
+        isActive: true, // All sources in DB are considered active in simplified schema
+        isEnabled: true, // All sources in DB are considered enabled in simplified schema
+        successRate: 95.0, // Default success rate (no longer tracked)
+        lastScrapedAt: undefined, // No longer tracked in simplified schema
         createdAt: row.created_at
       }));
     } catch (dbError) {
@@ -192,8 +187,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
   try {
     const body = await request.json();
     
-    // Validate required fields
-    const requiredFields = ['name', 'domain', 'url', 'description'];
+    // Validate required fields for simplified schema
+    const requiredFields = ['name', 'domain', 'rssUrl'];
     const missingFields = requiredFields.filter(field => !body[field]);
     
     if (missingFields.length > 0) {
@@ -203,15 +198,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       }, { status: 400 });
     }
 
-    // Create source in database
+    // Create source in database using simplified schema
     try {
       const { railwayDb } = await import('@/lib/railway-database');
       
       const result = await railwayDb.query(
-        `INSERT INTO sources (name, domain, url, description, is_active) 
-         VALUES ($1, $2, $3, $4, $5) 
+        `INSERT INTO sources (name, domain, rss_url, respect_robots_txt, delay_between_requests, user_agent, timeout_ms) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) 
          RETURNING id`,
-        [body.name, body.domain, body.url, body.description, body.isActive !== false]
+        [
+          body.name, 
+          body.domain, 
+          body.rssUrl, 
+          body.respectRobotsTxt !== false, // Default to true
+          body.delayBetweenRequests || 1000, // Default to 1000ms
+          body.userAgent || 'Veritas-Scraper/1.0', // Default user agent
+          body.timeoutMs || 30000 // Default to 30 seconds
+        ]
       );
       
       const sourceId = result.rows[0].id;
@@ -261,16 +264,26 @@ export async function PUT(request: NextRequest): Promise<NextResponse<ApiRespons
       }, { status: 400 });
     }
 
-    // Update source in database
+    // Update source in database using simplified schema
     try {
       const { railwayDb } = await import('@/lib/railway-database');
       
       const result = await railwayDb.query(
         `UPDATE sources 
-         SET name = $1, domain = $2, url = $3, description = $4, is_active = $5
-         WHERE id = $6
+         SET name = $1, domain = $2, rss_url = $3, respect_robots_txt = $4, 
+             delay_between_requests = $5, user_agent = $6, timeout_ms = $7
+         WHERE id = $8
          RETURNING id`,
-        [body.name, body.domain, body.url, body.description, body.isActive !== false, body.id]
+        [
+          body.name, 
+          body.domain, 
+          body.rssUrl, 
+          body.respectRobotsTxt !== false, // Default to true
+          body.delayBetweenRequests || 1000, // Default to 1000ms
+          body.userAgent || 'Veritas-Scraper/1.0', // Default user agent
+          body.timeoutMs || 30000, // Default to 30 seconds
+          body.id
+        ]
       );
       
       if (result.rows.length === 0) {
