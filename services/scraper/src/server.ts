@@ -500,7 +500,7 @@ app.get('/api/monitoring/services', async (req, res) => {
       services.sourceManager = {
         status: 'healthy',
         activeSources: sources.length,
-        enabledSources: sources.filter(s => s.isEnabled).length
+        enabledSources: sources.length
       };
     } catch (error) {
       services.sourceManager = {
@@ -622,6 +622,95 @@ app.post('/api/scrape', async (req, res): Promise<void> => {
     
     console.log(`[${timestamp}] Error response: ${JSON.stringify(errorResponse)}`);
     res.status(500).json(errorResponse);
+  }
+});
+
+// Jobs endpoint - Get all jobs
+app.get('/api/jobs', async (req, res) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] Jobs list requested`);
+  
+  try {
+    const { status } = req.query;
+    
+    let query = `
+      SELECT 
+        id, triggered_at, completed_at, status, sources_requested, 
+        articles_per_source, total_articles_scraped, total_errors, job_logs,
+        EXTRACT(EPOCH FROM (COALESCE(completed_at, NOW()) - triggered_at)) as duration
+      FROM scraping_jobs 
+    `;
+    
+    const params: any[] = [];
+    if (status) {
+      query += ' WHERE status = $1';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY triggered_at DESC LIMIT 50';
+    
+    const result = await scraperDb.query(query, params);
+    
+    const jobs = result.rows.map(row => ({
+      id: row.id,
+      triggeredAt: row.triggered_at,
+      completedAt: row.completed_at,
+      status: row.status,
+      sourcesRequested: row.sources_requested || [],
+      articlesPerSource: row.articles_per_source || 0,
+      totalArticlesScraped: row.total_articles_scraped || 0,
+      totalErrors: row.total_errors || 0,
+      duration: Math.floor(row.duration || 0)
+    }));
+    
+    console.log(`[${timestamp}] Retrieved ${jobs.length} jobs`);
+    
+    res.json({
+      success: true,
+      jobs,
+      total: jobs.length
+    });
+    
+  } catch (error) {
+    console.error(`[${timestamp}] Failed to retrieve jobs:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve jobs',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Cancel job endpoint
+app.post('/api/jobs/:jobId/cancel', async (req, res) => {
+  const timestamp = new Date().toISOString();
+  const { jobId } = req.params;
+  console.log(`[${timestamp}] Job cancellation requested for: ${jobId}`);
+  
+  try {
+    // Update job status to cancelled
+    await scraperDb.updateScrapingJob(jobId, {
+      status: 'cancelled',
+      completedAt: new Date()
+    });
+    
+    // Abort active job if it exists
+    await jobManager.abortJob(jobId);
+    
+    console.log(`[${timestamp}] Job ${jobId} cancelled successfully`);
+    
+    res.json({
+      success: true,
+      message: `Job ${jobId} cancelled successfully`
+    });
+    
+  } catch (error) {
+    console.error(`[${timestamp}] Failed to cancel job ${jobId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel job',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

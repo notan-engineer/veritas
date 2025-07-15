@@ -25,13 +25,11 @@ interface Source {
   id: string;
   name: string;
   domain: string;
-  url: string;
   rssUrl: string;
-  description: string;
-  isActive: boolean;
-  isEnabled: boolean;
-  successRate: number;
-  lastScrapedAt?: string;
+  respectRobotsTxt: boolean;
+  delayBetweenRequests: number;
+  userAgent: string;
+  timeoutMs: number;
   createdAt: string;
   health?: {
     isHealthy: boolean;
@@ -44,11 +42,11 @@ interface Source {
 interface SourceFormData {
   name: string;
   domain: string;
-  url: string;
   rssUrl: string;
-  description: string;
-  isActive: boolean;
-  isEnabled: boolean;
+  respectRobotsTxt: boolean;
+  delayBetweenRequests: number;
+  userAgent: string;
+  timeoutMs: number;
 }
 
 export function SourceManagement() {
@@ -59,11 +57,11 @@ export function SourceManagement() {
   const [formData, setFormData] = useState<SourceFormData>({
     name: '',
     domain: '',
-    url: '',
     rssUrl: '',
-    description: '',
-    isActive: true,
-    isEnabled: true
+    respectRobotsTxt: true,
+    delayBetweenRequests: 1000,
+    userAgent: 'Veritas-Scraper/1.0',
+    timeoutMs: 30000
   });
   const [formLoading, setFormLoading] = useState(false);
 
@@ -95,11 +93,11 @@ export function SourceManagement() {
     setFormData({
       name: '',
       domain: '',
-      url: '',
       rssUrl: '',
-      description: '',
-      isActive: true,
-      isEnabled: true
+      respectRobotsTxt: true,
+      delayBetweenRequests: 1000,
+      userAgent: 'Veritas-Scraper/1.0',
+      timeoutMs: 30000
     });
     setIsFormOpen(true);
   };
@@ -109,11 +107,11 @@ export function SourceManagement() {
     setFormData({
       name: source.name,
       domain: source.domain,
-      url: source.url,
       rssUrl: source.rssUrl,
-      description: source.description,
-      isActive: source.isActive,
-      isEnabled: source.isEnabled
+      respectRobotsTxt: source.respectRobotsTxt,
+      delayBetweenRequests: source.delayBetweenRequests,
+      userAgent: source.userAgent,
+      timeoutMs: source.timeoutMs
     });
     setIsFormOpen(true);
   };
@@ -230,115 +228,155 @@ export function SourceManagement() {
         </Button>
       </div>
 
-      {/* Sources Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sources.map((source) => (
-          <Card key={source.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{source.name}</span>
-                    {getHealthBadge(source)}
-                  </div>
-                  
-                  <div className="text-sm text-muted-foreground mb-2">
-                    {source.domain}
-                  </div>
-                  
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant={source.isEnabled ? "default" : "secondary"}>
-                      {source.isEnabled ? 'Enabled' : 'Disabled'}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {source.successRate.toFixed(1)}% success
-                    </Badge>
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {source.description}
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-1 ml-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEditSource(source)}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteSource(source.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="pt-0">
-              {/* Health Metrics */}
-              {source.health && (
-                <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                  <div>
-                    <div className="text-muted-foreground">Response Time</div>
-                    <div className="font-medium">{source.health.averageResponseTime}ms</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground">Total Scrapes</div>
-                    <div className="font-medium">{source.health.totalScrapes}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground">Error Count</div>
-                    <div className="font-medium">{source.health.errorCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground">Last Scraped</div>
-                    <div className="font-medium">
-                      {source.lastScrapedAt ? formatDate(source.lastScrapedAt) : 'Never'}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
+      {/* Sources Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Sources ({sources.length})</CardTitle>
+          <CardDescription>
+            Active news sources with health metrics and status
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {sources.length === 0 ? (
+            <div className="text-center py-8">
+              <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No sources available</h3>
+              <p className="text-muted-foreground mb-4">
+                Add your first news source to start scraping content
+              </p>
+              <Button onClick={handleCreateSource}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Source
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-2 font-medium text-sm">Source</th>
+                    <th className="text-left py-3 px-2 font-medium text-sm">Domain</th>
+                    <th className="text-left py-3 px-2 font-medium text-sm">Status</th>
+                    <th className="text-left py-3 px-2 font-medium text-sm">Health</th>
+                    <th className="text-left py-3 px-2 font-medium text-sm">Success Rate</th>
+                    <th className="text-left py-3 px-2 font-medium text-sm">Response Time</th>
+                    <th className="text-left py-3 px-2 font-medium text-sm">Last Scraped</th>
+                    <th className="text-right py-3 px-2 font-medium text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {sources.map((source) => (
+                    <tr key={source.id} className="hover:bg-muted/50">
+                      <td className="py-3 px-2">
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium text-sm">{source.name}</div>
+                            <div className="text-xs text-muted-foreground line-clamp-1">
+                              RSS Feed Source
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="text-sm">{source.domain}</div>
+                        <div className="text-xs text-muted-foreground">
+                          <a 
+                            href={source.rssUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:underline inline-flex items-center gap-1"
+                          >
+                            RSS Feed <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <Badge variant="default" className="text-xs">
+                          Active
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-2">
+                        {getHealthBadge(source)}
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="text-sm font-medium">
+                          N/A
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="text-sm">
+                          {source.health ? `${source.health.averageResponseTime}ms` : 'N/A'}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Never</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSource(source)}
+                            title="Edit source"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteSource(source.id)}
+                            title="Delete source"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-              
-              {/* Links */}
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" asChild>
-                  <a href={source.url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Site
-                  </a>
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={source.rssUrl} target="_blank" rel="noopener noreferrer">
-                    <Activity className="h-3 w-3 mr-1" />
-                    RSS
-                  </a>
-                </Button>
+      {/* Additional source metrics card if needed */}
+      {sources.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Source Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <div className="text-2xl font-bold">{sources.length}</div>
+                <div className="text-sm text-muted-foreground">Total Sources</div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-        
-        {sources.length === 0 && (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            <Settings className="h-12 w-12 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No sources configured</h3>
-            <p className="text-sm mb-4">Add your first news source to start scraping content</p>
-            <Button onClick={handleCreateSource}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Source
-            </Button>
-          </div>
-        )}
-      </div>
+              <div>
+                <div className="text-2xl font-bold text-green-600">
+                  {sources.length}
+                </div>
+                <div className="text-sm text-muted-foreground">Active</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  {sources.filter(s => s.health?.isHealthy).length}
+                </div>
+                <div className="text-sm text-muted-foreground">Healthy</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  N/A
+                </div>
+                <div className="text-sm text-muted-foreground">Avg Success Rate</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Source Form Modal */}
       {isFormOpen && (
@@ -361,6 +399,7 @@ export function SourceManagement() {
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                    placeholder="CNN News"
                     required
                   />
                 </div>
@@ -372,19 +411,7 @@ export function SourceManagement() {
                     value={formData.domain}
                     onChange={(e) => setFormData({...formData, domain: e.target.value})}
                     className="w-full px-3 py-2 border border-border rounded-md text-sm"
-                    placeholder="example.com"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Website URL</label>
-                  <input
-                    type="url"
-                    value={formData.url}
-                    onChange={(e) => setFormData({...formData, url: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
-                    placeholder="https://example.com"
+                    placeholder="cnn.com"
                     required
                   />
                 </div>
@@ -396,44 +423,60 @@ export function SourceManagement() {
                     value={formData.rssUrl}
                     onChange={(e) => setFormData({...formData, rssUrl: e.target.value})}
                     className="w-full px-3 py-2 border border-border rounded-md text-sm"
-                    placeholder="https://example.com/rss"
+                    placeholder="https://feeds.cnn.com/rss/edition.rss"
                     required
                   />
                 </div>
                 
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
-                    rows={3}
-                    placeholder="Brief description of the news source"
-                    required
-                  />
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">User Agent</label>
                     <input
-                      type="checkbox"
-                      id="isActive"
-                      checked={formData.isActive}
-                      onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
-                      className="rounded"
+                      type="text"
+                      value={formData.userAgent}
+                      onChange={(e) => setFormData({...formData, userAgent: e.target.value})}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                      placeholder="Veritas-Scraper/1.0"
                     />
-                    <label htmlFor="isActive" className="text-sm">Active</label>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Timeout (ms)</label>
+                    <input
+                      type="number"
+                      value={formData.timeoutMs}
+                      onChange={(e) => setFormData({...formData, timeoutMs: parseInt(e.target.value) || 30000})}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                      min="1000"
+                      max="60000"
+                      placeholder="30000"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Delay Between Requests (ms)</label>
+                    <input
+                      type="number"
+                      value={formData.delayBetweenRequests}
+                      onChange={(e) => setFormData({...formData, delayBetweenRequests: parseInt(e.target.value) || 1000})}
+                      className="w-full px-3 py-2 border border-border rounded-md text-sm"
+                      min="0"
+                      max="10000"
+                      placeholder="1000"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2 pt-6">
                     <input
                       type="checkbox"
-                      id="isEnabled"
-                      checked={formData.isEnabled}
-                      onChange={(e) => setFormData({...formData, isEnabled: e.target.checked})}
+                      id="respectRobotsTxt"
+                      checked={formData.respectRobotsTxt}
+                      onChange={(e) => setFormData({...formData, respectRobotsTxt: e.target.checked})}
                       className="rounded"
                     />
-                    <label htmlFor="isEnabled" className="text-sm">Enabled</label>
+                    <label htmlFor="respectRobotsTxt" className="text-sm">Respect robots.txt</label>
                   </div>
                 </div>
                 

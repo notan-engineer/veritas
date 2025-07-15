@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +12,49 @@ interface ScrapingLogDisplay {
   message: string;
 }
 
+interface NewsSource {
+  id: string;
+  name: string;
+  domain: string;
+  isActive: boolean;
+  isEnabled: boolean;
+}
+
 export default function SettingsPage() {
   const [isScraping, setIsScraping] = useState(false);
   const [scrapingLogs, setScrapingLogs] = useState<string[]>([]);
   const [lastScrapingResult, setLastScrapingResult] = useState<string>('');
+  const [availableSources, setAvailableSources] = useState<NewsSource[]>([]);
+  const [loadingSources, setLoadingSources] = useState(true);
+
+  // Fetch available sources from database
+  useEffect(() => {
+    const fetchSources = async () => {
+      try {
+        const response = await fetch('/api/scraper/sources');
+        const result = await response.json();
+        
+        if (result.success && result.data?.sources) {
+          // Only show active and enabled sources
+          const activeSources = result.data.sources.filter((source: NewsSource) => 
+            source.isActive && source.isEnabled
+          );
+          setAvailableSources(activeSources);
+        } else {
+          console.error('Failed to fetch sources:', result.message);
+          // Fallback to empty array if sources can't be loaded
+          setAvailableSources([]);
+        }
+      } catch (error) {
+        console.error('Error fetching sources:', error);
+        setAvailableSources([]);
+      } finally {
+        setLoadingSources(false);
+      }
+    };
+
+    fetchSources();
+  }, []);
 
   const triggerScraping = async (sources: string[]) => {
     setIsScraping(true);
@@ -185,34 +224,50 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2">
-            <Button 
-              onClick={() => triggerScraping(['cnn'])}
-              disabled={isScraping}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              {isScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Scrape CNN
-            </Button>
-            <Button 
-              onClick={() => triggerScraping(['foxnews'])}
-              disabled={isScraping}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              {isScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Scrape Fox News
-            </Button>
-            <Button 
-              onClick={() => triggerScraping(['cnn', 'foxnews'])}
-              disabled={isScraping}
-              className="md:col-span-2 flex items-center gap-2"
-            >
-              {isScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Scrape All Sources
-            </Button>
-          </div>
+          {loadingSources ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading sources...</span>
+            </div>
+          ) : availableSources.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground">
+                No active sources available. Visit the{' '}
+                <Link href="/scraper?tab=sources" className="text-primary hover:underline">
+                  Scraper Sources section
+                </Link>{' '}
+                to add sources.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {/* Individual source buttons - first few sources */}
+              <div className="grid gap-3 md:grid-cols-2">
+                {availableSources.slice(0, 2).map((source) => (
+                  <Button 
+                    key={source.id}
+                    onClick={() => triggerScraping([source.name])}
+                    disabled={isScraping}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    {isScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    Scrape {source.name}
+                  </Button>
+                ))}
+              </div>
+              
+              {/* Scrape all sources button */}
+              <Button 
+                onClick={() => triggerScraping(availableSources.map(s => s.name))}
+                disabled={isScraping || availableSources.length === 0}
+                className="w-full flex items-center gap-2"
+              >
+                {isScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Scrape All Sources ({availableSources.length})
+              </Button>
+            </div>
+          )}
           
           {lastScrapingResult && (
             <div className="mt-4 p-3 bg-background rounded-lg">
@@ -235,9 +290,14 @@ export default function SettingsPage() {
           )}
           
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">CNN RSS</Badge>
-            <Badge variant="outline">Fox News RSS</Badge>
-            <Badge variant="outline">Mock Mode</Badge>
+            {availableSources.map((source) => (
+              <Badge key={source.id} variant="outline">
+                {source.name}
+              </Badge>
+            ))}
+            {availableSources.length === 0 && !loadingSources && (
+              <Badge variant="outline">No Sources</Badge>
+            )}
           </div>
         </CardContent>
       </Card>

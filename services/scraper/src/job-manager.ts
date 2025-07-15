@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import { scraperDb } from './database';
+import { enhancedLogger } from './enhanced-logger';
 import { 
   EnhancedScrapingJob, 
   ScrapingLogEntry, 
@@ -69,6 +70,9 @@ export class JobManager extends EventEmitter {
 
     const dbJobId = await scraperDb.createScrapingJob(job);
     
+    // Enhanced logging for job start
+    await enhancedLogger.logJobStart(dbJobId, request.sources, request.maxArticles || 3);
+    
     // Add to queue
     const queueItem: JobQueueItem = {
       jobId: dbJobId,
@@ -84,6 +88,10 @@ export class JobManager extends EventEmitter {
     await this.logJobActivity(dbJobId, 'info', `Job queued with ${request.sources.length} sources`);
     
     this.emit('job-queued', queueItem);
+    
+    // Start processing queue immediately
+    setImmediate(() => this.processQueue());
+    
     return dbJobId;
   }
 
@@ -91,11 +99,19 @@ export class JobManager extends EventEmitter {
    * Process job queue
    */
   private async processQueue(): Promise<void> {
+    console.log(`[JobManager] Processing queue - isProcessing: ${this.isProcessing}, queueLength: ${this.jobQueue.length}, activeJobs: ${this.activeJobs.size}`);
+    
     if (this.isProcessing || this.jobQueue.length === 0) {
+      if (this.isProcessing) {
+        console.log('[JobManager] Already processing, skipping queue processing');
+      } else {
+        console.log('[JobManager] Queue is empty, nothing to process');
+      }
       return;
     }
 
     if (this.activeJobs.size >= this.maxConcurrentJobs) {
+      console.log(`[JobManager] Max concurrent jobs reached (${this.activeJobs.size}/${this.maxConcurrentJobs})`);
       await this.logSystemActivity('warning', 'Job queue full - waiting for available slots');
       return;
     }
@@ -104,18 +120,25 @@ export class JobManager extends EventEmitter {
     const nextJob = this.jobQueue.shift();
     
     if (!nextJob) {
+      console.log('[JobManager] No job found in queue after shift');
       this.isProcessing = false;
       return;
     }
 
+    console.log(`[JobManager] Starting execution of job ${nextJob.jobId} with ${nextJob.request.sources.length} sources`);
+    
     try {
       await this.executeJob(nextJob);
+      console.log(`[JobManager] Job ${nextJob.jobId} execution completed successfully`);
     } catch (error) {
+      console.error(`[JobManager] Job ${nextJob.jobId} execution failed:`, error);
       await this.handleJobExecutionError(nextJob, error);
     } finally {
       this.isProcessing = false;
+      console.log(`[JobManager] Queue processing finished - remaining jobs: ${this.jobQueue.length}`);
       // Continue processing queue if more jobs available
       if (this.jobQueue.length > 0) {
+        console.log('[JobManager] More jobs in queue, scheduling next processing');
         setImmediate(() => this.processQueue());
       }
     }
@@ -145,27 +168,36 @@ export class JobManager extends EventEmitter {
       });
 
       // Process each source
+      console.log(`[JobManager] Processing ${queueItem.request.sources.length} sources for job ${queueItem.jobId}`);
       for (const source of queueItem.request.sources) {
         if (context.isAborted) {
+          console.log(`[JobManager] Job ${queueItem.jobId} aborted during source processing`);
           await this.logJobActivity(queueItem.jobId, 'warning', 'Job execution aborted');
           break;
         }
 
         context.currentSource = source;
+        console.log(`[JobManager] Starting processing of source: ${source} for job ${queueItem.jobId}`);
         await this.logJobActivity(queueItem.jobId, 'info', `Processing source: ${source}`);
 
         try {
           // This will be called by the enhanced scraper
+          console.log(`[JobManager] Emitting process-source event for ${source}`);
           this.emit('process-source', queueItem.jobId, source);
           
           // Wait for source processing to complete
+          console.log(`[JobManager] Waiting for source processing to complete: ${source}`);
           await this.waitForSourceProcessing(queueItem.jobId, source);
+          console.log(`[JobManager] Source processing completed for: ${source}`);
           
         } catch (error) {
           context.errorsEncountered++;
+          console.error(`[JobManager] Source processing failed for ${source}:`, error);
           await this.logJobActivity(queueItem.jobId, 'error', `Source processing failed: ${source}`, error);
         }
       }
+      
+      console.log(`[JobManager] Finished processing all sources for job ${queueItem.jobId}`);
 
       // Complete job
       await this.completeJob(queueItem.jobId, context);
@@ -218,6 +250,16 @@ export class JobManager extends EventEmitter {
       jobLogs: `Job completed successfully in ${duration}ms`
     });
 
+    // Enhanced logging for job completion
+    await enhancedLogger.logJobComplete(
+      jobId,
+      true,
+      duration,
+      context.articlesProcessed,
+      context.articlesProcessed, // Assuming all processed articles are stored
+      context.errorsEncountered
+    );
+
     await this.logJobActivity(jobId, 'info', `Job completed: ${context.articlesProcessed} articles, ${context.errorsEncountered} errors`);
     
     this.emit('job-completed', jobId, context);
@@ -228,6 +270,7 @@ export class JobManager extends EventEmitter {
    */
   private async failJob(jobId: string, context: JobExecutionContext, error: unknown): Promise<void> {
     const completedAt = new Date();
+    const duration = completedAt.getTime() - context.startTime.getTime();
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     await scraperDb.updateScrapingJob(jobId, {
@@ -237,6 +280,16 @@ export class JobManager extends EventEmitter {
       totalErrors: context.errorsEncountered + 1,
       jobLogs: `Job failed: ${errorMessage}`
     });
+
+    // Enhanced logging for job failure
+    await enhancedLogger.logJobComplete(
+      jobId,
+      false,
+      duration,
+      context.articlesProcessed,
+      context.articlesProcessed,
+      context.errorsEncountered + 1
+    );
 
     await this.logJobActivity(jobId, 'error', `Job failed: ${errorMessage}`, error);
     

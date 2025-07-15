@@ -3,8 +3,7 @@ import {
   NewsSource, 
   ScrapedContent, 
   EnhancedScrapingJob, 
-  ScrapingLogEntry, 
-  SourceScrapingConfig,
+  ScrapingLogEntry,
   CrawleeClassification 
 } from './types';
 
@@ -555,17 +554,27 @@ class ScraperDatabase {
    */
   async upsertSource(source: Omit<NewsSource, 'id'>): Promise<number> {
     const query = `
-      INSERT INTO sources (name, domain, url, description, is_active)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO sources (name, domain, rss_url, respect_robots_txt, delay_between_requests, user_agent, timeout_ms)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (domain) DO UPDATE SET
         name = EXCLUDED.name,
-        url = EXCLUDED.url,
-        description = EXCLUDED.description,
-        is_active = EXCLUDED.is_active
+        rss_url = EXCLUDED.rss_url,
+        respect_robots_txt = EXCLUDED.respect_robots_txt,
+        delay_between_requests = EXCLUDED.delay_between_requests,
+        user_agent = EXCLUDED.user_agent,
+        timeout_ms = EXCLUDED.timeout_ms
       RETURNING id
     `;
     
-    const values = [source.name, source.domain, source.url, source.description, source.isActive];
+    const values = [
+      source.name, 
+      source.domain, 
+      source.rssUrl || '',
+      source.respectRobotsTxt ?? true,
+      source.delayBetweenRequests ?? 1000,
+      source.userAgent ?? 'Veritas-Scraper/1.0',
+      source.timeoutMs ?? 30000
+    ];
     const result = await this.query(query, values);
     return result.rows[0].id;
   }
@@ -623,9 +632,13 @@ class ScraperDatabase {
       id: row.id,
       name: row.name,
       domain: row.domain,
-      url: row.url,
-      description: row.description,
-      isActive: row.is_active
+      iconUrl: row.icon_url,
+      rssUrl: row.rss_url,
+      respectRobotsTxt: row.respect_robots_txt,
+      delayBetweenRequests: row.delay_between_requests,
+      userAgent: row.user_agent,
+      timeoutMs: row.timeout_ms,
+      createdAt: row.created_at
     };
   }
 
@@ -735,6 +748,47 @@ class ScraperDatabase {
   }
 
   /**
+   * Add multiple log entries for a scraping job (batch operation)
+   */
+  async addScrapingLogs(logs: Omit<ScrapingLogEntry, 'id'>[]): Promise<void> {
+    if (logs.length === 0) return;
+    
+    await this.initialize();
+    
+    const batchResult = await this.batchInsertScrapingLogs(logs);
+    
+    if (batchResult.failed > 0) {
+      console.error(`[ScraperDB] Failed to insert ${batchResult.failed} log entries`);
+    }
+  }
+
+  /**
+   * Get logs for a specific job
+   */
+  async getJobLogs(jobId: string): Promise<ScrapingLogEntry[]> {
+    await this.initialize();
+    
+    const query = `
+      SELECT id, job_id, source_id, log_level, message, timestamp, additional_data
+      FROM scraping_logs 
+      WHERE job_id = $1 
+      ORDER BY timestamp ASC
+    `;
+    
+    const result = await this.query<any>(query, [jobId]);
+    
+    return result.rows.map(row => ({
+      id: row.id,
+      jobId: row.job_id,
+      sourceId: row.source_id,
+      logLevel: row.log_level,
+      message: row.message,
+      timestamp: row.timestamp,
+      additionalData: row.additional_data ? JSON.parse(row.additional_data) : undefined
+    }));
+  }
+
+  /**
    * Insert enhanced scraped content with new fields
    */
   async insertEnhancedScrapedContent(content: Omit<ScrapedContent, 'id' | 'createdAt'>): Promise<string> {
@@ -792,11 +846,10 @@ class ScraperDatabase {
     await this.initialize();
     
     const query = `
-      SELECT id, name, domain, url, description, icon_url, is_active,
-             rss_url, scraping_config, last_scraped_at, success_rate, is_enabled, created_at
+      SELECT id, name, domain, icon_url, rss_url, 
+             respect_robots_txt, delay_between_requests, user_agent, timeout_ms, created_at
       FROM sources 
-      WHERE is_enabled = true AND is_active = true
-      ORDER BY success_rate DESC, name ASC
+      ORDER BY name ASC
     `;
     
     const result = await this.query<any>(query);
@@ -805,15 +858,12 @@ class ScraperDatabase {
       id: row.id,
       name: row.name,
       domain: row.domain,
-      url: row.url,
-      description: row.description,
       iconUrl: row.icon_url,
-      isActive: row.is_active,
       rssUrl: row.rss_url,
-      scrapingConfig: row.scraping_config ? JSON.parse(row.scraping_config) : undefined,
-      lastScrapedAt: row.last_scraped_at,
-      successRate: parseFloat(row.success_rate),
-      isEnabled: row.is_enabled,
+      respectRobotsTxt: row.respect_robots_txt,
+      delayBetweenRequests: row.delay_between_requests,
+      userAgent: row.user_agent,
+      timeoutMs: row.timeout_ms,
       createdAt: row.created_at
     }));
   }
