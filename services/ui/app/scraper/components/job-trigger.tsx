@@ -126,6 +126,20 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
     setJobDetails(null);
 
     try {
+      // Get source names from the selected source objects
+      const sourceNames = selectedSources
+        .map(id => {
+          const source = availableSources.find(s => s.id === id);
+          return source ? source.name : null;
+        })
+        .filter(Boolean) as string[];
+
+      if (sourceNames.length === 0) {
+        alert('No valid sources selected for scraping');
+        setJobStatus('failed');
+        return;
+      }
+
       // Try to trigger job and get job ID for tracking
       const response = await fetch('/api/scraper/trigger', {
         method: 'POST',
@@ -133,9 +147,8 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sources: selectedSources,
-          articlesPerSource: articlesPerSource,
-          immediate: true
+          sources: sourceNames, // Send actual source names from database
+          maxArticles: articlesPerSource
         }),
       });
 
@@ -151,8 +164,13 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
     } catch (error) {
       console.error('Error triggering job:', error);
       setJobStatus('failed');
-      // Fallback to original onTrigger method
-      await onTrigger(selectedSources, articlesPerSource);
+      // Fallback to original onTrigger method with source names
+      const sourceNames = selectedSources
+        .map(id => availableSources.find(s => s.id === id)?.name)
+        .filter(Boolean) as string[];
+      if (sourceNames.length > 0) {
+        await onTrigger(sourceNames, articlesPerSource);
+      }
     }
     
     setIsOpen(false);
