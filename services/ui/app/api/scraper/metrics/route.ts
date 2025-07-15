@@ -72,20 +72,72 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         });
       }
     } catch (error) {
-      console.log('Scraper service unavailable, using mock data');
+      console.log('Scraper service unavailable, calculating basic metrics from database');
     }
 
-    // Return mock metrics with updated timestamp
-    const updatedMockMetrics = {
-      ...mockMetrics,
-      lastUpdateTime: new Date().toISOString()
-    };
+    // Try to calculate basic metrics from database
+    try {
+      const { railwayDb } = await import('@/lib/railway-database');
+      
+      // Get basic metrics from scraped_content table
+      const contentResult = await railwayDb.query(`
+        SELECT 
+          COUNT(*) as total_articles,
+          COUNT(DISTINCT source_id) as active_sources,
+          AVG(CASE WHEN LENGTH(content) > 0 THEN 1 ELSE 0 END) * 100 as success_rate
+        FROM scraped_content 
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+      `);
+      
+      const sourcesResult = await railwayDb.query(`
+        SELECT COUNT(*) as total_sources 
+        FROM sources 
+        WHERE is_active = true
+      `);
+      
+      const row = contentResult.rows[0];
+      const sourcesRow = sourcesResult.rows[0];
+      
+      const metrics: HealthMetrics = {
+        jobsTriggered: 0, // No job tracking in current schema
+        successfulJobs: 0, // No job tracking in current schema
+        candidatesFound: parseInt(row.total_articles) || 0,
+        articlesScraped: parseInt(row.total_articles) || 0,
+        errorsPerJob: 0, // No job tracking in current schema
+        averageJobDuration: 0, // No job tracking in current schema
+        storageUsed: 0, // Would need database size query
+        activeJobs: 0, // No job tracking in current schema
+        lastUpdateTime: new Date().toISOString()
+      };
 
-    return NextResponse.json({
-      success: true,
-      data: updatedMockMetrics,
-      message: 'Mock metrics data returned'
-    });
+      return NextResponse.json({
+        success: true,
+        data: metrics,
+        message: 'Basic metrics calculated from database'
+      });
+      
+    } catch (dbError) {
+      console.log('Database also unavailable:', dbError);
+      
+      // Return minimal metrics instead of mock data
+      const emptyMetrics: HealthMetrics = {
+        jobsTriggered: 0,
+        successfulJobs: 0,
+        candidatesFound: 0,
+        articlesScraped: 0,
+        errorsPerJob: 0,
+        averageJobDuration: 0,
+        storageUsed: 0,
+        activeJobs: 0,
+        lastUpdateTime: new Date().toISOString()
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: emptyMetrics,
+        message: 'No metrics available - scraper service and database unavailable'
+      });
+    }
 
   } catch (error) {
     console.error('[Metrics API] GET error:', error);

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Activity, BarChart3, FileText, Settings, Play, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { BarChart3, FileText, Settings } from "lucide-react";
 import { HealthDashboard } from "./components/health-dashboard";
 import { ContentFeed } from "./components/content-feed";
 import { SourceManagement } from "./components/source-management";
@@ -13,9 +13,18 @@ import { JobTrigger } from "./components/job-trigger";
 
 type TabType = "dashboard" | "content" | "sources";
 
-export default function ScraperPage() {
+function ScraperPageContent() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [isTriggering, setIsTriggering] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Handle tab routing from URL parameters
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabType;
+    if (tabParam && ['dashboard', 'content', 'sources'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const tabs = [
     {
@@ -70,56 +79,37 @@ export default function ScraperPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-2 sm:px-0">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="ghost" className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to News Feed
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-              <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              Scraper Dashboard
-            </h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              Monitor scraping health, review content, and manage sources
-            </p>
+      {/* Tab Navigation with Trigger Button */}
+      <div className="border-b border-border">
+        <div className="flex items-center justify-between">
+          <nav className="flex space-x-8 overflow-x-auto">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-2 whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          
+          {/* Job Trigger aligned with tabs */}
+          <div className="flex items-center gap-2 pb-4">
+            <JobTrigger 
+              onTrigger={handleJobTrigger}
+              isTriggering={isTriggering}
+            />
           </div>
         </div>
-        
-        {/* Job Trigger */}
-        <div className="flex items-center gap-2">
-          <JobTrigger 
-            onTrigger={handleJobTrigger}
-            isTriggering={isTriggering}
-          />
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="border-b border-border">
-        <nav className="flex space-x-8 overflow-x-auto">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </nav>
       </div>
 
       {/* Tab Content */}
@@ -130,4 +120,12 @@ export default function ScraperPage() {
       </div>
     </div>
   );
-} 
+}
+
+export default function ScraperPage() {
+  return (
+    <Suspense fallback={<div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-2 sm:px-0"><div className="h-96 flex items-center justify-center">Loading...</div></div>}>
+      <ScraperPageContent />
+    </Suspense>
+  );
+}

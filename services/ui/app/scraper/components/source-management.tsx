@@ -13,9 +13,6 @@ import {
   XCircle, 
   AlertCircle,
   Loader2,
-  TestTube,
-  ToggleLeft,
-  ToggleRight,
   Settings,
   ExternalLink,
   Calendar,
@@ -69,7 +66,6 @@ export function SourceManagement() {
     isEnabled: true
   });
   const [formLoading, setFormLoading] = useState(false);
-  const [testResults, setTestResults] = useState<Record<string, any>>({});
 
   // Load sources
   useEffect(() => {
@@ -181,60 +177,7 @@ export function SourceManagement() {
     }
   };
 
-  const handleToggleEnabled = async (sourceId: string, enabled: boolean) => {
-    try {
-      const response = await fetch('/api/scraper/sources', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: enabled ? 'bulk-enable' : 'bulk-disable',
-          sourceIds: [sourceId]
-        }),
-      });
 
-      const result = await response.json();
-      
-      if (result.success) {
-        loadSources();
-      } else {
-        alert('Error toggling source: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error toggling source:', error);
-      alert('Error toggling source');
-    }
-  };
-
-  const handleTestSource = async (sourceId: string) => {
-    try {
-      const response = await fetch('/api/scraper/sources', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'test',
-          sourceId
-        }),
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setTestResults(prev => ({
-          ...prev,
-          [sourceId]: result.data
-        }));
-      } else {
-        alert('Error testing source: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error testing source:', error);
-      alert('Error testing source');
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -322,26 +265,6 @@ export function SourceManagement() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleToggleEnabled(source.id, !source.isEnabled)}
-                  >
-                    {source.isEnabled ? (
-                      <ToggleRight className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <ToggleLeft className="h-4 w-4 text-gray-500" />
-                    )}
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleTestSource(source.id)}
-                  >
-                    <TestTube className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
                     onClick={() => handleEditSource(source)}
                   >
                     <Edit2 className="h-4 w-4" />
@@ -383,24 +306,7 @@ export function SourceManagement() {
                 </div>
               )}
               
-              {/* Test Results */}
-              {testResults[source.id] && (
-                <div className="bg-muted/50 p-2 rounded text-xs">
-                  <div className="font-medium mb-1">Test Results:</div>
-                  <div className="text-muted-foreground">
-                    {testResults[source.id].isValid ? (
-                      <span className="text-green-600">✓ Valid RSS feed</span>
-                    ) : (
-                      <span className="text-red-600">✗ Invalid RSS feed</span>
-                    )}
-                  </div>
-                  {testResults[source.id].rssItemCount && (
-                    <div className="text-muted-foreground">
-                      {testResults[source.id].rssItemCount} items found
-                    </div>
-                  )}
-                </div>
-              )}
+
               
               {/* Links */}
               <div className="flex gap-2 pt-2">

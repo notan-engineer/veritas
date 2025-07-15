@@ -178,57 +178,135 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         });
       }
     } catch (error) {
-      console.log('Scraper service unavailable, using mock data');
+      console.log('Scraper service unavailable, trying database');
     }
 
-    // Filter mock data
-    let filteredArticles = mockArticles;
+    // Try to get scraped content from database
+    try {
+      const { railwayDb } = await import('@/lib/railway-database');
+      
+      let query = `
+        SELECT sc.*, s.name as source_name, s.domain as source_domain 
+        FROM scraped_content sc 
+        JOIN sources s ON sc.source_id = s.id 
+        WHERE 1=1
+      `;
+      const params: any[] = [];
+      
+      if (source) {
+        query += ` AND s.name ILIKE $${params.length + 1}`;
+        params.push(`%${source}%`);
+      }
+      
+      if (language) {
+        query += ` AND sc.language = $${params.length + 1}`;
+        params.push(language);
+      }
+      
+      if (status) {
+        query += ` AND sc.processing_status = $${params.length + 1}`;
+        params.push(status);
+      }
+      
+      if (search) {
+        query += ` AND (sc.title ILIKE $${params.length + 1} OR sc.content ILIKE $${params.length + 1})`;
+        params.push(`%${search}%`);
+        params.push(`%${search}%`);
+      }
+      
+      query += ` ORDER BY sc.created_at DESC`;
+      
+      // Apply pagination
+      const offset = (page - 1) * limit;
+      query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(limit);
+      params.push(offset);
+      
+      const result = await railwayDb.query(query, params);
+      
+      // Get total count for pagination
+      let countQuery = `
+        SELECT COUNT(*) as total 
+        FROM scraped_content sc 
+        JOIN sources s ON sc.source_id = s.id 
+        WHERE 1=1
+      `;
+      const countParams: any[] = [];
+      
+      if (source) {
+        countQuery += ` AND s.name ILIKE $${countParams.length + 1}`;
+        countParams.push(`%${source}%`);
+      }
+      
+      if (language) {
+        countQuery += ` AND sc.language = $${countParams.length + 1}`;
+        countParams.push(language);
+      }
+      
+      if (status) {
+        countQuery += ` AND sc.processing_status = $${countParams.length + 1}`;
+        countParams.push(status);
+      }
+      
+      if (search) {
+        countQuery += ` AND (sc.title ILIKE $${countParams.length + 1} OR sc.content ILIKE $${countParams.length + 1})`;
+        countParams.push(`%${search}%`);
+        countParams.push(`%${search}%`);
+      }
+      
+      const countResult = await railwayDb.query(countQuery, countParams);
+      const total = parseInt(countResult.rows[0].total);
+      
+      // Transform database results to match expected interface
+      const articles = result.rows.map((row: any) => ({
+        id: row.id,
+        title: row.title || 'Untitled',
+        content: row.content || '',
+        author: row.author,
+        publicationDate: row.publication_date,
+        sourceName: row.source_name,
+        sourceDomain: row.source_domain,
+        sourceUrl: row.source_url,
+        contentType: row.content_type,
+        language: row.language,
+        processingStatus: row.processing_status,
+        createdAt: row.created_at
+      }));
+      
+      const hasMore = offset + limit < total;
 
-    if (source) {
-      filteredArticles = filteredArticles.filter(article => 
-        article.sourceName.toLowerCase().includes(source.toLowerCase())
-      );
+      const response: ContentResponse = {
+        content: articles,
+        total,
+        page,
+        pageSize: limit,
+        hasMore
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: response,
+        message: `Retrieved ${articles.length} articles from database`
+      });
+      
+    } catch (dbError) {
+      console.log('Database also unavailable:', dbError);
+      
+      // Return empty result instead of mock data
+      const response: ContentResponse = {
+        content: [],
+        total: 0,
+        page,
+        pageSize: limit,
+        hasMore: false
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: response,
+        message: 'No scraped content available - scraper service and database unavailable'
+      });
     }
-
-    if (language) {
-      filteredArticles = filteredArticles.filter(article => article.language === language);
-    }
-
-    if (status) {
-      filteredArticles = filteredArticles.filter(article => article.processingStatus === status);
-    }
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredArticles = filteredArticles.filter(article => 
-        article.title.toLowerCase().includes(searchLower) ||
-        article.content.toLowerCase().includes(searchLower) ||
-        article.author?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (category) {
-      filteredArticles = filteredArticles.filter(article => article.category === category);
-    }
-
-    // Apply pagination
-    const offset = (page - 1) * limit;
-    const paginatedArticles = filteredArticles.slice(offset, offset + limit);
-    const hasMore = offset + limit < filteredArticles.length;
-
-    const response: ContentResponse = {
-      content: paginatedArticles,
-      total: filteredArticles.length,
-      page,
-      pageSize: limit,
-      hasMore
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: response,
-      message: `Retrieved ${paginatedArticles.length} articles (mock data)`
-    });
 
   } catch (error) {
     console.error('[Content API] GET error:', error);

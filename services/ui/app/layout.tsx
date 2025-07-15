@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Settings, Globe, Activity } from "lucide-react";
+import { Settings, Globe, Activity, Rss } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -41,6 +41,12 @@ export default function RootLayout({
                 </Link>
                 
                 <nav className="flex items-center space-x-2 sm:space-x-4">
+                  <Link href="/">
+                    <Button variant="ghost" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+                      <Rss className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Feed</span>
+                    </Button>
+                  </Link>
                   <Link href="/scraper">
                     <Button variant="ghost" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
                       <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
