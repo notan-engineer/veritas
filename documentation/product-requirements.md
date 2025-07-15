@@ -16,26 +16,45 @@
 - **Multilingual**: Support English, Hebrew, and Arabic content
 - **Clean Interface**: Distraction-free news consumption
 
-## Current Product Features (MVP)
+## Core Features
 
-### 1. News Feed (Homepage)
-- **Factoid Cards**: Title, description, bullet points, sources
-- **Topic Filtering**: Filter by categories (Politics, Technology, etc.)
-- **Real-time Loading**: Skeleton states while content loads
-- **RTL Support**: Proper display for Hebrew/Arabic content
-- **Responsive Design**: Works on desktop and mobile
+### Content Consumption (Primary Interface)
+- **Factoid Feed**: Card-based layout displaying verified news facts
+- **Topic Filtering**: Dynamic filtering by categories and tags
+- **Article Detail Views**: Expandable content with source attribution  
+- **RTL Support**: Full Hebrew and Arabic text direction support
+- **Responsive Design**: Mobile-optimized interface
+- **Dark/Light Themes**: User preference settings
 
-### 2. Article Detail View
-- **Full Factoid Display**: Complete information with sources
-- **Source Attribution**: Links to original articles
-- **Navigation**: Back to feed, topic-based browsing
-- **Share-ready Format**: Clean, structured information
+### Content Aggregation System (Advanced)
+- **Automated Content Collection**: RSS feed monitoring and article scraping
+- **Multi-Source Integration**: Support for CNN, Fox News, and custom RSS feeds
+- **Real-time Processing**: Automated content extraction and classification
+- **Duplicate Detection**: Content hash-based deduplication across sources
+- **Content Archival**: Automated cleanup and compression policies
+- **Source Health Monitoring**: RSS feed validation and performance tracking
 
-### 3. User Experience
-- **Theme Toggle**: Dark/light mode preference
-- **Language Detection**: Automatic RTL layout for Hebrew/Arabic
-- **Fast Loading**: Optimized for quick information access
-- **Clean Design**: Focus on content, minimal distractions
+### Source Management (Administrative)
+- **Dynamic Source Configuration**: Add, edit, and remove content sources
+- **RSS Feed Validation**: Real-time feed testing and content verification
+- **Source Health Monitoring**: Success rates, error tracking, and performance metrics
+- **Bulk Operations**: Enable/disable multiple sources simultaneously
+- **Source Testing**: Validate RSS feeds and content extraction capabilities
+
+### Content Monitoring Dashboard (Operational)
+- **Health Metrics**: Job success rates, content volumes, error statistics
+- **Job Management**: Trigger, monitor, and cancel scraping operations
+- **Content Feed**: Browse scraped articles with filtering and search
+- **Real-time Updates**: Live monitoring of system performance
+- **Error Tracking**: Comprehensive error categorization and recovery monitoring
+- **Resource Management**: Memory, storage, and performance monitoring
+
+### Technical Features
+- **Advanced Error Handling**: Automatic retry with exponential backoff
+- **Content Classification**: Automated categorization and tag extraction
+- **Performance Optimization**: Concurrent processing with resource management
+- **Security**: Input validation, error sanitization, and secure communication
+- **API Integration**: RESTful APIs for all system operations
 
 ## User Personas
 
@@ -196,9 +215,42 @@ Language: Auto-detected with proper formatting
 
 ### Railway Services Architecture
 The platform runs on three Railway services:
-- **UI Service**: Next.js application serving the user interface
-- **Scraper Service**: Crawlee-based content scraping service
-- **Database Service**: PostgreSQL instance for data storage
+- **UI Service**: Next.js application serving the user interface and factoid display
+- **Scraper Service**: Advanced Crawlee-based content aggregation with monitoring dashboard
+- **Database Service**: Shared PostgreSQL instance for data storage across services
+
+### Content Processing Pipeline
+1. **RSS Monitoring**: Automated monitoring of configured news sources
+2. **Content Extraction**: Article parsing and content classification
+3. **Duplicate Detection**: Hash-based deduplication across all sources
+4. **Content Storage**: Structured storage with metadata and source attribution
+5. **Health Monitoring**: Real-time tracking of source performance and system health
+6. **Automated Cleanup**: Content archival and storage optimization
+
+### Monitoring & Operations
+- **Real-time Dashboard**: 3-tab interface for health, content, and source management
+- **Error Recovery**: Automatic retry mechanisms with exponential backoff
+- **Performance Tracking**: Resource usage monitoring and optimization
+- **Source Health**: RSS feed validation and success rate tracking
+- **Job Management**: Visual interface for scraping operations
+
+### Scalability Features
+- **Independent Service Scaling**: UI and Scraper services scale independently
+- **Resource Management**: Automated cleanup and storage optimization
+- **Concurrent Processing**: Multi-source scraping with resource limits
+- **Error Resilience**: Comprehensive error handling and recovery systems
+
+### API Architecture
+- **RESTful APIs**: Comprehensive endpoint coverage for all operations
+- **Service Communication**: HTTP-based communication between UI and Scraper
+- **Health Endpoints**: Detailed system health and performance monitoring
+- **Authentication Ready**: Architecture supports future authentication implementation
+
+### Development & Deployment
+- **Multi-Service Development**: Independent development and testing
+- **Automated Deployment**: Railway auto-deployment on code changes
+- **Environment Management**: Service-specific environment configuration
+- **Monitoring Integration**: Built-in health checks and performance tracking
 
 **Reference**: See `documentation/railway-interface.md` for complete Railway infrastructure management, CLI commands, and deployment procedures. This file is git-ignored and contains sensitive project information.
 
