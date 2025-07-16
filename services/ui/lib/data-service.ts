@@ -31,10 +31,8 @@ export interface Source {
   id: string;
   name: string;
   domain: string;
-  url: string;
-  description?: string;
+  url: string; // Maps to rss_url from database
   icon_url?: string;
-  is_active: boolean;
   scraped_content?: {
     id: string;
     source_url: string;
