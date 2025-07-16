@@ -322,10 +322,16 @@ export class VeritasScraper {
       const maxArticles = 3; // Default value
       const itemsToProcess = feed.items.slice(0, maxArticles);
       
+      console.log(`[VeritasScraper] Processing ${itemsToProcess.length} items (max: ${maxArticles})`);
+      
       // Enhanced duplicate detection
       const newItems: Item[] = [];
       for (const item of itemsToProcess) {
+        console.log(`[VeritasScraper] Checking item: ${item.title}, link: ${item.link}`);
+        
         if (item.link) {
+          console.log(`[VeritasScraper] Running duplicate check for: ${item.link}`);
+          
           const duplicateCheck = await duplicateDetector.checkForDuplicate({
             url: item.link,
             title: item.title || 'No title',
@@ -334,13 +340,20 @@ export class VeritasScraper {
             publishDate: item.pubDate ? new Date(item.pubDate) : undefined
           });
 
+          console.log(`[VeritasScraper] Duplicate check result: isDuplicate=${duplicateCheck.isDuplicate}, type=${duplicateCheck.duplicateType}, reason=${duplicateCheck.reason}`);
+
           if (!duplicateCheck.isDuplicate) {
             newItems.push(item);
+            console.log(`[VeritasScraper] Added item to processing queue: ${item.title}`);
           } else {
-            console.log(`[VeritasScraper] Duplicate content detected (${duplicateCheck.duplicateType}): ${item.link}`);
+            console.log(`[VeritasScraper] Duplicate content detected (${duplicateCheck.duplicateType}): ${item.link} - ${duplicateCheck.reason}`);
           }
+        } else {
+          console.log(`[VeritasScraper] Skipping item with no link: ${item.title}`);
         }
       }
+
+      console.log(`[VeritasScraper] After duplicate filtering: ${newItems.length} new items to process`);
 
       if (newItems.length > 0) {
         // Batch process all new articles with enhanced scraping

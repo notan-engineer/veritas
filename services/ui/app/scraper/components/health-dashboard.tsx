@@ -15,6 +15,8 @@ import {
   Loader2,
   Copy,
   Eye,
+  ChevronDown,
+  ChevronUp,
   Server,
   Database,
   Zap
@@ -63,6 +65,9 @@ export function HealthDashboard() {
   const [sourceHealth, setSourceHealth] = useState<SourceHealth[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+  const [jobLogs, setJobLogs] = useState<Record<string, string>>({});
+  const [loadingLogs, setLoadingLogs] = useState<Set<string>>(new Set());
   const [pollingInterval, setPollingInterval] = useState(30000); // Default to 30 seconds
   const [lastErrorNotification, setLastErrorNotification] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: 'info' | 'error' | 'success'; message: string; timestamp: string } | null>(null);
@@ -294,7 +299,9 @@ export function HealthDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        await navigator.clipboard.writeText(data.logs);
+        // Fix: Access data.data instead of data.logs
+        const logsText = data.data || 'No logs available';
+        await navigator.clipboard.writeText(logsText);
         alert('Logs copied to clipboard!');
       } else {
         alert('Failed to fetch logs');
@@ -303,6 +310,53 @@ export function HealthDashboard() {
       console.error('Error copying logs:', error);
       alert('Error copying logs');
     }
+  };
+
+  const toggleJobExpansion = async (jobId: string) => {
+    const newExpandedJobs = new Set(expandedJobs);
+    
+    if (expandedJobs.has(jobId)) {
+      // Collapse the row
+      newExpandedJobs.delete(jobId);
+    } else {
+      // Expand the row and load logs if not already loaded
+      newExpandedJobs.add(jobId);
+      
+      if (!jobLogs[jobId]) {
+        setLoadingLogs(prev => new Set([...prev, jobId]));
+        
+        try {
+          const response = await fetch(`/api/scraper/jobs/${jobId}/logs`);
+          const data = await response.json();
+          
+          if (data.success) {
+            setJobLogs(prev => ({
+              ...prev,
+              [jobId]: data.data || 'No logs available for this job.'
+            }));
+          } else {
+            setJobLogs(prev => ({
+              ...prev,
+              [jobId]: 'Failed to load logs: ' + (data.error || 'Unknown error')
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading logs:', error);
+          setJobLogs(prev => ({
+            ...prev,
+            [jobId]: 'Error loading logs: ' + (error instanceof Error ? error.message : 'Unknown error')
+          }));
+        } finally {
+          setLoadingLogs(prev => {
+            const updated = new Set(prev);
+            updated.delete(jobId);
+            return updated;
+          });
+        }
+      }
+    }
+    
+    setExpandedJobs(newExpandedJobs);
   };
 
   const cancelJob = async (jobId: string) => {
@@ -438,8 +492,8 @@ export function HealthDashboard() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-3 px-2 font-medium text-sm">Triggered At</th>
                     <th className="text-left py-3 px-2 font-medium text-sm">Status</th>
-                    <th className="text-left py-3 px-2 font-medium text-sm">Job ID</th>
                     <th className="text-left py-3 px-2 font-medium text-sm">Sources</th>
                     <th className="text-center py-3 px-2 font-medium text-sm">Articles</th>
                     <th className="text-center py-3 px-2 font-medium text-sm">Errors</th>
@@ -449,70 +503,125 @@ export function HealthDashboard() {
                 </thead>
                 <tbody>
                   {jobHistory.map((job) => (
-                    <tr key={job.id} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-2">
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(job.status)}
-                          {getStatusBadge(job.status)}
-                        </div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="font-medium text-sm">{job.id}</div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="text-sm">
-                          {job.sourcesRequested.join(', ')}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {job.articlesPerSource} per source
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <div className="text-sm font-medium">
-                          {job.totalArticlesScraped}
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <div className="text-sm">
-                          {job.totalErrors}
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <div className="text-sm">
-                          {job.duration ? formatDuration(job.duration) : '-'}
-                        </div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="flex justify-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyJobLogs(job.id)}
-                            title="Copy logs"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedJob(job.id)}
-                            title="View details"
-                          >
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                          {(job.status === 'running' || job.status === 'in progress') && (
+                    <>
+                      <tr key={job.id} className="border-b hover:bg-muted/50">
+                        <td className="py-3 px-2">
+                          <div className="font-medium text-sm">
+                            {new Date(job.triggeredAt).toLocaleDateString()}
+                            <br />
+                            {new Date(job.triggeredAt).toLocaleTimeString()}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(job.status)}
+                            {getStatusBadge(job.status)}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="text-sm">
+                            {job.sourcesRequested.join(', ')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {job.articlesPerSource} per source
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <div className="text-sm font-medium">
+                            {job.totalArticlesScraped}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <div className="text-sm">
+                            {job.totalErrors}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <div className="text-sm">
+                            {job.duration ? formatDuration(job.duration) : '-'}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex justify-center gap-1">
                             <Button
-                              variant="destructive"
+                              variant="outline"
                               size="sm"
-                              onClick={() => cancelJob(job.id)}
-                              title="Stop job"
+                              onClick={() => copyJobLogs(job.id)}
+                              title="Copy logs"
                             >
-                              <XCircle className="h-3 w-3" />
+                              <Copy className="h-3 w-3" />
                             </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleJobExpansion(job.id)}
+                              title={expandedJobs.has(job.id) ? 'Collapse details' : 'View details'}
+                            >
+                              {expandedJobs.has(job.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            </Button>
+                            {(job.status === 'running' || job.status === 'in progress') && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => cancelJob(job.id)}
+                                title="Stop job"
+                              >
+                                <XCircle className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      {/* Expandable Row Content */}
+                      {expandedJobs.has(job.id) && (
+                        <tr key={`${job.id}-expanded`} className="border-b bg-muted/20">
+                          <td colSpan={7} className="py-0">
+                            <div className="p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-medium text-muted-foreground">
+                                  Job Logs - {job.id}
+                                </h4>
+                                {loadingLogs.has(job.id) && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    Loading logs...
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Code Editor Style Log Display */}
+                              <div className="bg-slate-950 text-green-400 rounded-lg p-4 font-mono text-xs overflow-auto max-h-96 border">
+                                <pre className="whitespace-pre-wrap break-words">
+                                  {loadingLogs.has(job.id) 
+                                    ? 'Loading logs...'
+                                    : jobLogs[job.id] || 'No logs available'
+                                  }
+                                </pre>
+                              </div>
+                              
+                              <div className="flex justify-end gap-2 mt-3">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => copyJobLogs(job.id)}
+                                >
+                                  <Copy className="h-3 w-3 mr-1" />
+                                  Copy Logs
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => toggleJobExpansion(job.id)}
+                                >
+                                  Collapse
+                                </Button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>
