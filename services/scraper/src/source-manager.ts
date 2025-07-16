@@ -254,13 +254,8 @@ export class SourceManager extends EventEmitter {
       const conditions: string[] = [];
       const params: any[] = [];
 
-      if (options?.activeOnly) {
-        conditions.push('is_active = true');
-      }
-
-      if (options?.enabledOnly) {
-        conditions.push('is_enabled = true');
-      }
+      // Note: Removed is_active and is_enabled filters since they don't exist in simplified schema
+      // All sources in the simplified schema are considered active/enabled
 
       if (options?.category) {
         conditions.push('category = $' + (params.length + 1));
@@ -273,26 +268,32 @@ export class SourceManager extends EventEmitter {
 
       query += ' ORDER BY name ASC';
 
-      const result = await scraperDb.query<any>(query, params);
+      console.log(`[SourceManager] Executing query: ${query}`);
+      console.log(`[SourceManager] Query params: ${JSON.stringify(params)}`);
+
+      const result = await scraperDb.query(query, params);
       
-      return result.rows.map(row => {
-        return {
-          id: row.id,
-          name: row.name,
-          domain: row.domain,
-          iconUrl: row.icon_url,
-          rssUrl: row.rss_url,
-          respectRobotsTxt: row.respect_robots_txt,
-          delayBetweenRequests: row.delay_between_requests,
-          userAgent: row.user_agent,
-          timeoutMs: row.timeout_ms,
-          createdAt: row.created_at
-        };
-      });
+      console.log(`[SourceManager] Found ${result.rows.length} sources`);
+
+      return result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        domain: row.domain,
+        rssUrl: row.rss_url,
+        category: row.category,
+        // Set defaults for fields that don't exist in simplified schema
+        isActive: true,
+        isEnabled: true,
+        successRate: 100.0,
+        respectRobotsTxt: row.respect_robots_txt || true,
+        delayBetweenRequests: row.delay_between_requests || 1000,
+        userAgent: row.user_agent || 'Veritas-Scraper/1.0',
+        timeoutMs: row.timeout_ms || 30000
+      }));
 
     } catch (error) {
       console.error('[SourceManager] Failed to get all sources:', error);
-      return [];
+      throw error;
     }
   }
 
