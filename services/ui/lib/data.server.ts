@@ -32,10 +32,8 @@ export async function getFactoidById(id: string): Promise<Factoid | null> {
             'id', s.id,
             'name', s.name,
             'domain', s.domain,
-            'url', s.url,
-            'description', s.description,
+            'url', s.rss_url,
             'icon_url', s.icon_url,
-            'is_active', s.is_active,
             'scraped_content', json_build_object(
               'id', sc.id,
               'source_url', sc.source_url,
@@ -51,7 +49,7 @@ export async function getFactoidById(id: string): Promise<Factoid | null> {
         FROM factoid_sources fs 
         JOIN scraped_content sc ON fs.scraped_content_id = sc.id
         JOIN sources s ON sc.source_id = s.id
-        WHERE s.is_active = true GROUP BY fs.factoid_id
+        GROUP BY fs.factoid_id
       ) sources_agg ON f.id = sources_agg.factoid_id
       WHERE f.id = $1 AND f.status = 'published'
     `, [id]);

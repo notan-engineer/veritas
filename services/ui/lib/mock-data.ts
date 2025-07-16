@@ -45,9 +45,7 @@ export const mockFactoids: Factoid[] = [
         id: "source-1",
         name: "Lorem News",
         domain: "lorem-news.example",
-        url: "https://lorem-news.example",
-        description: "Lorem ipsum news source sample",
-        is_active: true
+        url: "https://lorem-news.example"
       }
     ]
   },
@@ -88,9 +86,7 @@ export const mockFactoids: Factoid[] = [
         id: "source-2",
         name: "Ipsum Today",
         domain: "ipsum-today.example",
-        url: "https://ipsum-today.example",
-        description: "Lorem ipsum daily news sample",
-        is_active: true
+        url: "https://ipsum-today.example"
       }
     ]
   },
@@ -131,9 +127,7 @@ export const mockFactoids: Factoid[] = [
         id: "source-3",
         name: "Dolor Weekly",
         domain: "dolor-weekly.example",
-        url: "https://dolor-weekly.example",
-        description: "Lorem ipsum weekly publication sample",
-        is_active: true
+        url: "https://dolor-weekly.example"
       }
     ]
   },
@@ -167,9 +161,7 @@ export const mockFactoids: Factoid[] = [
         id: "source-4",
         name: "Elit Business",
         domain: "elit-business.example",
-        url: "https://elit-business.example",
-        description: "Lorem ipsum business news sample",
-        is_active: true
+        url: "https://elit-business.example"
       }
     ]
   },
@@ -217,9 +209,7 @@ export const mockFactoids: Factoid[] = [
         id: "source-5",
         name: "איפסום חדשות",
         domain: "ipsum-news.example",
-        url: "https://ipsum-news.example",
-        description: "לורם איפסום חדשות דוגמא",
-        is_active: true
+        url: "https://ipsum-news.example"
       }
     ]
   }
@@ -296,41 +286,31 @@ export const mockSources: Source[] = [
     id: "source-1",
     name: "Lorem News",
     domain: "lorem-news.example",
-    url: "https://lorem-news.example",
-    description: "Lorem ipsum news source sample",
-    is_active: true
+    url: "https://lorem-news.example"
   },
   {
     id: "source-2",
     name: "Ipsum Today",
     domain: "ipsum-today.example",
-    url: "https://ipsum-today.example",
-    description: "Lorem ipsum daily news sample",
-    is_active: true
+    url: "https://ipsum-today.example"
   },
   {
     id: "source-3",
     name: "Dolor Weekly",
     domain: "dolor-weekly.example",
-    url: "https://dolor-weekly.example",
-    description: "Lorem ipsum weekly publication sample",
-    is_active: true
+    url: "https://dolor-weekly.example"
   },
   {
     id: "source-4",
     name: "Elit Business",
     domain: "elit-business.example",
-    url: "https://elit-business.example",
-    description: "Lorem ipsum business news sample",
-    is_active: true
+    url: "https://elit-business.example"
   },
   {
     id: "source-5",
     name: "איפסום חדשות",
     domain: "ipsum-news.example",
-    url: "https://ipsum-news.example",
-    description: "לורם איפסום חדשות דוגמא",
-    is_active: true
+    url: "https://ipsum-news.example"
   }
 ]
 
