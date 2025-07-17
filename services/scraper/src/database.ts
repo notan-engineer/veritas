@@ -1,1257 +1,431 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool } from 'pg';
+import * as crypto from 'crypto';
 import { 
+  ScrapingJob, 
+  ScrapedArticle, 
   NewsSource, 
-  ScrapedContent, 
-  EnhancedScrapingJob, 
-  ScrapingLogEntry,
-  JobLogEntry,
-  CrawleeClassification 
+  JobStatus, 
+  PaginatedResponse,
+  LogJobActivityParams,
+  ArticleFilters,
+  ProgressState
 } from './types';
 
-// Import resource monitor for performance tracking
-import { resourceMonitor } from './resource-monitor';
+// Initialize database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
-export interface BatchInsertResult {
-  successful: number;
-  failed: number;
-  errors: Error[];
+// Logging helper with correct schema
+export async function logJobActivity({
+  jobId,
+  sourceId,
+  level,
+  message,
+  additionalData = {}
+}: LogJobActivityParams): Promise<void> {
+  // For development debugging, add debug flag
+  if (process.env.NODE_ENV === 'development') {
+    additionalData.debug = true;
+    additionalData.timestamp_ms = Date.now();
+    additionalData.memory_usage_mb = process.memoryUsage().heapUsed / 1024 / 1024;
+  }
+  
+  await pool.query(`
+    INSERT INTO scraping_logs (
+      job_id, source_id, log_level, message, additional_data
+    ) VALUES ($1, $2, $3, $4, $5)
+  `, [jobId, sourceId, level, message, JSON.stringify(additionalData)]);
 }
 
-export interface QueryPerformanceMetrics {
-  query: string;
-  duration: number;
-  timestamp: Date;
-  rowsAffected: number;
+// Transaction-safe job creation
+export async function createJobWithInitialLog(
+  sources: string[], 
+  articlesPerSource: number
+): Promise<string> {
+  const client = await pool.connect();
+  const jobId = crypto.randomUUID();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Create job
+    await client.query(`
+      INSERT INTO scraping_jobs (
+        id, status, sources_requested, articles_per_source,
+        triggered_at, total_articles_scraped, total_errors
+      ) VALUES ($1, 'pending', $2, $3, NOW(), 0, 0)
+    `, [jobId, sources, articlesPerSource]);
+    
+    // Create initial log
+    await client.query(`
+      INSERT INTO scraping_logs (
+        job_id, log_level, message, additional_data
+      ) VALUES ($1, 'info', 'Job created', $2)
+    `, [jobId, JSON.stringify({ 
+      sources, 
+      articles_per_source: articlesPerSource,
+      triggered_by: 'user'
+    })]);
+    
+    await client.query('COMMIT');
+    return jobId;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
-export interface ConnectionPoolMetrics {
-  totalConnections: number;
-  idleConnections: number;
-  waitingClients: number;
+// Update job status
+export async function updateJobStatus(jobId: string, status: JobStatus): Promise<void> {
+  const updateFields: any = { status };
+  
+  if (status === 'running' && !await getJobStartedAt(jobId)) {
+    updateFields.started_at = 'NOW()';
+  }
+  
+  if (['completed', 'failed', 'cancelled'].includes(status)) {
+    updateFields.completed_at = 'NOW()';
+  }
+  
+  const setClause = Object.entries(updateFields)
+    .map(([key, value], index) => 
+      value === 'NOW()' ? `${key} = NOW()` : `${key} = $${index + 2}`
+    )
+    .join(', ');
+  
+  const values = [jobId, ...Object.values(updateFields).filter(v => v !== 'NOW()')];
+  
+  await pool.query(`
+    UPDATE scraping_jobs 
+    SET ${setClause}
+    WHERE id = $1
+  `, values);
 }
 
-/**
- * Enhanced database client for Veritas scraper service
- * Optimized for performance with connection pooling, batch operations, and monitoring
- */
-class ScraperDatabase {
-  private pool: Pool | null = null;
-  private isInitialized = false;
-  private queryMetrics: QueryPerformanceMetrics[] = [];
-  private maxMetricsHistory = 1000;
-  private connectionHealthCheckInterval: NodeJS.Timeout | null = null;
-  private lastHealthCheck: Date | null = null;
+async function getJobStartedAt(jobId: string): Promise<Date | null> {
+  const result = await pool.query('SELECT started_at FROM scraping_jobs WHERE id = $1', [jobId]);
+  return result.rows[0]?.started_at || null;
+}
 
-  // Connection pool configuration optimized for scraper workloads
-  private poolConfig = {
-    max: 10, // Increased for better concurrency
-    min: 2,  // Maintain minimum connections
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000, // Increased timeout
-    acquireTimeoutMillis: 60000,    // Time to wait for connection
-    reapIntervalMillis: 1000,       // Check for idle connections
-    createTimeoutMillis: 30000,     // Time to create new connection
-    createRetryIntervalMillis: 2000, // Retry interval
-    allowExitOnIdle: false,         // Keep pool alive
-    statement_timeout: 30000,       // 30 second query timeout
-    query_timeout: 30000,
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 10000,
+// Save article with duplicate check
+export async function saveArticle(article: Partial<ScrapedArticle>): Promise<void> {
+  const contentHash = article.contentHash || crypto.createHash('sha256')
+    .update(`${article.title}:${article.content?.substring(0, 1000)}`)
+    .digest('hex');
+  
+  await pool.query(`
+    INSERT INTO scraped_content (
+      title, content, source_url, source_name, 
+      content_hash, language, processing_status, created_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, 'completed', NOW())
+    ON CONFLICT (content_hash) DO NOTHING
+  `, [
+    article.title,
+    article.content,
+    article.sourceUrl,
+    article.sourceName,
+    contentHash,
+    article.language || 'en'
+  ]);
+}
+
+// Update job progress
+export async function updateJobProgress(jobId: string, state: ProgressState): Promise<void> {
+  const progress = Math.round(
+    (state.processedSources / state.totalSources * 30) + // 30% for sources
+    (state.articlesProcessed / state.totalArticlesExpected * 70) // 70% for articles
+  );
+  
+  await pool.query(`
+    UPDATE scraping_jobs 
+    SET 
+      progress = $2,
+      current_source = $3,
+      total_articles_scraped = $4,
+      total_errors = $5,
+      updated_at = NOW()
+    WHERE id = $1
+  `, [jobId, progress, state.currentSource, state.articlesProcessed, state.articlesErrored]);
+  
+  // Log progress milestone
+  if (progress % 25 === 0) { // Log at 25%, 50%, 75%, 100%
+    await logJobActivity({
+      jobId,
+      level: 'info',
+      message: `Job progress: ${progress}%`,
+      additionalData: state
+    });
+  }
+}
+
+// Get job by ID
+export async function getJob(jobId: string): Promise<ScrapingJob | null> {
+  const result = await pool.query(`
+    SELECT * FROM scraping_jobs WHERE id = $1
+  `, [jobId]);
+  
+  return result.rows[0] || null;
+}
+
+// Get jobs with pagination
+export async function getJobs(limit: number = 20, offset: number = 0, status?: JobStatus): Promise<PaginatedResponse<ScrapingJob>> {
+  let whereClause = '';
+  const params: any[] = [limit, offset];
+  
+  if (status) {
+    whereClause = 'WHERE status = $3';
+    params.push(status);
+  }
+  
+  const [jobs, count] = await Promise.all([
+    pool.query(`
+      SELECT * FROM scraping_jobs 
+      ${whereClause}
+      ORDER BY triggered_at DESC
+      LIMIT $1 OFFSET $2
+    `, params),
+    
+    pool.query(`
+      SELECT COUNT(*) as total FROM scraping_jobs ${whereClause}
+    `, status ? [status] : [])
+  ]);
+  
+  const total = parseInt(count.rows[0].total);
+  
+  return {
+    data: jobs.rows,
+    total,
+    page: Math.floor(offset / limit) + 1,
+    pageSize: limit,
+    hasMore: offset + limit < total
   };
+}
 
-  /**
-   * Initialize database connection pool with enhanced configuration
-   */
-  private async initialize(): Promise<void> {
-    if (this.isInitialized && this.pool) {
-      return;
-    }
-
-    console.log('[Scraper DB] Initializing enhanced connection pool...');
-    console.log(`[Scraper DB] DATABASE_URL format: ${process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':***@')}`);
+// Get job logs with pagination
+export async function getJobLogs(jobId: string, page = 1, pageSize = 100): Promise<PaginatedResponse<any>> {
+  const offset = (page - 1) * pageSize;
+  
+  const [logs, count] = await Promise.all([
+    pool.query(`
+      SELECT 
+        sl.id,
+        sl.source_id,
+        sl.log_level,
+        sl.message,
+        sl.timestamp,
+        sl.additional_data,
+        s.name as source_name
+      FROM scraping_logs sl
+      LEFT JOIN sources s ON sl.source_id = s.id
+      WHERE sl.job_id = $1
+      ORDER BY sl.timestamp DESC
+      LIMIT $2 OFFSET $3
+    `, [jobId, pageSize, offset]),
     
-    if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL environment variable is required');
-    }
+    pool.query(`
+      SELECT COUNT(*) as total 
+      FROM scraping_logs 
+      WHERE job_id = $1
+    `, [jobId])
+  ]);
+  
+  return {
+    data: logs.rows,
+    total: parseInt(count.rows[0].total),
+    page,
+    pageSize,
+    hasMore: offset + pageSize < parseInt(count.rows[0].total)
+  };
+}
 
-    try {
-      const url = new URL(process.env.DATABASE_URL);
-      console.log(`[Scraper DB] Connecting to: ${url.hostname}:${url.port}/${url.pathname.slice(1)}`);
-      console.log(`[Scraper DB] Pool config: max=${this.poolConfig.max}, min=${this.poolConfig.min}`);
-      
-      this.pool = new Pool({
-        host: url.hostname,
-        port: parseInt(url.port) || 5432,
-        database: url.pathname.slice(1),
-        user: url.username,
-        password: url.password,
-        ssl: { rejectUnauthorized: false },
-        ...this.poolConfig
-      });
-
-      // Set up pool event handlers for monitoring
-      this.pool.on('connect', (client) => {
-        console.log('[Scraper DB] New client connected');
-      });
-
-      this.pool.on('remove', (client) => {
-        console.log('[Scraper DB] Client removed from pool');
-      });
-
-      this.pool.on('error', (err, client) => {
-        console.error('[Scraper DB] Pool error:', err);
-      });
-
-      // Test connection
-      console.log('[Scraper DB] Testing database connection...');
-      const testStart = Date.now();
-      await this.pool.query('SELECT 1');
-      const testDuration = Date.now() - testStart;
-      
-      this.isInitialized = true;
-      console.log(`✅ [Scraper DB] Enhanced connection pool initialized (${testDuration}ms)`);
-      
-      // Start health monitoring
-      this.startHealthMonitoring();
-      
-    } catch (error) {
-      console.error('❌ [Scraper DB] Failed to connect:', error);
-      this.pool = null;
-      throw new Error(`Database connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+// Get articles with filters
+export async function getArticles(filters: ArticleFilters): Promise<PaginatedResponse<ScrapedArticle>> {
+  const { page = 1, pageSize = 20, search, source, language, status } = filters;
+  const offset = (page - 1) * pageSize;
+  const conditions: string[] = [];
+  const params: any[] = [];
+  let paramIndex = 1;
+  
+  if (search) {
+    conditions.push(`(title ILIKE $${paramIndex} OR content ILIKE $${paramIndex})`);
+    params.push(`%${search}%`);
+    paramIndex++;
   }
-
-  /**
-   * Start connection health monitoring
-   */
-  private startHealthMonitoring(): void {
-    if (this.connectionHealthCheckInterval) {
-      clearInterval(this.connectionHealthCheckInterval);
-    }
-
-    this.connectionHealthCheckInterval = setInterval(async () => {
-      try {
-        await this.healthCheck();
-      } catch (error) {
-        console.error('[Scraper DB] Health check failed:', error);
-      }
-    }, 30000); // Check every 30 seconds
+  
+  if (source) {
+    conditions.push(`source_name = $${paramIndex}`);
+    params.push(source);
+    paramIndex++;
   }
-
-  /**
-   * Perform database health check
-   */
-  private async healthCheck(): Promise<void> {
-    if (!this.pool) return;
-
-    try {
-      const start = Date.now();
-      await this.pool.query('SELECT 1');
-      const duration = Date.now() - start;
-      
-      this.lastHealthCheck = new Date();
-      
-      if (duration > 5000) { // 5 second threshold
-        console.warn(`[Scraper DB] Slow health check: ${duration}ms`);
-      }
-      
-    } catch (error) {
-      console.error('[Scraper DB] Health check failed:', error);
-      // Attempt to reconnect
-      await this.reconnect();
-    }
+  
+  if (language) {
+    conditions.push(`language = $${paramIndex}`);
+    params.push(language);
+    paramIndex++;
   }
-
-  /**
-   * Reconnect to database
-   */
-  private async reconnect(): Promise<void> {
-    console.log('[Scraper DB] Attempting to reconnect...');
-    
-    if (this.pool) {
-      try {
-        await this.pool.end();
-      } catch (error) {
-        console.error('[Scraper DB] Error closing pool:', error);
-      }
-    }
-    
-    this.pool = null;
-    this.isInitialized = false;
-    
-    // Retry connection with exponential backoff
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        await this.initialize();
-        console.log(`✅ [Scraper DB] Reconnected successfully (attempt ${attempt})`);
-        return;
-      } catch (error) {
-        console.error(`❌ [Scraper DB] Reconnection attempt ${attempt} failed:`, error);
-        if (attempt < 3) {
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-        }
-      }
-    }
-    
-    throw new Error('Failed to reconnect after 3 attempts');
+  
+  if (status) {
+    conditions.push(`processing_status = $${paramIndex}`);
+    params.push(status);
+    paramIndex++;
   }
-
-  /**
-   * Execute a query with performance monitoring
-   */
-  async query<T = any>(text: string, params?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }> {
-    await this.initialize();
-    
-    if (!this.pool) {
-      throw new Error('Database pool not initialized');
-    }
-
-    const start = Date.now();
-    let result: { rows: T[]; rowCount: number | null };
-    
-    try {
-      result = await this.pool.query(text, params) as unknown as { rows: T[]; rowCount: number | null };
-      
-      const duration = Date.now() - start;
-      
-      // Record performance metrics
-      this.recordQueryMetrics(text, duration, result.rowCount || 0);
-      
-      // Report to resource monitor
-      resourceMonitor.recordQueryTime(duration);
-      
-      return result;
-      
-    } catch (error) {
-      const duration = Date.now() - start;
-      this.recordQueryMetrics(text, duration, 0);
-      
-      console.error('[Scraper DB] Query error:', error);
-      console.error('[Scraper DB] Query:', text);
-      console.error('[Scraper DB] Duration:', duration + 'ms');
-      
-      throw error;
-    }
-  }
-
-  /**
-   * Execute query with retry logic
-   */
-  async queryWithRetry<T = any>(
-    text: string, 
-    params?: unknown[], 
-    maxRetries: number = 3
-  ): Promise<{ rows: T[]; rowCount: number | null }> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await this.query<T>(text, params);
-      } catch (error) {
-        if (attempt === maxRetries) {
-          throw error;
-        }
-        
-        console.warn(`[Scraper DB] Query attempt ${attempt} failed, retrying...`);
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-      }
-    }
-    
-    throw new Error('Should not reach here');
-  }
-
-  /**
-   * Execute query in transaction
-   */
-  async executeTransaction<T>(
-    operations: (client: PoolClient) => Promise<T>
-  ): Promise<T> {
-    await this.initialize();
-    
-    if (!this.pool) {
-      throw new Error('Database pool not initialized');
-    }
-
-    const client = await this.pool.connect();
-    
-    try {
-      await client.query('BEGIN');
-      const result = await operations(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  /**
-   * Batch insert scraped content with optimized performance
-   */
-  async batchInsertScrapedContent(
-    contents: Omit<ScrapedContent, 'id' | 'createdAt'>[]
-  ): Promise<BatchInsertResult> {
-    if (contents.length === 0) {
-      return { successful: 0, failed: 0, errors: [] };
-    }
-
-    const batchSize = 100; // Process in batches of 100
-    const result: BatchInsertResult = { successful: 0, failed: 0, errors: [] };
-
-    for (let i = 0; i < contents.length; i += batchSize) {
-      const batch = contents.slice(i, i + batchSize);
-      
-      try {
-        await this.executeTransaction(async (client) => {
-          const query = `
-            INSERT INTO scraped_content (
-              source_id, source_url, title, content, author, publication_date,
-              content_type, language, processing_status, category, tags, 
-              full_html, crawlee_classification, content_hash
-            ) VALUES ${batch.map((_, idx) => 
-              `($${idx * 14 + 1}, $${idx * 14 + 2}, $${idx * 14 + 3}, $${idx * 14 + 4}, $${idx * 14 + 5}, $${idx * 14 + 6}, $${idx * 14 + 7}, $${idx * 14 + 8}, $${idx * 14 + 9}, $${idx * 14 + 10}, $${idx * 14 + 11}, $${idx * 14 + 12}, $${idx * 14 + 13}, $${idx * 14 + 14})`
-            ).join(', ')}
-            ON CONFLICT (source_url) DO NOTHING
-          `;
-
-          const values = batch.flatMap(content => [
-            content.sourceId,
-            content.sourceUrl,
-            content.title,
-            content.content,
-            content.author || null,
-            content.publicationDate || null,
-            content.contentType,
-            content.language,
-            content.processingStatus,
-            content.category || null,
-            content.tags || null,
-            content.fullHtml || null,
-            content.crawleeClassification ? JSON.stringify(content.crawleeClassification) : null,
-            content.contentHash || null
-          ]);
-
-          const insertResult = await client.query(query, values);
-          result.successful += insertResult.rowCount || 0;
-        });
-      } catch (error) {
-        result.failed += batch.length;
-        result.errors.push(error as Error);
-        console.error(`[Scraper DB] Batch insert failed for batch ${i / batchSize + 1}:`, error);
-      }
-    }
-
-    console.log(`[Scraper DB] Batch insert completed: ${result.successful} successful, ${result.failed} failed`);
-    return result;
-  }
-
-  /**
-   * @deprecated Removed - no longer needed with new JSON logging schema
-   */
-
-  /**
-   * Get content with pagination for memory efficiency
-   */
-  async getScrapedContentPaginated(
-    page: number = 1,
-    limit: number = 100,
-    sourceId?: number,
-    language?: string
-  ): Promise<{ content: ScrapedContent[]; total: number; hasMore: boolean }> {
-    const offset = (page - 1) * limit;
-    
-    let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    if (sourceId) {
-      whereClause += ` AND source_id = $${paramIndex++}`;
-      params.push(sourceId);
-    }
-
-    if (language) {
-      whereClause += ` AND language = $${paramIndex++}`;
-      params.push(language);
-    }
-
-    // Get total count
-    const countQuery = `SELECT COUNT(*) FROM scraped_content ${whereClause}`;
-    const countResult = await this.query<{ count: string }>(countQuery, params);
-    const total = parseInt(countResult.rows[0]?.count || '0');
-
-    // Get paginated results
-    const dataQuery = `
+  
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  
+  const [articles, count] = await Promise.all([
+    pool.query(`
       SELECT * FROM scraped_content 
       ${whereClause}
       ORDER BY created_at DESC
-      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
-    `;
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `, [...params, pageSize, offset]),
     
-    params.push(limit, offset);
-    const dataResult = await this.query<any>(dataQuery, params);
+    pool.query(`
+      SELECT COUNT(*) as total FROM scraped_content ${whereClause}
+    `, params)
+  ]);
+  
+  return {
+    data: articles.rows,
+    total: parseInt(count.rows[0].total),
+    page,
+    pageSize,
+    hasMore: offset + pageSize < parseInt(count.rows[0].total)
+  };
+}
 
-    const content = dataResult.rows.map(row => ({
-      id: row.id,
-      sourceId: row.source_id,
-      sourceUrl: row.source_url,
-      title: row.title,
-      content: row.content,
-      author: row.author,
-      publicationDate: row.publication_date,
-      contentType: row.content_type,
-      language: row.language,
-      processingStatus: row.processing_status,
-      category: row.category,
-      tags: row.tags,
-      fullHtml: row.full_html,
-      crawleeClassification: row.crawlee_classification ? JSON.parse(row.crawlee_classification) : null,
-      contentHash: row.content_hash,
-      createdAt: row.created_at
-    }));
+// Get article by ID
+export async function getArticleById(id: string): Promise<ScrapedArticle | null> {
+  const result = await pool.query(`
+    SELECT * FROM scraped_content WHERE id = $1
+  `, [id]);
+  
+  return result.rows[0] || null;
+}
 
-    return {
-      content,
-      total,
-      hasMore: offset + limit < total
-    };
+// Source management functions
+export async function getSources(): Promise<NewsSource[]> {
+  const result = await pool.query(`
+    SELECT 
+      id, name, domain, rss_url, icon_url,
+      respect_robots_txt, delay_between_requests,
+      user_agent, timeout_ms, created_at
+    FROM sources
+    ORDER BY name
+  `);
+  
+  return result.rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    domain: row.domain,
+    rssUrl: row.rss_url,
+    iconUrl: row.icon_url,
+    respectRobotsTxt: row.respect_robots_txt,
+    delayBetweenRequests: row.delay_between_requests,
+    userAgent: row.user_agent,
+    timeoutMs: row.timeout_ms,
+    createdAt: row.created_at.toISOString()
+  }));
+}
+
+export async function getSourceByName(name: string): Promise<NewsSource> {
+  const result = await pool.query(`
+    SELECT * FROM sources WHERE name = $1
+  `, [name]);
+  
+  if (!result.rows[0]) {
+    throw new Error(`Source not found: ${name}`);
   }
+  
+  return result.rows[0];
+}
 
-  /**
-   * Cleanup old content for storage optimization
-   */
-  async cleanupOldContent(daysToKeep: number = 30): Promise<{ deleted: number; spaceSaved: number }> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+export async function createSource(source: Omit<NewsSource, 'id' | 'createdAt'>): Promise<NewsSource> {
+  const result = await pool.query(`
+    INSERT INTO sources (
+      name, domain, rss_url, icon_url,
+      respect_robots_txt, delay_between_requests,
+      user_agent, timeout_ms
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING *
+  `, [
+    source.name,
+    source.domain,
+    source.rssUrl,
+    source.iconUrl || null,
+    source.respectRobotsTxt !== false, // defaults to true
+    source.delayBetweenRequests || 1000,
+    source.userAgent || 'Veritas-Scraper/1.0',
+    source.timeoutMs || 30000
+  ]);
+  
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    name: row.name,
+    domain: row.domain,
+    rssUrl: row.rss_url,
+    iconUrl: row.icon_url,
+    respectRobotsTxt: row.respect_robots_txt,
+    delayBetweenRequests: row.delay_between_requests,
+    userAgent: row.user_agent,
+    timeoutMs: row.timeout_ms,
+    createdAt: row.created_at.toISOString()
+  };
+}
 
-    // Get size of content to be deleted
-    const sizeQuery = `
-      SELECT 
-        COUNT(*) as count,
-        SUM(LENGTH(content)) as content_size,
-        SUM(LENGTH(COALESCE(full_html, ''))) as html_size
-      FROM scraped_content 
-      WHERE created_at < $1
-    `;
-    
-    const sizeResult = await this.query<{
-      count: string;
-      content_size: string;
-      html_size: string;
-    }>(sizeQuery, [cutoffDate]);
+export async function updateSource(id: string, updates: Partial<NewsSource>): Promise<void> {
+  const updateFields: Record<string, any> = {};
+  if ('name' in updates) updateFields.name = updates.name;
+  if ('domain' in updates) updateFields.domain = updates.domain;
+  if ('rssUrl' in updates) updateFields.rss_url = updates.rssUrl;
+  if ('iconUrl' in updates) updateFields.icon_url = updates.iconUrl;
+  if ('respectRobotsTxt' in updates) updateFields.respect_robots_txt = updates.respectRobotsTxt;
+  if ('delayBetweenRequests' in updates) updateFields.delay_between_requests = updates.delayBetweenRequests;
+  if ('userAgent' in updates) updateFields.user_agent = updates.userAgent;
+  if ('timeoutMs' in updates) updateFields.timeout_ms = updates.timeoutMs;
+  
+  if (Object.keys(updateFields).length === 0) return;
+  
+  const setClause = Object.keys(updateFields)
+    .map((key, idx) => `${key} = $${idx + 2}`)
+    .join(', ');
+  
+  await pool.query(
+    `UPDATE sources SET ${setClause} WHERE id = $1`,
+    [id, ...Object.values(updateFields)]
+  );
+}
 
-    const count = parseInt(sizeResult.rows[0]?.count || '0');
-    const contentSize = parseInt(sizeResult.rows[0]?.content_size || '0');
-    const htmlSize = parseInt(sizeResult.rows[0]?.html_size || '0');
-    const spaceSaved = contentSize + htmlSize;
+export async function deleteSource(id: string): Promise<void> {
+  await pool.query(`DELETE FROM sources WHERE id = $1`, [id]);
+}
 
-    if (count === 0) {
-      return { deleted: 0, spaceSaved: 0 };
-    }
-
-    // Delete old content
-    const deleteQuery = 'DELETE FROM scraped_content WHERE created_at < $1';
-    const deleteResult = await this.query(deleteQuery, [cutoffDate]);
-
-    console.log(`[Scraper DB] Cleaned up ${deleteResult.rowCount} old records, saved ${(spaceSaved / 1024 / 1024).toFixed(2)}MB`);
-    
-    return {
-      deleted: deleteResult.rowCount || 0,
-      spaceSaved
-    };
-  }
-
-  /**
-   * Record query performance metrics
-   */
-  private recordQueryMetrics(query: string, duration: number, rowsAffected: number): void {
-    this.queryMetrics.push({
-      query: query.substring(0, 100), // Truncate long queries
-      duration,
-      timestamp: new Date(),
-      rowsAffected
+// Error recovery on startup
+export async function recoverStuckJobs(): Promise<void> {
+  const result = await pool.query(`
+    UPDATE scraping_jobs 
+    SET status = 'failed',
+        completed_at = NOW()
+    WHERE status IN ('running', 'pending')
+      AND triggered_at < NOW() - INTERVAL '1 hour'
+    RETURNING id
+  `);
+  
+  // Log recovery for each job
+  for (const job of result.rows) {
+    await logJobActivity({
+      jobId: job.id,
+      level: 'error',
+      message: 'Job marked as failed due to scraper restart',
+      additionalData: { recovery_reason: 'stuck_job', recovered_at: new Date().toISOString() }
     });
-
-    // Keep only recent metrics
-    if (this.queryMetrics.length > this.maxMetricsHistory) {
-      this.queryMetrics = this.queryMetrics.slice(-this.maxMetricsHistory);
-    }
-  }
-
-  /**
-   * Get connection pool metrics
-   */
-  getConnectionPoolMetrics(): ConnectionPoolMetrics {
-    if (!this.pool) {
-      return { totalConnections: 0, idleConnections: 0, waitingClients: 0 };
-    }
-
-    return {
-      totalConnections: this.pool.totalCount,
-      idleConnections: this.pool.idleCount,
-      waitingClients: this.pool.waitingCount
-    };
-  }
-
-  /**
-   * Get query performance metrics
-   */
-  getQueryMetrics(): QueryPerformanceMetrics[] {
-    return [...this.queryMetrics];
-  }
-
-  /**
-   * Get slow queries (above threshold)
-   */
-  getSlowQueries(thresholdMs: number = 1000): QueryPerformanceMetrics[] {
-    return this.queryMetrics.filter(metric => metric.duration > thresholdMs);
-  }
-
-  // ===============================================
-  // EXISTING METHODS (unchanged)
-  // ===============================================
-
-  /**
-   * Upsert news source
-   */
-  async upsertSource(source: Omit<NewsSource, 'id'>): Promise<number> {
-    const query = `
-      INSERT INTO sources (name, domain, rss_url, respect_robots_txt, delay_between_requests, user_agent, timeout_ms)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (domain) DO UPDATE SET
-        name = EXCLUDED.name,
-        rss_url = EXCLUDED.rss_url,
-        respect_robots_txt = EXCLUDED.respect_robots_txt,
-        delay_between_requests = EXCLUDED.delay_between_requests,
-        user_agent = EXCLUDED.user_agent,
-        timeout_ms = EXCLUDED.timeout_ms
-      RETURNING id
-    `;
-    
-    const values = [
-      source.name, 
-      source.domain, 
-      source.rssUrl || '',
-      source.respectRobotsTxt ?? true,
-      source.delayBetweenRequests ?? 1000,
-      source.userAgent ?? 'Veritas-Scraper/1.0',
-      source.timeoutMs ?? 30000
-    ];
-    const result = await this.query(query, values);
-    return result.rows[0].id;
-  }
-
-  /**
-   * Insert scraped content
-   */
-  async insertScrapedContent(content: Omit<ScrapedContent, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
-    const query = `
-      INSERT INTO scraped_content (
-        source_id, source_url, title, content, author,
-        publication_date, content_type, language, processing_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING id
-    `;
-    
-    const values = [
-      content.sourceId,
-      content.sourceUrl,
-      content.title,
-      content.content,
-      content.author || null,
-      content.publicationDate || null,
-      content.contentType,
-      content.language,
-      content.processingStatus
-    ];
-    
-    const result = await this.query(query, values);
-    return result.rows[0].id;
-  }
-
-  /**
-   * Check if content already exists by URL
-   */
-  async contentExists(sourceUrl: string): Promise<boolean> {
-    const query = 'SELECT id FROM scraped_content WHERE source_url = $1 LIMIT 1';
-    const result = await this.query(query, [sourceUrl]);
-    return result.rows.length > 0;
-  }
-
-  /**
-   * Get source by domain
-   */
-  async getSourceByDomain(domain: string): Promise<NewsSource | null> {
-    const query = 'SELECT * FROM sources WHERE domain = $1';
-    const result = await this.query(query, [domain]);
-    
-    if (result.rows.length === 0) {
-      return null;
-    }
-    
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      name: row.name,
-      domain: row.domain,
-      iconUrl: row.icon_url,
-      rssUrl: row.rss_url,
-      respectRobotsTxt: row.respect_robots_txt,
-      delayBetweenRequests: row.delay_between_requests,
-      userAgent: row.user_agent,
-      timeoutMs: row.timeout_ms,
-      createdAt: row.created_at
-    };
-  }
-
-  // ===============================================
-  // ENHANCED SCHEMA METHODS
-  // ===============================================
-
-  /**
-   * Create a new scraping job
-   */
-  async createScrapingJob(job: Omit<EnhancedScrapingJob, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    await this.initialize();
-    
-    const query = `
-      INSERT INTO scraping_jobs (
-        triggered_at, completed_at, status, sources_requested, 
-        articles_per_source, total_articles_scraped, total_errors
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id
-    `;
-    
-    const values = [
-      job.triggeredAt,
-      job.completedAt || null,
-      job.status,
-      job.sourcesRequested,
-      job.articlesPerSource,
-      job.totalArticlesScraped,
-      job.totalErrors
-    ];
-    
-    const result = await this.query<{ id: string }>(query, values);
-    if (result.rows.length === 0) {
-      throw new Error('Failed to create scraping job - no ID returned');
-    }
-    
-    const jobId = result.rows[0]!.id;
-    
-    // Add initial job logs to separate scraping_logs table
-    if (job.jobLogs && job.jobLogs.length > 0) {
-      for (const logEntry of job.jobLogs) {
-        await this.addScrapingLog({
-          jobId,
-          sourceId: logEntry.context?.sourceId,
-          logLevel: logEntry.logLevel.toLowerCase() as 'debug' | 'info' | 'warning' | 'error' | 'critical',
-          message: logEntry.message,
-          timestamp: new Date(logEntry.timestamp),
-          additionalData: logEntry.context
-        });
-      }
-    }
-    
-    return jobId;
-  }
-
-  /**
-   * Update scraping job status and stats
-   */
-  async updateScrapingJob(
-    jobId: string, 
-    updates: Partial<Pick<EnhancedScrapingJob, 'status' | 'completedAt' | 'totalArticlesScraped' | 'totalErrors' | 'jobLogs'>>
-  ): Promise<void> {
-    await this.initialize();
-    
-    const updateFields: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-    
-    if (updates.status !== undefined) {
-      updateFields.push(`status = $${paramIndex++}`);
-      values.push(updates.status);
-    }
-    
-    if (updates.completedAt !== undefined) {
-      updateFields.push(`completed_at = $${paramIndex++}`);
-      values.push(updates.completedAt);
-    }
-    
-    if (updates.totalArticlesScraped !== undefined) {
-      updateFields.push(`total_articles_scraped = $${paramIndex++}`);
-      values.push(updates.totalArticlesScraped);
-    }
-    
-    if (updates.totalErrors !== undefined) {
-      updateFields.push(`total_errors = $${paramIndex++}`);
-      values.push(updates.totalErrors);
-    }
-    
-    // Handle jobLogs by adding them to separate scraping_logs table
-    if (updates.jobLogs !== undefined && updates.jobLogs.length > 0) {
-      for (const logEntry of updates.jobLogs) {
-        await this.addScrapingLog({
-          jobId,
-          sourceId: logEntry.context?.sourceId,
-          logLevel: logEntry.logLevel.toLowerCase() as 'debug' | 'info' | 'warning' | 'error' | 'critical',
-          message: logEntry.message,
-          timestamp: new Date(logEntry.timestamp),
-          additionalData: logEntry.context
-        });
-      }
-    }
-    
-    if (updateFields.length === 0) return;
-    
-    values.push(jobId);
-    const query = `UPDATE scraping_jobs SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`;
-    
-    await this.query(query, values);
-  }
-
-  /**
-   * Add log entry to the separate scraping_logs table
-   */
-  async addJobLog(jobId: string, logEntry: JobLogEntry): Promise<void> {
-    await this.initialize();
-    
-    const query = `
-      INSERT INTO scraping_logs (job_id, source_id, log_level, message, timestamp, additional_data)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `;
-    
-    const values = [
-      jobId,
-      logEntry.context?.sourceId || null,
-      logEntry.logLevel.toLowerCase(),
-      logEntry.message,
-      new Date(logEntry.timestamp),
-      logEntry.context ? JSON.stringify(logEntry.context) : null
-    ];
-    
-    await this.query(query, values);
-  }
-
-  /**
-   * Add multiple log entries to the separate scraping_logs table (batch operation)
-   */
-  async addJobLogs(jobId: string, logEntries: JobLogEntry[]): Promise<void> {
-    if (logEntries.length === 0) return;
-    
-    await this.initialize();
-    
-    // Batch insert for better performance
-    const values: any[] = [];
-    const placeholders: string[] = [];
-    
-    logEntries.forEach((logEntry, index) => {
-      const baseIndex = index * 6;
-      placeholders.push(`($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6})`);
-      values.push(
-        jobId,
-        logEntry.context?.sourceId || null,
-        logEntry.logLevel.toLowerCase(),
-        logEntry.message,
-        new Date(logEntry.timestamp),
-        logEntry.context ? JSON.stringify(logEntry.context) : null
-      );
-    });
-    
-    const query = `
-      INSERT INTO scraping_logs (job_id, source_id, log_level, message, timestamp, additional_data)
-      VALUES ${placeholders.join(', ')}
-    `;
-    
-    await this.query(query, values);
-  }
-
-  /**
-   * Get logs for a specific job from the separate scraping_logs table
-   */
-  async getJobLogs(jobId: string): Promise<JobLogEntry[]> {
-    await this.initialize();
-    
-    const query = `
-      SELECT source_id, log_level, message, timestamp, additional_data
-      FROM scraping_logs 
-      WHERE job_id = $1
-      ORDER BY timestamp ASC
-    `;
-    
-    const result = await this.query<{
-      source_id: string | null;
-      log_level: string;
-      message: string;
-      timestamp: Date;
-      additional_data: any;
-    }>(query, [jobId]);
-    
-    return result.rows.map(row => ({
-      timestamp: row.timestamp.toISOString(),
-      logLevel: row.log_level.toUpperCase() as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR',
-      message: row.message,
-      context: {
-        sourceId: row.source_id,
-        ...(row.additional_data ? JSON.parse(row.additional_data) : {})
-      }
-    }));
-  }
-
-  /**
-   * @deprecated Use addJobLog instead - legacy function for backward compatibility
-   */
-  async addScrapingLog(log: Omit<ScrapingLogEntry, 'id'>): Promise<void> {
-    // Convert legacy log format to new format
-    const jobLogEntry: JobLogEntry = {
-      timestamp: log.timestamp.toISOString(),
-      logLevel: log.logLevel.toUpperCase() as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR',
-      message: log.message,
-      context: {
-        sourceId: log.sourceId,
-        ...log.additionalData
-      }
-    };
-    
-    await this.addJobLog(log.jobId, jobLogEntry);
-  }
-
-  /**
-   * @deprecated Use addJobLogs instead - legacy function for backward compatibility
-   */
-  async addScrapingLogs(logs: Omit<ScrapingLogEntry, 'id'>[]): Promise<void> {
-    if (logs.length === 0) return;
-    
-    // Group logs by jobId
-    const logsByJob = new Map<string, JobLogEntry[]>();
-    
-    for (const log of logs) {
-      const jobLogEntry: JobLogEntry = {
-        timestamp: log.timestamp.toISOString(),
-        logLevel: log.logLevel.toUpperCase() as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR',
-        message: log.message,
-        context: {
-          sourceId: log.sourceId,
-          ...log.additionalData
-        }
-      };
-      
-      if (!logsByJob.has(log.jobId)) {
-        logsByJob.set(log.jobId, []);
-      }
-      logsByJob.get(log.jobId)!.push(jobLogEntry);
-    }
-    
-    // Add logs for each job
-    for (const [jobId, jobLogs] of logsByJob) {
-      await this.addJobLogs(jobId, jobLogs);
-    }
-  }
-
-  /**
-   * Insert enhanced scraped content with new fields
-   */
-  async insertEnhancedScrapedContent(content: Omit<ScrapedContent, 'id' | 'createdAt'>): Promise<string> {
-    await this.initialize();
-    
-    const query = `
-      INSERT INTO scraped_content (
-        source_id, source_url, title, content, author, publication_date,
-        content_type, language, processing_status, category, tags, 
-        full_html, crawlee_classification, content_hash
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING id
-    `;
-    
-    const values = [
-      content.sourceId,
-      content.sourceUrl,
-      content.title,
-      content.content,
-      content.author || null,
-      content.publicationDate || null,
-      content.contentType,
-      content.language,
-      content.processingStatus,
-      content.category || null,
-      content.tags || null,
-      content.fullHtml || null,
-      content.crawleeClassification ? JSON.stringify(content.crawleeClassification) : null,
-      content.contentHash || null
-    ];
-    
-    const result = await this.query<{ id: string }>(query, values);
-    if (result.rows.length === 0) {
-      throw new Error('Failed to insert enhanced scraped content - no ID returned');
-    }
-    return result.rows[0]!.id;
-  }
-
-  /**
-   * Check if content exists by hash (for duplicate detection)
-   */
-  async contentExistsByHash(contentHash: string): Promise<boolean> {
-    await this.initialize();
-    
-    const query = 'SELECT 1 FROM scraped_content WHERE content_hash = $1 LIMIT 1';
-    const result = await this.query(query, [contentHash]);
-    
-    return result.rows.length > 0;
-  }
-
-  /**
-   * Get enabled sources for scraping
-   */
-  async getEnabledSources(): Promise<NewsSource[]> {
-    await this.initialize();
-    
-    const query = `
-      SELECT id, name, domain, icon_url, rss_url, 
-             respect_robots_txt, delay_between_requests, user_agent, timeout_ms, created_at
-      FROM sources 
-      ORDER BY name ASC
-    `;
-    
-    const result = await this.query<any>(query);
-    
-    return result.rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      domain: row.domain,
-      iconUrl: row.icon_url,
-      rssUrl: row.rss_url,
-      respectRobotsTxt: row.respect_robots_txt,
-      delayBetweenRequests: row.delay_between_requests,
-      userAgent: row.user_agent,
-      timeoutMs: row.timeout_ms,
-      createdAt: row.created_at
-    }));
-  }
-
-  /**
-   * Get last health check status
-   */
-  getLastHealthCheck(): Date | null {
-    return this.lastHealthCheck;
-  }
-
-  /**
-   * Add compression support to scraped_content table
-   */
-  async addCompressionSupport(): Promise<void> {
-    console.log('[Scraper DB] Adding compression support to scraped_content table...');
-    
-    const query = `
-      DO $$
-      BEGIN
-        -- Add compression columns if they don't exist
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'scraped_content' AND column_name = 'compressed_content'
-        ) THEN
-          ALTER TABLE scraped_content ADD COLUMN compressed_content BYTEA;
-        END IF;
-        
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'scraped_content' AND column_name = 'compressed_html'
-        ) THEN
-          ALTER TABLE scraped_content ADD COLUMN compressed_html BYTEA;
-        END IF;
-        
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'scraped_content' AND column_name = 'compression_ratio'
-        ) THEN
-          ALTER TABLE scraped_content ADD COLUMN compression_ratio DECIMAL(5,2);
-        END IF;
-        
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'scraped_content' AND column_name = 'original_size'
-        ) THEN
-          ALTER TABLE scraped_content ADD COLUMN original_size BIGINT;
-        END IF;
-        
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
-          WHERE table_name = 'scraped_content' AND column_name = 'compressed_size'
-        ) THEN
-          ALTER TABLE scraped_content ADD COLUMN compressed_size BIGINT;
-        END IF;
-      END $$;
-      
-      -- Add indexes for compression queries
-      CREATE INDEX IF NOT EXISTS idx_scraped_content_compressed ON scraped_content(compressed_content) WHERE compressed_content IS NOT NULL;
-      CREATE INDEX IF NOT EXISTS idx_scraped_content_compression_ratio ON scraped_content(compression_ratio) WHERE compression_ratio IS NOT NULL;
-    `;
-    
-    await this.query(query);
-    console.log('[Scraper DB] Compression support added successfully');
-  }
-
-  /**
-   * Get storage statistics for cleanup manager
-   */
-  async getStorageStats(): Promise<{
-    totalRecords: number;
-    totalSize: number;
-    contentSize: number;
-    htmlSize: number;
-    compressedSize: number;
-    averageCompressionRatio: number;
-  }> {
-    const query = `
-      SELECT 
-        COUNT(*) as total_records,
-        SUM(LENGTH(content)) as content_size,
-        SUM(LENGTH(COALESCE(full_html, ''))) as html_size,
-        SUM(CASE WHEN compressed_content IS NOT NULL THEN LENGTH(compressed_content) ELSE 0 END) as compressed_content_size,
-        SUM(CASE WHEN compressed_html IS NOT NULL THEN LENGTH(compressed_html) ELSE 0 END) as compressed_html_size,
-        AVG(compression_ratio) as avg_compression_ratio
-      FROM scraped_content
-    `;
-    
-    const result = await this.query(query);
-    const row = result.rows[0];
-    
-    const totalRecords = parseInt(row.total_records || '0');
-    const contentSize = parseInt(row.content_size || '0');
-    const htmlSize = parseInt(row.html_size || '0');
-    const compressedContentSize = parseInt(row.compressed_content_size || '0');
-    const compressedHtmlSize = parseInt(row.compressed_html_size || '0');
-    const totalSize = contentSize + htmlSize;
-    const compressedSize = compressedContentSize + compressedHtmlSize;
-    const averageCompressionRatio = parseFloat(row.avg_compression_ratio || '0');
-    
-    return {
-      totalRecords,
-      totalSize,
-      contentSize,
-      htmlSize,
-      compressedSize,
-      averageCompressionRatio
-    };
-  }
-
-  /**
-   * Get content candidates for compression
-   */
-  async getCompressionCandidates(limit: number = 100): Promise<{
-    id: string;
-    content: string;
-    fullHtml: string;
-    contentSize: number;
-    htmlSize: number;
-  }[]> {
-    const query = `
-      SELECT 
-        id,
-        content,
-        full_html,
-        LENGTH(content) as content_size,
-        LENGTH(COALESCE(full_html, '')) as html_size
-      FROM scraped_content
-      WHERE compressed_content IS NULL
-      AND LENGTH(content) > 500
-      ORDER BY LENGTH(content) DESC
-      LIMIT $1
-    `;
-    
-    const result = await this.query(query, [limit]);
-    
-    return result.rows.map(row => ({
-      id: row.id,
-      content: row.content,
-      fullHtml: row.full_html,
-      contentSize: parseInt(row.content_size),
-      htmlSize: parseInt(row.html_size)
-    }));
-  }
-
-  /**
-   * Update content with compression data
-   */
-  async updateContentCompression(
-    id: string,
-    compressedContent: Buffer,
-    compressedHtml: Buffer | null,
-    originalSize: number,
-    compressedSize: number
-  ): Promise<void> {
-    const compressionRatio = originalSize > 0 ? (compressedSize / originalSize) : 0;
-    
-    const query = `
-      UPDATE scraped_content 
-      SET 
-        compressed_content = $1,
-        compressed_html = $2,
-        original_size = $3,
-        compressed_size = $4,
-        compression_ratio = $5
-      WHERE id = $6
-    `;
-    
-    await this.query(query, [
-      compressedContent,
-      compressedHtml,
-      originalSize,
-      compressedSize,
-      compressionRatio,
-      id
-    ]);
-  }
-
-  /**
-   * Get duplicate content candidates
-   */
-  async getDuplicateCandidates(limit: number = 100): Promise<{
-    contentHash: string;
-    count: number;
-    ids: string[];
-    totalSize: number;
-  }[]> {
-    const query = `
-      SELECT 
-        content_hash,
-        COUNT(*) as count,
-        ARRAY_AGG(id::text) as ids,
-        SUM(LENGTH(content) + LENGTH(COALESCE(full_html, ''))) as total_size
-      FROM scraped_content
-      WHERE content_hash IS NOT NULL
-      GROUP BY content_hash
-      HAVING COUNT(*) > 1
-      ORDER BY COUNT(*) DESC
-      LIMIT $1
-    `;
-    
-    const result = await this.query(query, [limit]);
-    
-    return result.rows.map(row => ({
-      contentHash: row.content_hash,
-      count: parseInt(row.count),
-      ids: row.ids,
-      totalSize: parseInt(row.total_size)
-    }));
-  }
-
-  /**
-   * Delete content by IDs
-   */
-  async deleteContentByIds(ids: string[]): Promise<number> {
-    if (ids.length === 0) {
-      return 0;
-    }
-    
-    const query = 'DELETE FROM scraped_content WHERE id = ANY($1)';
-    const result = await this.query(query, [ids]);
-    
-    return result.rowCount || 0;
-  }
-
-  /**
-   * Enhanced cleanup old content with archival support
-   */
-  async cleanupOldContentWithArchival(
-    daysToKeep: number = 30,
-    archiveBeforeDelete: boolean = true
-  ): Promise<{ deleted: number; archived: number; spaceSaved: number }> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-
-    // Get content to be cleaned up
-    const sizeQuery = `
-      SELECT 
-        COUNT(*) as count,
-        SUM(LENGTH(content)) as content_size,
-        SUM(LENGTH(COALESCE(full_html, ''))) as html_size
-      FROM scraped_content 
-      WHERE created_at < $1
-      AND (NOT $2 OR id NOT IN (SELECT original_id FROM scraped_content_archive))
-    `;
-    
-    const sizeResult = await this.query<{
-      count: string;
-      content_size: string;
-      html_size: string;
-    }>(sizeQuery, [cutoffDate, archiveBeforeDelete]);
-
-    const count = parseInt(sizeResult.rows[0]?.count || '0');
-    const contentSize = parseInt(sizeResult.rows[0]?.content_size || '0');
-    const htmlSize = parseInt(sizeResult.rows[0]?.html_size || '0');
-    const spaceSaved = contentSize + htmlSize;
-
-    if (count === 0) {
-      return { deleted: 0, archived: 0, spaceSaved: 0 };
-    }
-
-    let archivedCount = 0;
-    
-    // Archive content if requested
-    if (archiveBeforeDelete) {
-      const archiveQuery = `
-        INSERT INTO scraped_content_archive (
-          original_id, source_id, title, content, full_html, metadata, created_at
-        )
-        SELECT 
-          id, source_id, title, content, full_html,
-          json_build_object(
-            'sourceId', source_id,
-            'title', title,
-            'createdAt', created_at,
-            'archivedAt', NOW(),
-            'originalSize', LENGTH(content) + LENGTH(COALESCE(full_html, ''))
-          ),
-          created_at
-        FROM scraped_content
-        WHERE created_at < $1
-        AND id NOT IN (SELECT original_id FROM scraped_content_archive)
-        ON CONFLICT (original_id) DO NOTHING
-      `;
-      
-      const archiveResult = await this.query(archiveQuery, [cutoffDate]);
-      archivedCount = archiveResult.rowCount || 0;
-    }
-
-    // Delete old content
-    const deleteQuery = `
-      DELETE FROM scraped_content 
-      WHERE created_at < $1
-      AND (NOT $2 OR id IN (SELECT original_id FROM scraped_content_archive))
-    `;
-    
-    const deleteResult = await this.query(deleteQuery, [cutoffDate, archiveBeforeDelete]);
-    const deletedCount = deleteResult.rowCount || 0;
-
-    console.log(`[Scraper DB] Cleaned up ${deletedCount} old records (${archivedCount} archived), saved ${(spaceSaved / 1024 / 1024).toFixed(2)}MB`);
-    
-    return {
-      deleted: deletedCount,
-      archived: archivedCount,
-      spaceSaved
-    };
-  }
-
-  /**
-   * Close database connection
-   */
-  async close(): Promise<void> {
-    if (this.connectionHealthCheckInterval) {
-      clearInterval(this.connectionHealthCheckInterval);
-      this.connectionHealthCheckInterval = null;
-    }
-    
-    if (this.pool) {
-      await this.pool.end();
-      this.pool = null;
-      this.isInitialized = false;
-      console.log('🔌 [Scraper DB] Enhanced connection pool closed');
-    }
   }
 }
 
-// Export singleton instance
-export const scraperDb = new ScraperDatabase();
-
-// Export database client for resource monitor
-export const getDatabaseClient = () => scraperDb; 
+// Export pool for direct queries if needed
+export { pool }; 

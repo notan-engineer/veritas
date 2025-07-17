@@ -1,159 +1,179 @@
-// TypeScript interfaces for Veritas scraper service
-
-export interface RSSItem {
-  title: string
-  link: string
-  description?: string
-  pubDate?: string
-  author?: string
-  category?: string[]
-  content?: string
-}
-
-export interface RSSFeed {
-  title: string
-  description?: string
-  link: string
-  items: RSSItem[]
-}
-
-export interface ScrapedArticle {
-  sourceUrl: string
-  title: string
-  content: string
-  author?: string
-  publicationDate?: Date
-  language: string
-  // Enhanced fields
-  category?: string
-  tags?: string[]
-  fullHtml?: string
-  crawleeClassification?: CrawleeClassification
-  contentHash?: string
-}
-
-export interface NewsSource {
-  id?: string
-  name: string
-  domain: string
-  iconUrl?: string
-  rssUrl?: string
-  // Flattened scraping config fields
-  respectRobotsTxt?: boolean
-  delayBetweenRequests?: number
-  userAgent?: string
-  timeoutMs?: number
-  createdAt?: Date
-}
-
-export interface ScrapedContent {
-  id?: string
-  sourceId: string
-  sourceUrl: string
-  title: string
-  content: string
-  author?: string
-  publicationDate?: Date
-  contentType: 'article' | 'rss-item'
-  language: string
-  processingStatus: 'pending' | 'processing' | 'completed' | 'failed'
-  // Enhanced content fields
-  category?: string
-  tags?: string[]
-  fullHtml?: string
-  crawleeClassification?: CrawleeClassification
-  contentHash?: string
-  createdAt?: Date
-}
-
+// Job types
 export interface ScrapingJob {
-  id: string
-  sources: string[]
-  maxArticles: number
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  startTime: Date
-  endTime?: Date
-  logs: ScrapingLog[]
-  results: {
-    articlesScraped: number
-    articlesStored: number
-    errors: number
-  }
+  id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  sourcesRequested: string[];
+  articlesPerSource: number;
+  totalArticlesScraped: number;
+  totalErrors: number;
+  triggeredAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  duration?: number;      // seconds
+  progress?: number;      // 0-100
+  currentSource?: string; // Currently processing
 }
 
-export interface ScrapingLog {
-  timestamp: Date
-  level: 'info' | 'warn' | 'error'
-  message: string
-  source?: string
-  error?: string
+export type JobStatus = ScrapingJob['status'];
+
+export interface JobLog {
+  id: string;
+  jobId: string;
+  sourceId?: string;
+  sourceName?: string;
+  timestamp: string;
+  log_level: 'info' | 'warning' | 'error'; // Note: matches DB column name
+  message: string;
+  additional_data?: Record<string, any>; // From JSONB
 }
 
-export interface ScrapingConfig {
-  maxConcurrentRequests: number
-  requestDelay: number
-  timeout: number
-  userAgent: string
-  retryAttempts: number
-  respectRobotsTxt: boolean
+// Content types
+export interface ScrapedArticle {
+  id: string;
+  title: string;
+  content: string;
+  author?: string;
+  sourceUrl: string;
+  sourceName: string;
+  publicationDate?: string;
+  language: string;
+  category?: string;
+  tags?: string[];
+  contentType: 'article' | 'rss-item';
+  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+  contentHash: string;     // For duplicate detection
+  fullHtml?: string;       // Original HTML
+  createdAt: string;
+  processedAt?: string;
 }
 
-// Scraping configuration is now flattened into NewsSource interface
-// maxArticles is now dynamic based on user input, not stored in database
+export type ProcessingStatus = ScrapedArticle['processingStatus'];
 
-export interface CrawleeClassification {
-  contentType: string
-  confidence: number
-  metadata: Record<string, any>
-  extractedAt: Date
+// Source types
+export interface NewsSource {
+  id: string;
+  name: string;
+  domain: string;
+  rssUrl: string;
+  iconUrl?: string;
+  respectRobotsTxt: boolean;
+  delayBetweenRequests: number;  // milliseconds
+  userAgent: string;
+  timeoutMs: number;
+  createdAt: string;
+  // Calculated metrics (not in DB)
+  totalArticles?: number;
+  lastJobStatus?: JobStatus;
+  successfulJobs?: number;
+  failedJobs?: number;
 }
 
-// Enhanced job tracking interfaces
-export interface EnhancedScrapingJob {
-  id: string
-  triggeredAt: Date
-  completedAt?: Date
-  status: 'running' | 'completed' | 'failed' | 'cancelled'
-  sourcesRequested: string[]
-  articlesPerSource: number
-  totalArticlesScraped: number
-  totalErrors: number
-  jobLogs: JobLogEntry[]
-  createdAt: Date
-  updatedAt: Date
+// API types
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 }
 
-export interface JobLogEntry {
-  timestamp: string
-  logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
-  message: string
-  context?: Record<string, any>
+export interface ErrorResponse {
+  error: string;
+  message: string;
+  statusCode: number;
+  timestamp: string;
+  details?: any;
 }
 
-// Legacy interface for backward compatibility during migration
-export interface ScrapingLogEntry {
-  id: string
-  jobId: string
-  sourceId?: string
-  logLevel: 'debug' | 'info' | 'warning' | 'error' | 'critical'
-  message: string
-  timestamp: Date
-  additionalData?: Record<string, any>
-}
-
+// Request/Response types
 export interface TriggerScrapingRequest {
-  sources: string[]
-  maxArticles?: number
+  sources: string[];      // Source names from database
+  maxArticles: number;    // Articles per source
 }
 
 export interface TriggerScrapingResponse {
-  success: boolean
-  message: string
-  jobId: string
-  logs: Array<{
-    timestamp: string
-    level: 'info' | 'warn' | 'error'
-    message: string
-    source?: string
-  }>
+  jobId: string;
+  status: 'started';
+  message: string;
+}
+
+export interface GetJobsRequest {
+  page?: number;          // Default: 1
+  pageSize?: number;      // Default: 20
+  status?: JobStatus;     // Filter by status
+}
+
+export interface GetJobResponse {
+  job: ScrapingJob;
+}
+
+export interface GetJobLogsRequest {
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CancelJobResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface GetContentRequest {
+  page?: number;
+  pageSize?: number;
+  search?: string;          // Text search
+  source?: string;          // Filter by source
+  language?: string;        // Filter by language  
+  status?: ProcessingStatus; // Filter by status
+}
+
+export interface GetArticleResponse {
+  article: ScrapedArticle;
+}
+
+export interface GetSourcesResponse {
+  sources: NewsSource[];
+}
+
+// Helper types
+export interface LogJobActivityParams {
+  jobId: string;
+  sourceId?: string | null;
+  level: 'info' | 'warning' | 'error';
+  message: string;
+  additionalData?: Record<string, any>;
+}
+
+export interface ArticleFilters {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  source?: string;
+  language?: string;
+  status?: ProcessingStatus;
+}
+
+export interface ProgressState {
+  totalSources: number;
+  processedSources: number;
+  currentSource?: string;
+  articlesPerSource: number;
+  totalArticlesExpected: number;
+  articlesProcessed: number;
+  articlesErrored: number;
+}
+
+export interface ArticleContent {
+  title: string;
+  content: string;
+  author?: string | null;
+  date?: string | null;
+}
+
+export interface DashboardMetrics {
+  jobsTriggered: number;
+  successRate: number;
+  articlesScraped: number;
+  averageJobDuration: number;
+  activeJobs: number;
+  recentErrors: number;
 } 

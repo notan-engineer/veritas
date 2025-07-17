@@ -2,11 +2,11 @@
   "name": "veritas-scraper",
   "version": "1.0.0",
   "description": "Crawlee-based news content scraper for Veritas platform",
-  "main": "dist/api-server.js",
+  "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/api-server.js",
-    "dev": "ts-node src/api-server.ts",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
