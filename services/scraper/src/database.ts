@@ -616,8 +616,8 @@ class ScraperDatabase {
     const query = `
       INSERT INTO scraping_jobs (
         triggered_at, completed_at, status, sources_requested, 
-        articles_per_source, total_articles_scraped, total_errors, job_logs
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        articles_per_source, total_articles_scraped, total_errors
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
     `;
     
@@ -628,15 +628,31 @@ class ScraperDatabase {
       job.sourcesRequested,
       job.articlesPerSource,
       job.totalArticlesScraped,
-      job.totalErrors,
-      JSON.stringify(job.jobLogs || [])
+      job.totalErrors
     ];
     
     const result = await this.query<{ id: string }>(query, values);
     if (result.rows.length === 0) {
       throw new Error('Failed to create scraping job - no ID returned');
     }
-    return result.rows[0]!.id;
+    
+    const jobId = result.rows[0]!.id;
+    
+    // Add initial job logs to separate scraping_logs table
+    if (job.jobLogs && job.jobLogs.length > 0) {
+      for (const logEntry of job.jobLogs) {
+        await this.addScrapingLog({
+          jobId,
+          sourceId: logEntry.context?.sourceId,
+          logLevel: logEntry.logLevel.toLowerCase() as 'debug' | 'info' | 'warning' | 'error' | 'critical',
+          message: logEntry.message,
+          timestamp: new Date(logEntry.timestamp),
+          additionalData: logEntry.context
+        });
+      }
+    }
+    
+    return jobId;
   }
 
   /**
@@ -672,9 +688,18 @@ class ScraperDatabase {
       values.push(updates.totalErrors);
     }
     
-    if (updates.jobLogs !== undefined) {
-      updateFields.push(`job_logs = $${paramIndex++}`);
-      values.push(JSON.stringify(updates.jobLogs));
+    // Handle jobLogs by adding them to separate scraping_logs table
+    if (updates.jobLogs !== undefined && updates.jobLogs.length > 0) {
+      for (const logEntry of updates.jobLogs) {
+        await this.addScrapingLog({
+          jobId,
+          sourceId: logEntry.context?.sourceId,
+          logLevel: logEntry.logLevel.toLowerCase() as 'debug' | 'info' | 'warning' | 'error' | 'critical',
+          message: logEntry.message,
+          timestamp: new Date(logEntry.timestamp),
+          additionalData: logEntry.context
+        });
+      }
     }
     
     if (updateFields.length === 0) return;
@@ -686,56 +711,91 @@ class ScraperDatabase {
   }
 
   /**
-   * Add log entry to a job's JSON log array
+   * Add log entry to the separate scraping_logs table
    */
   async addJobLog(jobId: string, logEntry: JobLogEntry): Promise<void> {
     await this.initialize();
     
     const query = `
-      UPDATE scraping_jobs 
-      SET job_logs = COALESCE(job_logs, '[]'::jsonb) || $1::jsonb 
-      WHERE id = $2
+      INSERT INTO scraping_logs (job_id, source_id, log_level, message, timestamp, additional_data)
+      VALUES ($1, $2, $3, $4, $5, $6)
     `;
     
-    await this.query(query, [JSON.stringify([logEntry]), jobId]);
+    const values = [
+      jobId,
+      logEntry.context?.sourceId || null,
+      logEntry.logLevel.toLowerCase(),
+      logEntry.message,
+      new Date(logEntry.timestamp),
+      logEntry.context ? JSON.stringify(logEntry.context) : null
+    ];
+    
+    await this.query(query, values);
   }
 
   /**
-   * Add multiple log entries to a job's JSON log array (batch operation)
+   * Add multiple log entries to the separate scraping_logs table (batch operation)
    */
   async addJobLogs(jobId: string, logEntries: JobLogEntry[]): Promise<void> {
     if (logEntries.length === 0) return;
     
     await this.initialize();
     
+    // Batch insert for better performance
+    const values: any[] = [];
+    const placeholders: string[] = [];
+    
+    logEntries.forEach((logEntry, index) => {
+      const baseIndex = index * 6;
+      placeholders.push(`($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6})`);
+      values.push(
+        jobId,
+        logEntry.context?.sourceId || null,
+        logEntry.logLevel.toLowerCase(),
+        logEntry.message,
+        new Date(logEntry.timestamp),
+        logEntry.context ? JSON.stringify(logEntry.context) : null
+      );
+    });
+    
     const query = `
-      UPDATE scraping_jobs 
-      SET job_logs = COALESCE(job_logs, '[]'::jsonb) || $1::jsonb 
-      WHERE id = $2
+      INSERT INTO scraping_logs (job_id, source_id, log_level, message, timestamp, additional_data)
+      VALUES ${placeholders.join(', ')}
     `;
     
-    await this.query(query, [JSON.stringify(logEntries), jobId]);
+    await this.query(query, values);
   }
 
   /**
-   * Get logs for a specific job from the JSON field
+   * Get logs for a specific job from the separate scraping_logs table
    */
   async getJobLogs(jobId: string): Promise<JobLogEntry[]> {
     await this.initialize();
     
     const query = `
-      SELECT job_logs
-      FROM scraping_jobs 
-      WHERE id = $1
+      SELECT source_id, log_level, message, timestamp, additional_data
+      FROM scraping_logs 
+      WHERE job_id = $1
+      ORDER BY timestamp ASC
     `;
     
-    const result = await this.query<{ job_logs: JobLogEntry[] }>(query, [jobId]);
+    const result = await this.query<{
+      source_id: string | null;
+      log_level: string;
+      message: string;
+      timestamp: Date;
+      additional_data: any;
+    }>(query, [jobId]);
     
-    if (result.rows.length === 0) {
-      return [];
-    }
-    
-    return result.rows[0]!.job_logs || [];
+    return result.rows.map(row => ({
+      timestamp: row.timestamp.toISOString(),
+      logLevel: row.log_level.toUpperCase() as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR',
+      message: row.message,
+      context: {
+        sourceId: row.source_id,
+        ...(row.additional_data ? JSON.parse(row.additional_data) : {})
+      }
+    }));
   }
 
   /**
