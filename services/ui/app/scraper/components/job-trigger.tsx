@@ -66,7 +66,7 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
 
   // Real-time job status monitoring
   useEffect(() => {
-    if (currentJobId) {
+    if (currentJobId && !currentJobId.startsWith('fallback_')) {
       const checkJobStatus = async () => {
         try {
           const response = await fetch(`/api/scraper/jobs/${currentJobId}`);
@@ -104,6 +104,12 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
       // Check status every 2 seconds for active jobs
       const interval = setInterval(checkJobStatus, 2000);
       return () => clearInterval(interval);
+    } else if (currentJobId && currentJobId.startsWith('fallback_')) {
+      // For fallback jobs, just show as failed after a short delay
+      setTimeout(() => {
+        setJobStatus('failed');
+        setCurrentJobId(null);
+      }, 2000);
     }
   }, [currentJobId]);
 
@@ -264,10 +270,12 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
           <CardContent className="space-y-4">
             {/* Articles per source */}
             <div>
-              <label className="text-sm font-medium mb-2 block">
+              <label htmlFor="articles-per-source" className="text-sm font-medium mb-2 block">
                 Articles per source
               </label>
               <input
+                id="articles-per-source"
+                name="articlesPerSource"
                 type="number"
                 min="1"
                 value={articlesPerSource}
@@ -282,7 +290,7 @@ export function JobTrigger({ onTrigger, isTriggering }: JobTriggerProps) {
 
             {/* Source selection */}
             <div>
-              <label className="text-sm font-medium mb-2 block">
+              <label htmlFor="source-selection" className="text-sm font-medium mb-2 block">
                 Select Sources ({selectedSources.length} selected)
               </label>
               
