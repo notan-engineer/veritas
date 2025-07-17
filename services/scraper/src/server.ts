@@ -633,7 +633,7 @@ app.get('/api/jobs', async (req, res) => {
     let query = `
       SELECT 
         id, triggered_at, completed_at, status, sources_requested, 
-        articles_per_source, total_articles_scraped, total_errors, job_logs,
+        articles_per_source, total_articles_scraped, total_errors,
         EXTRACT(EPOCH FROM (COALESCE(completed_at, NOW()) - triggered_at)) as duration
       FROM scraping_jobs 
     `;
@@ -648,17 +648,21 @@ app.get('/api/jobs', async (req, res) => {
     
     const result = await scraperDb.query(query, params);
     
-    const jobs = result.rows.map(row => ({
-      id: row.id,
-      triggeredAt: row.triggered_at,
-      completedAt: row.completed_at,
-      status: row.status,
-      sourcesRequested: row.sources_requested || [],
-      articlesPerSource: row.articles_per_source || 0,
-      totalArticlesScraped: row.total_articles_scraped || 0,
-      totalErrors: row.total_errors || 0,
-      duration: Math.floor(row.duration || 0),
-      logs: row.job_logs || []
+    // Get logs for each job from separate scraping_logs table
+    const jobs = await Promise.all(result.rows.map(async row => {
+      const logs = await scraperDb.getJobLogs(row.id);
+      return {
+        id: row.id,
+        triggeredAt: row.triggered_at,
+        completedAt: row.completed_at,
+        status: row.status,
+        sourcesRequested: row.sources_requested || [],
+        articlesPerSource: row.articles_per_source || 0,
+        totalArticlesScraped: row.total_articles_scraped || 0,
+        totalErrors: row.total_errors || 0,
+        duration: Math.floor(row.duration || 0),
+        logs: logs || []
+      };
     }));
     
     console.log(`[${timestamp}] Retrieved ${jobs.length} jobs`);
