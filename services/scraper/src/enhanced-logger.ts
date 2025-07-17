@@ -1,5 +1,5 @@
 import { scraperDb } from './database';
-import { ScrapingLogEntry } from './types';
+import { ScrapingLogEntry, JobLogEntry } from './types';
 
 export interface LogContext {
   jobId?: string;
@@ -342,7 +342,49 @@ export class EnhancedLogger {
   }
 
   /**
-   * Flush logs to database
+   * Create a JobLogEntry for the new JSON logging format
+   */
+  createJobLogEntry(
+    level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR',
+    message: string,
+    context: LogContext = {},
+    metadata: LogMetadata = {}
+  ): JobLogEntry {
+    return {
+      timestamp: new Date().toISOString(),
+      logLevel: level,
+      message,
+      context: {
+        ...context,
+        ...metadata
+      }
+    };
+  }
+
+  /**
+   * Log to job context (new approach) - returns log entry for collection
+   */
+  async logToJobContext(
+    level: 'info' | 'warning' | 'error',
+    message: string,
+    context: LogContext = {},
+    metadata: LogMetadata = {}
+  ): Promise<JobLogEntry> {
+    const logEntry = this.createJobLogEntry(
+      level.toUpperCase() as 'INFO' | 'WARN' | 'ERROR',
+      message,
+      context,
+      metadata
+    );
+
+    // Also log to console for immediate visibility
+    console.log(`[EnhancedLogger ${level.toUpperCase()}] ${message}`, context, metadata);
+
+    return logEntry;
+  }
+
+  /**
+   * Flush logs to database (legacy approach)
    */
   private async flushLogs(): Promise<void> {
     if (this.logBuffer.length === 0) return;

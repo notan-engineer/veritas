@@ -504,42 +504,49 @@ export class CleanupManager extends EventEmitter {
   }
 
   /**
-   * Clean up old logs
+   * Clean up old logs (truncate job logs for old jobs)
    */
   private async cleanupOldLogs(policy: CleanupPolicy): Promise<{ deleted: number; spaceSaved: number }> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - policy.retention.logsDays);
 
-    console.log(`[CleanupManager] Cleaning up logs older than ${cutoffDate.toISOString()}`);
+    console.log(`[CleanupManager] Truncating logs for jobs older than ${cutoffDate.toISOString()}`);
 
-    // Get size of logs to be deleted
+    // Get size of logs to be truncated
     const sizeQuery = `
       SELECT 
         COUNT(*) as count,
-        SUM(LENGTH(COALESCE(message, ''))) as message_size,
-        SUM(LENGTH(COALESCE(additional_data::text, ''))) as data_size
-      FROM scraping_logs 
-      WHERE timestamp < $1
+        SUM(LENGTH(COALESCE(job_logs::text, '[]'))) as logs_size
+      FROM scraping_jobs 
+      WHERE triggered_at < $1 AND jsonb_array_length(COALESCE(job_logs, '[]'::jsonb)) > 0
     `;
 
     const sizeResult = await scraperDb.query(sizeQuery, [cutoffDate]);
     const count = parseInt(sizeResult.rows[0]?.count || '0');
-    const messageSize = parseInt(sizeResult.rows[0]?.message_size || '0');
-    const dataSize = parseInt(sizeResult.rows[0]?.data_size || '0');
-    const spaceSaved = messageSize + dataSize;
+    const spaceSaved = parseInt(sizeResult.rows[0]?.logs_size || '0');
 
     if (count === 0) {
       return { deleted: 0, spaceSaved: 0 };
     }
 
-    // Delete old logs
-    const deleteQuery = 'DELETE FROM scraping_logs WHERE timestamp < $1';
-    const deleteResult = await scraperDb.query(deleteQuery, [cutoffDate]);
+    // Truncate job logs to keep only summary (first and last log entries)
+    const truncateQuery = `
+      UPDATE scraping_jobs 
+      SET job_logs = CASE 
+        WHEN jsonb_array_length(job_logs) > 2 THEN 
+          jsonb_build_array(job_logs->0, job_logs->-1)
+        ELSE 
+          job_logs 
+      END
+      WHERE triggered_at < $1 AND jsonb_array_length(COALESCE(job_logs, '[]'::jsonb)) > 2
+    `;
 
-    console.log(`[CleanupManager] Deleted ${deleteResult.rowCount} old logs, saved ${(spaceSaved / 1024 / 1024).toFixed(2)}MB`);
+    const truncateResult = await scraperDb.query(truncateQuery, [cutoffDate]);
+
+    console.log(`[CleanupManager] Truncated logs for ${truncateResult.rowCount} old jobs, saved ${(spaceSaved / 1024 / 1024).toFixed(2)}MB`);
 
     return {
-      deleted: deleteResult.rowCount || 0,
+      deleted: truncateResult.rowCount || 0,
       spaceSaved
     };
   }

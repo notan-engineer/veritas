@@ -5,6 +5,7 @@ import { enhancedLogger } from './enhanced-logger';
 import { 
   EnhancedScrapingJob, 
   ScrapingLogEntry, 
+  JobLogEntry,
   TriggerScrapingRequest 
 } from './types';
 
@@ -24,6 +25,7 @@ export interface JobExecutionContext {
   articlesProcessed: number;
   errorsEncountered: number;
   isAborted: boolean;
+  logs: JobLogEntry[];
 }
 
 /**
@@ -65,7 +67,12 @@ export class JobManager extends EventEmitter {
       articlesPerSource: request.maxArticles || 3,
       totalArticlesScraped: 0,
       totalErrors: 0,
-      jobLogs: `Job ${jobId} queued for processing`
+      jobLogs: [{
+        timestamp: new Date().toISOString(),
+        logLevel: 'INFO',
+        message: `Job ${jobId} queued for processing`,
+        context: { sources: request.sources, maxArticles: request.maxArticles || 3 }
+      }]
     };
 
     const dbJobId = await scraperDb.createScrapingJob(job);
@@ -154,7 +161,8 @@ export class JobManager extends EventEmitter {
       startTime: new Date(),
       articlesProcessed: 0,
       errorsEncountered: 0,
-      isAborted: false
+      isAborted: false,
+      logs: []
     };
 
     this.activeJobs.set(queueItem.jobId, context);
@@ -242,12 +250,20 @@ export class JobManager extends EventEmitter {
     const completedAt = new Date();
     const duration = completedAt.getTime() - context.startTime.getTime();
 
+    // Add final completion log
+    context.logs.push({
+      timestamp: new Date().toISOString(),
+      logLevel: 'INFO',
+      message: `Job completed successfully in ${duration}ms`,
+      context: { duration, articlesProcessed: context.articlesProcessed, errors: context.errorsEncountered }
+    });
+
     await scraperDb.updateScrapingJob(jobId, {
       status: 'completed',
       completedAt,
       totalArticlesScraped: context.articlesProcessed,
       totalErrors: context.errorsEncountered,
-      jobLogs: `Job completed successfully in ${duration}ms`
+      jobLogs: context.logs
     });
 
     // Enhanced logging for job completion
@@ -273,12 +289,20 @@ export class JobManager extends EventEmitter {
     const duration = completedAt.getTime() - context.startTime.getTime();
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
+    // Add final failure log
+    context.logs.push({
+      timestamp: new Date().toISOString(),
+      logLevel: 'ERROR',
+      message: `Job failed: ${errorMessage}`,
+      context: { error: errorMessage, duration, articlesProcessed: context.articlesProcessed }
+    });
+
     await scraperDb.updateScrapingJob(jobId, {
       status: 'failed',
       completedAt,
       totalArticlesScraped: context.articlesProcessed,
       totalErrors: context.errorsEncountered + 1,
-      jobLogs: `Job failed: ${errorMessage}`
+      jobLogs: context.logs
     });
 
     // Enhanced logging for job failure
@@ -338,10 +362,17 @@ export class JobManager extends EventEmitter {
       await this.logJobActivity(queueItem.jobId, 'error', `Job execution failed after ${this.maxRetryAttempts} attempts`, error);
       
       // Mark as failed in database
+      const failureLogs: JobLogEntry[] = [{
+        timestamp: new Date().toISOString(),
+        logLevel: 'ERROR',
+        message: `Job failed after ${this.maxRetryAttempts} retry attempts`,
+        context: { retryAttempts: this.maxRetryAttempts }
+      }];
+
       await scraperDb.updateScrapingJob(queueItem.jobId, {
         status: 'failed',
         completedAt: new Date(),
-        jobLogs: `Job failed after ${this.maxRetryAttempts} retry attempts`
+        jobLogs: failureLogs
       });
     }
   }
@@ -357,10 +388,18 @@ export class JobManager extends EventEmitter {
 
     context.isAborted = true;
     
+    // Create abort log entry
+    const abortLogs: JobLogEntry[] = [...(context.logs || []), {
+      timestamp: new Date().toISOString(),
+      logLevel: 'WARN',
+      message: 'Job aborted by user request',
+      context: { reason: 'user_request' }
+    }];
+
     await scraperDb.updateScrapingJob(jobId, {
       status: 'cancelled',
       completedAt: new Date(),
-      jobLogs: 'Job aborted by user request'
+      jobLogs: abortLogs
     });
 
     await this.logJobActivity(jobId, 'warning', 'Job aborted by user request');
@@ -422,21 +461,28 @@ export class JobManager extends EventEmitter {
   }
 
   /**
-   * Log job-specific activity
+   * Log job-specific activity - collects logs in context during execution
    */
   private async logJobActivity(jobId: string, level: 'info' | 'warning' | 'error', message: string, error?: unknown): Promise<void> {
-    const logEntry: Omit<ScrapingLogEntry, 'id'> = {
-      jobId,
-      logLevel: level,
+    const context = this.activeJobs.get(jobId);
+    
+    const logEntry: JobLogEntry = {
+      timestamp: new Date().toISOString(),
+      logLevel: level.toUpperCase() as 'INFO' | 'WARN' | 'ERROR',
       message,
-      timestamp: new Date(),
-      additionalData: error ? { error: error instanceof Error ? error.message : String(error) } : undefined
+      context: error ? { error: error instanceof Error ? error.message : String(error) } : undefined
     };
 
-    try {
-      await scraperDb.addScrapingLog(logEntry);
-    } catch (dbError) {
-      console.error('[JobManager] Failed to log job activity:', dbError);
+    // Add to context logs if job is active
+    if (context) {
+      context.logs.push(logEntry);
+    } else {
+      // Fallback: if context not found, save directly to database
+      try {
+        await scraperDb.addJobLog(jobId, logEntry);
+      } catch (dbError) {
+        console.error('[JobManager] Failed to log job activity:', dbError);
+      }
     }
 
     console.log(`[JobManager ${level.toUpperCase()}] Job ${jobId}: ${message}`);

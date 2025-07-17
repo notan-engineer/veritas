@@ -9,6 +9,13 @@ interface ApiResponse<T = any> {
   message?: string;
 }
 
+interface JobLogEntry {
+  timestamp: string;
+  logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+  message: string;
+  context?: Record<string, any>;
+}
+
 interface JobHistoryItem {
   id: string;
   triggeredAt: string;
@@ -19,6 +26,7 @@ interface JobHistoryItem {
   totalArticlesScraped: number;
   totalErrors: number;
   duration?: number;
+  logs?: JobLogEntry[];
 }
 
 // Mock job history data
@@ -137,7 +145,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         articlesPerSource: row.articles_per_source || 0,
         totalArticlesScraped: row.total_articles_scraped || 0,
         totalErrors: row.total_errors || 0,
-        duration: Math.floor(row.duration || 0)
+        duration: Math.floor(row.duration || 0),
+        logs: row.job_logs || []
       }));
 
       return NextResponse.json({
