@@ -4,6 +4,7 @@ import {
   ScrapedContent, 
   EnhancedScrapingJob, 
   ScrapingLogEntry,
+  JobLogEntry,
   CrawleeClassification 
 } from './types';
 
@@ -345,48 +346,8 @@ class ScraperDatabase {
   }
 
   /**
-   * Batch insert scraping logs
+   * @deprecated Removed - no longer needed with new JSON logging schema
    */
-  async batchInsertScrapingLogs(logs: Omit<ScrapingLogEntry, 'id'>[]): Promise<BatchInsertResult> {
-    if (logs.length === 0) {
-      return { successful: 0, failed: 0, errors: [] };
-    }
-
-    const batchSize = 500; // Larger batch size for logs
-    const result: BatchInsertResult = { successful: 0, failed: 0, errors: [] };
-
-    for (let i = 0; i < logs.length; i += batchSize) {
-      const batch = logs.slice(i, i + batchSize);
-      
-      try {
-        const query = `
-          INSERT INTO scraping_logs (job_id, source_id, log_level, message, timestamp, additional_data)
-          VALUES ${batch.map((_, idx) => 
-            `($${idx * 6 + 1}, $${idx * 6 + 2}, $${idx * 6 + 3}, $${idx * 6 + 4}, $${idx * 6 + 5}, $${idx * 6 + 6})`
-          ).join(', ')}
-        `;
-
-        const values = batch.flatMap(log => [
-          log.jobId,
-          log.sourceId || null,
-          log.logLevel,
-          log.message,
-          log.timestamp,
-          log.additionalData ? JSON.stringify(log.additionalData) : null
-        ]);
-
-        const insertResult = await this.query(query, values);
-        result.successful += insertResult.rowCount || 0;
-        
-      } catch (error) {
-        result.failed += batch.length;
-        result.errors.push(error as Error);
-        console.error(`[Scraper DB] Batch log insert failed for batch ${i / batchSize + 1}:`, error);
-      }
-    }
-
-    return result;
-  }
 
   /**
    * Get content with pagination for memory efficiency
@@ -668,7 +629,7 @@ class ScraperDatabase {
       job.articlesPerSource,
       job.totalArticlesScraped,
       job.totalErrors,
-      job.jobLogs || null
+      JSON.stringify(job.jobLogs || [])
     ];
     
     const result = await this.query<{ id: string }>(query, values);
@@ -713,7 +674,7 @@ class ScraperDatabase {
     
     if (updates.jobLogs !== undefined) {
       updateFields.push(`job_logs = $${paramIndex++}`);
-      values.push(updates.jobLogs);
+      values.push(JSON.stringify(updates.jobLogs));
     }
     
     if (updateFields.length === 0) return;
@@ -725,67 +686,106 @@ class ScraperDatabase {
   }
 
   /**
-   * Add log entry for a scraping job
+   * Add log entry to a job's JSON log array
    */
-  async addScrapingLog(log: Omit<ScrapingLogEntry, 'id'>): Promise<void> {
+  async addJobLog(jobId: string, logEntry: JobLogEntry): Promise<void> {
     await this.initialize();
     
     const query = `
-      INSERT INTO scraping_logs (job_id, source_id, log_level, message, timestamp, additional_data)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      UPDATE scraping_jobs 
+      SET job_logs = COALESCE(job_logs, '[]'::jsonb) || $1::jsonb 
+      WHERE id = $2
     `;
     
-    const values = [
-      log.jobId,
-      log.sourceId || null,
-      log.logLevel,
-      log.message,
-      log.timestamp,
-      log.additionalData ? JSON.stringify(log.additionalData) : null
-    ];
-    
-    await this.query(query, values);
+    await this.query(query, [JSON.stringify([logEntry]), jobId]);
   }
 
   /**
-   * Add multiple log entries for a scraping job (batch operation)
+   * Add multiple log entries to a job's JSON log array (batch operation)
+   */
+  async addJobLogs(jobId: string, logEntries: JobLogEntry[]): Promise<void> {
+    if (logEntries.length === 0) return;
+    
+    await this.initialize();
+    
+    const query = `
+      UPDATE scraping_jobs 
+      SET job_logs = COALESCE(job_logs, '[]'::jsonb) || $1::jsonb 
+      WHERE id = $2
+    `;
+    
+    await this.query(query, [JSON.stringify(logEntries), jobId]);
+  }
+
+  /**
+   * Get logs for a specific job from the JSON field
+   */
+  async getJobLogs(jobId: string): Promise<JobLogEntry[]> {
+    await this.initialize();
+    
+    const query = `
+      SELECT job_logs
+      FROM scraping_jobs 
+      WHERE id = $1
+    `;
+    
+    const result = await this.query<{ job_logs: JobLogEntry[] }>(query, [jobId]);
+    
+    if (result.rows.length === 0) {
+      return [];
+    }
+    
+    return result.rows[0]!.job_logs || [];
+  }
+
+  /**
+   * @deprecated Use addJobLog instead - legacy function for backward compatibility
+   */
+  async addScrapingLog(log: Omit<ScrapingLogEntry, 'id'>): Promise<void> {
+    // Convert legacy log format to new format
+    const jobLogEntry: JobLogEntry = {
+      timestamp: log.timestamp.toISOString(),
+      logLevel: log.logLevel.toUpperCase() as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR',
+      message: log.message,
+      context: {
+        sourceId: log.sourceId,
+        ...log.additionalData
+      }
+    };
+    
+    await this.addJobLog(log.jobId, jobLogEntry);
+  }
+
+  /**
+   * @deprecated Use addJobLogs instead - legacy function for backward compatibility
    */
   async addScrapingLogs(logs: Omit<ScrapingLogEntry, 'id'>[]): Promise<void> {
     if (logs.length === 0) return;
     
-    await this.initialize();
+    // Group logs by jobId
+    const logsByJob = new Map<string, JobLogEntry[]>();
     
-    const batchResult = await this.batchInsertScrapingLogs(logs);
-    
-    if (batchResult.failed > 0) {
-      console.error(`[ScraperDB] Failed to insert ${batchResult.failed} log entries`);
+    for (const log of logs) {
+      const jobLogEntry: JobLogEntry = {
+        timestamp: log.timestamp.toISOString(),
+        logLevel: log.logLevel.toUpperCase() as 'DEBUG' | 'INFO' | 'WARN' | 'ERROR',
+        message: log.message,
+        context: {
+          sourceId: log.sourceId,
+          ...log.additionalData
+        }
+      };
+      
+      if (!logsByJob.has(log.jobId)) {
+        logsByJob.set(log.jobId, []);
+      }
+      logsByJob.get(log.jobId)!.push(jobLogEntry);
     }
-  }
-
-  /**
-   * Get logs for a specific job
-   */
-  async getJobLogs(jobId: string): Promise<ScrapingLogEntry[]> {
-    await this.initialize();
     
-    const query = `
-      SELECT id, job_id, source_id, log_level, message, timestamp, additional_data
-      FROM scraping_logs 
-      WHERE job_id = $1 
-      ORDER BY timestamp ASC
-    `;
-    
-    const result = await this.query<any>(query, [jobId]);
-    
-    return result.rows.map(row => ({
-      id: row.id,
-      jobId: row.job_id,
-      sourceId: row.source_id,
-      logLevel: row.log_level,
-      message: row.message,
-      timestamp: row.timestamp,
-      additionalData: row.additional_data ? JSON.parse(row.additional_data) : undefined
-    }));
+    // Add logs for each job
+    for (const [jobId, jobLogs] of logsByJob) {
+      await this.addJobLogs(jobId, jobLogs);
+    }
   }
 
   /**

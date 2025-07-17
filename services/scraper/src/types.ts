@@ -118,11 +118,19 @@ export interface EnhancedScrapingJob {
   articlesPerSource: number
   totalArticlesScraped: number
   totalErrors: number
-  jobLogs?: string
+  jobLogs: JobLogEntry[]
   createdAt: Date
   updatedAt: Date
 }
 
+export interface JobLogEntry {
+  timestamp: string
+  logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+  message: string
+  context?: Record<string, any>
+}
+
+// Legacy interface for backward compatibility during migration
 export interface ScrapingLogEntry {
   id: string
   jobId: string

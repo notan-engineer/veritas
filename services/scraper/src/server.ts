@@ -657,7 +657,8 @@ app.get('/api/jobs', async (req, res) => {
       articlesPerSource: row.articles_per_source || 0,
       totalArticlesScraped: row.total_articles_scraped || 0,
       totalErrors: row.total_errors || 0,
-      duration: Math.floor(row.duration || 0)
+      duration: Math.floor(row.duration || 0),
+      logs: row.job_logs || []
     }));
     
     console.log(`[${timestamp}] Retrieved ${jobs.length} jobs`);
@@ -674,6 +675,35 @@ app.get('/api/jobs', async (req, res) => {
       success: false,
       message: 'Failed to retrieve jobs',
       error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get job logs endpoint
+app.get('/api/jobs/:jobId/logs', async (req, res) => {
+  const timestamp = new Date().toISOString();
+  const { jobId } = req.params;
+  console.log(`[${timestamp}] Job logs requested for: ${jobId}`);
+  
+  try {
+    const logs = await scraperDb.getJobLogs(jobId);
+    
+    console.log(`[${timestamp}] Retrieved ${logs.length} log entries for job ${jobId}`);
+    
+    res.json({
+      success: true,
+      logs: logs,
+      jobId: jobId,
+      total: logs.length
+    });
+    
+  } catch (error) {
+    console.error(`[${timestamp}] Failed to retrieve logs for job ${jobId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve job logs',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      logs: []
     });
   }
 });

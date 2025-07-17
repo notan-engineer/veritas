@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+interface JobLogEntry {
+  timestamp: string;
+  logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+  message: string;
+  context?: Record<string, any>;
+}
+
 interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -14,7 +21,7 @@ interface ApiResponse<T = any> {
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ApiResponse<string>>> {
+): Promise<NextResponse<ApiResponse<JobLogEntry[]>>> {
   try {
     const { id: jobId } = await params;
 
@@ -39,7 +46,7 @@ export async function GET(
         const scraperData = await response.json();
         return NextResponse.json({
           success: true,
-          data: scraperData.logs || '',
+          data: scraperData.logs || [],
           message: 'Job logs retrieved from scraper service'
         });
       }
@@ -62,7 +69,7 @@ export async function GET(
         }, { status: 404 });
       }
 
-      const logs = result.rows[0].job_logs || 'No logs available for this job.';
+      const logs = result.rows[0].job_logs || [];
 
       return NextResponse.json({
         success: true,
