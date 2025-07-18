@@ -31,7 +31,7 @@ export interface JobLog {
 export interface ScrapedArticle {
   id: string;
   title: string;
-  content: string;
+  content?: string;  // Make optional
   author?: string;
   sourceUrl: string;
   sourceName: string;

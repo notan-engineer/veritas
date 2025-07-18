@@ -249,7 +249,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         </CardHeader>
         <CardContent>
           <div className="prose max-w-none">
-            {article.content.split('\n').map((paragraph, index) => (
+            {(article.content || '').split('\n').map((paragraph, index) => (
               paragraph.trim() && (
                 <p key={index} className="mb-4 text-sm sm:text-base leading-relaxed">
                   {paragraph}
@@ -277,7 +277,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 <span className="text-sm font-medium">Tags</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {article.tags.map((tag, index) => (
+                {(article.tags || []).map((tag, index) => (
                   <Badge key={index} variant="outline" className="text-xs">
                     {tag}
                   </Badge>

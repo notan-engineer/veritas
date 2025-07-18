@@ -178,7 +178,7 @@ export function ContentTab() {
             </CardContent>
           </Card>
         ) : (
-          articles.map(article => (
+          (articles || []).map(article => (
             <Card key={article.id} className="overflow-hidden">
               <CardHeader>
                 <div className="flex items-start justify-between">

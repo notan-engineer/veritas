@@ -239,7 +239,7 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                   <div className="border-t px-4 py-2 bg-muted/20">
                     <div className="text-sm font-medium mb-2">Job Logs</div>
                     <div className="space-y-1 max-h-64 overflow-y-auto">
-                      {jobLogs[job.id].map(log => (
+                      {(jobLogs[job.id] || []).map(log => (
                         <div 
                           key={log.id} 
                           className={`text-xs p-2 rounded ${
