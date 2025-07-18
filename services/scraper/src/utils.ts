@@ -120,11 +120,12 @@ export function detectLanguage(text: string): string {
   
   // Check for common language patterns
   const languagePatterns: Record<string, RegExp[]> = {
+    'en': [/\b(the|and|of|to|in|is|that|it|was|for|with|as|on|at|by|from|this|have|been|are|were)\b/gi],
     'fr': [/\b(le|la|les|un|une|de|du|des|et|est|pour|que|dans|avec)\b/gi],
     'es': [/\b(el|la|los|las|un|una|de|del|y|es|en|que|por|para|con)\b/gi],
     'de': [/\b(der|die|das|ein|eine|und|ist|von|mit|für|auf|den|dem)\b/gi],
     'it': [/\b(il|la|lo|gli|le|un|una|di|del|della|e|è|per|che|con|da)\b/gi],
-    'pt': [/\b(o|a|os|as|um|uma|de|do|da|e|é|para|que|com|por|em)\b/gi],
+    'pt': [/\b(o|a|os|as|um|uma|de|do|da|e|é|para|que|com|por|em|no|na|nos|nas)\b/gi],
     'nl': [/\b(de|het|een|van|en|is|in|op|voor|met|te|dat|die)\b/gi],
     'ru': [/[\u0400-\u04FF]/], // Cyrillic characters
     'zh': [/[\u4e00-\u9fff]/], // Chinese characters

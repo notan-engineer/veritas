@@ -1,10 +1,7 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+﻿# dependencies
 /node_modules
 **/node_modules
 /.pnp
-.pnp.js
 
 # testing
 /coverage
@@ -17,28 +14,58 @@
 # production
 /build
 **/dist
+**/build
 
 # misc
 .DS_Store
 *.pem
+Thumbs.db
+*.swp
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
-# local env files
-.env*.local
+# Environment variables - CRITICAL
+.env
+.env.*
+!.env.example
+*.env
+**/.env
+**/.env.*
+
+# Database dumps - CRITICAL
+*.sql
+*.dump
+*.backup
+*.pgdump
+veritas_prod_dump.sql
+
+# Temporary files
+*.tmp
+*.temp
+*-temp.*
+ENV-SETUP.txt
+
+# Local test scripts (if in root)
+/setup-local-db.ps1
+/export-railway-data.ps1
+
+# TypeScript
+*.tsbuildinfo
+
+# Storage directories
+storage/
+**/storage/
 
 # vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Railway specific
+railway-interface.md
 
-# Railway interface documentation (contains sensitive project info)
-documentation/railway-interface.md
-
-# Post-merge branch update commands (internal development use)
-documentation/post-merge-branch-update.md
+# IDE
+.vscode/
+.idea/

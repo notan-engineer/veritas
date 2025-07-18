@@ -11,6 +11,10 @@ import {
   ProgressState
 } from './types';
 
+// Debug: Log DATABASE_URL (remove password for security)
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
 // Initialize database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -116,7 +120,7 @@ export async function saveArticle(article: Partial<ScrapedArticle>): Promise<voi
       source_id, source_url, title, content, author,
       publication_date, content_hash, language, processing_status, created_at
     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed', NOW())
-    ON CONFLICT (content_hash) DO NOTHING
+    ON CONFLICT (source_url) DO NOTHING
   `, [
     article.sourceId,
     article.sourceUrl,
@@ -191,7 +195,7 @@ export async function getJob(jobId: string): Promise<ScrapingJob | null> {
     SELECT additional_data->>'progress_percentage' as progress,
            additional_data->>'currentSource' as "currentSource"
     FROM scraping_logs
-    WHERE job_id = $1 
+    WHERE job_id = $1::uuid
       AND additional_data->>'progress_percentage' IS NOT NULL
     ORDER BY timestamp DESC
     LIMIT 1
@@ -270,8 +274,8 @@ export async function getJobLogs(jobId: string, page = 1, pageSize = 100): Promi
         sl.additional_data,
         s.name as source_name
       FROM scraping_logs sl
-      LEFT JOIN sources s ON sl.source_id = s.id
-      WHERE sl.job_id = $1
+      LEFT JOIN sources s ON sl.source_id = s.id::varchar
+      WHERE sl.job_id = $1::uuid
       ORDER BY sl.timestamp DESC
       LIMIT $2 OFFSET $3
     `, [jobId, pageSize, offset]),
@@ -279,7 +283,7 @@ export async function getJobLogs(jobId: string, page = 1, pageSize = 100): Promi
     pool.query(`
       SELECT COUNT(*) as total 
       FROM scraping_logs 
-      WHERE job_id = $1
+      WHERE job_id = $1::uuid
     `, [jobId])
   ]);
   
@@ -450,24 +454,23 @@ export async function getSources(): Promise<NewsSource[]> {
   const result = await pool.query(`
     SELECT 
       id, name, domain, rss_url, icon_url,
-      scraping_config, created_at
+      respect_robots_txt, delay_between_requests,
+      user_agent, timeout_ms, created_at
     FROM sources
-    WHERE is_active = true
     ORDER BY name
   `);
   
   return result.rows.map(row => {
-    const config = row.scraping_config || {};
     return {
       id: row.id,
       name: row.name,
       domain: row.domain,
       rssUrl: row.rss_url,
       iconUrl: row.icon_url,
-      respectRobotsTxt: config.respectRobotsTxt ?? true,
-      delayBetweenRequests: config.delayBetweenRequests ?? 1000,
-      userAgent: config.userAgent ?? 'Veritas-Scraper/1.0',
-      timeoutMs: config.timeoutMs ?? 30000,
+      respectRobotsTxt: row.respect_robots_txt ?? true,
+      delayBetweenRequests: row.delay_between_requests ?? 1000,
+      userAgent: row.user_agent ?? 'Veritas-Scraper/1.0',
+      timeoutMs: row.timeout_ms ?? 30000,
       createdAt: row.created_at.toISOString()
     };
   });
@@ -477,9 +480,10 @@ export async function getSourceByName(name: string): Promise<NewsSource> {
   const result = await pool.query(`
     SELECT 
       id, name, domain, rss_url, icon_url,
-      scraping_config, created_at
+      respect_robots_txt, delay_between_requests,
+      user_agent, timeout_ms, created_at
     FROM sources 
-    WHERE name = $1 AND is_active = true
+    WHERE name = $1
   `, [name]);
   
   if (!result.rows[0]) {
@@ -487,17 +491,16 @@ export async function getSourceByName(name: string): Promise<NewsSource> {
   }
   
   const row = result.rows[0];
-  const config = row.scraping_config || {};
   return {
     id: row.id,
     name: row.name,
     domain: row.domain,
     rssUrl: row.rss_url,
     iconUrl: row.icon_url,
-    respectRobotsTxt: config.respectRobotsTxt ?? true,
-    delayBetweenRequests: config.delayBetweenRequests ?? 1000,
-    userAgent: config.userAgent ?? 'Veritas-Scraper/1.0',
-    timeoutMs: config.timeoutMs ?? 30000,
+    respectRobotsTxt: row.respect_robots_txt ?? true,
+    delayBetweenRequests: row.delay_between_requests ?? 1000,
+    userAgent: row.user_agent ?? 'Veritas-Scraper/1.0',
+    timeoutMs: row.timeout_ms ?? 30000,
     createdAt: row.created_at.toISOString()
   };
 }

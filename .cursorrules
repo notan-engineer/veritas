@@ -309,6 +309,12 @@ npm run lint     # ESLint check (MUST pass)
 **PowerShell Note**: Use separate commands: `cd services/ui; npm run build; npm run lint`
 **⚠️ NEVER run npm commands from project root - always from services/ui**
 
+### Local Testing Setup
+- Database setup: `documentation/local-testing/setup-local-db.ps1`
+- Test scraper: `cd services/scraper && node test-local-scraping.js`
+- NEVER commit: .env files, *.sql dumps, database passwords
+- See: `documentation/local-testing/LOCAL-TESTING-GUIDE.md`
+
 ## Deployment (Ultra-simplified)
 
 ### Railway Configuration (7 lines only)

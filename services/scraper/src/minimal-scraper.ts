@@ -20,6 +20,10 @@ export class MinimalRSSScraper {
   }
   
   async scrapeJob(jobId: string, sources: string[], articlesPerSource: number) {
+    // Track article counts
+    let successfulArticles = 0;
+    let failedArticles = 0;
+    
     // Create crawler for this job
     const crawler = new CheerioCrawler({
       maxRequestsPerCrawl: 100,
@@ -48,6 +52,9 @@ export class MinimalRSSScraper {
             contentHash: generateContentHash(article.title, article.content),
           });
           
+          // Increment success counter
+          successfulArticles++;
+          
           // Log success
           await logJobActivity({
             jobId,
@@ -58,10 +65,12 @@ export class MinimalRSSScraper {
               url: request.url,
               title: article.title,
               language,
-              content_length: article.content.length
+              content_length: article.content.length,
+              total_success_so_far: successfulArticles
             }
           });
         } catch (error) {
+          failedArticles++;
           const errorMessage = error instanceof Error ? error.message : String(error);
           const errorStack = error instanceof Error ? error.stack : undefined;
           await logJobActivity({
@@ -197,6 +206,17 @@ export class MinimalRSSScraper {
       
       // Run crawler
       await crawler.run();
+      
+      // Final update with actual counts
+      await updateJobProgress(jobId, {
+        totalSources: sources.length,
+        processedSources: sources.length,
+        currentSource: 'All sources completed',
+        articlesPerSource,
+        totalArticlesExpected: totalArticlesExpected,
+        articlesProcessed: successfulArticles,
+        articlesErrored: failedArticles
+      });
     } finally {
       // Cleanup
       activeCrawlers.delete(jobId);

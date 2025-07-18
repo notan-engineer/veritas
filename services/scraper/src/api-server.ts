@@ -1,3 +1,7 @@
+// Load environment variables from .env file FIRST
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { MinimalRSSScraper } from './minimal-scraper';
