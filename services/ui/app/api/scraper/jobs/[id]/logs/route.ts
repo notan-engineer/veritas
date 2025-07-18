@@ -24,6 +24,7 @@ export async function GET(
 ): Promise<NextResponse<ApiResponse<JobLogEntry[]>>> {
   try {
     const { id: jobId } = await params;
+    const { searchParams } = new URL(request.url);
 
     if (!jobId) {
       return NextResponse.json({
@@ -57,19 +58,29 @@ export async function GET(
     // Fallback: Query database directly if scraper service is unavailable
     try {
       const { railwayDb } = await import('@/lib/railway-database');
-      const result = await railwayDb.query(
-        'SELECT job_logs FROM scraping_jobs WHERE id = $1',
-        [jobId]
-      );
+      
+      // Query the scraping_logs table with pagination
+      const page = parseInt(searchParams.get('page') || '1');
+      const pageSize = parseInt(searchParams.get('pageSize') || '50');
+      const offset = (page - 1) * pageSize;
+      
+      const result = await railwayDb.query(`
+        SELECT 
+          sl.id,
+          sl.source_id,
+          sl.log_level,
+          sl.message,
+          sl.timestamp,
+          sl.additional_data,
+          s.name as source_name
+        FROM scraping_logs sl
+        LEFT JOIN sources s ON sl.source_id = s.id
+        WHERE sl.job_id = $1
+        ORDER BY sl.timestamp DESC
+        LIMIT $2 OFFSET $3
+      `, [jobId, pageSize, offset]);
 
-      if (result.rows.length === 0) {
-        return NextResponse.json({
-          success: false,
-          error: 'Job not found'
-        }, { status: 404 });
-      }
-
-      const logs = result.rows[0].job_logs || [];
+      const logs = result.rows;
 
       return NextResponse.json({
         success: true,

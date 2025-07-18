@@ -169,7 +169,6 @@ export async function getJob(jobId: string): Promise<ScrapingJob | null> {
       total_errors as "totalErrors",
       triggered_at as "triggeredAt",
       completed_at as "completedAt",
-      job_logs as "jobLogs",
       created_at as "createdAt",
       updated_at as "updatedAt",
       CASE 
@@ -225,7 +224,6 @@ export async function getJobs(limit: number = 20, offset: number = 0, status?: J
         total_errors as "totalErrors",
         triggered_at as "triggeredAt",
         completed_at as "completedAt",
-        job_logs as "jobLogs",
         created_at as "createdAt",
         updated_at as "updatedAt",
         CASE 
