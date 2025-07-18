@@ -113,15 +113,17 @@ export async function saveArticle(article: Partial<ScrapedArticle>): Promise<voi
   
   await pool.query(`
     INSERT INTO scraped_content (
-      title, content, source_url, source_name, 
-      content_hash, language, processing_status, created_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, 'completed', NOW())
+      source_id, source_url, title, content, author,
+      publication_date, content_hash, language, processing_status, created_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed', NOW())
     ON CONFLICT (content_hash) DO NOTHING
   `, [
+    article.sourceId,
+    article.sourceUrl,
     article.title,
     article.content,
-    article.sourceUrl,
-    article.sourceName,
+    article.author || null,
+    article.publicationDate ? new Date(article.publicationDate) : null,
     contentHash,
     article.language || 'en'
   ]);
@@ -308,25 +310,25 @@ export async function getArticles(filters: ArticleFilters): Promise<PaginatedRes
   let paramIndex = 1;
   
   if (search) {
-    conditions.push(`(title ILIKE $${paramIndex} OR content ILIKE $${paramIndex})`);
+    conditions.push(`(sc.title ILIKE $${paramIndex} OR sc.content ILIKE $${paramIndex})`);
     params.push(`%${search}%`);
     paramIndex++;
   }
   
   if (source) {
-    conditions.push(`source_name = $${paramIndex}`);
+    conditions.push(`s.name = $${paramIndex}`);
     params.push(source);
     paramIndex++;
   }
   
   if (language) {
-    conditions.push(`language = $${paramIndex}`);
+    conditions.push(`sc.language = $${paramIndex}`);
     params.push(language);
     paramIndex++;
   }
   
   if (status) {
-    conditions.push(`processing_status = $${paramIndex}`);
+    conditions.push(`sc.processing_status = $${paramIndex}`);
     params.push(status);
     paramIndex++;
   }
@@ -335,14 +337,35 @@ export async function getArticles(filters: ArticleFilters): Promise<PaginatedRes
   
   const [articles, count] = await Promise.all([
     pool.query(`
-      SELECT * FROM scraped_content 
+      SELECT 
+        sc.id,
+        sc.title,
+        sc.content,
+        sc.author,
+        sc.source_url,
+        sc.source_id,
+        sc.publication_date,
+        sc.language,
+        sc.category,
+        sc.tags,
+        sc.content_type,
+        sc.processing_status,
+        sc.content_hash,
+        sc.full_html,
+        sc.created_at,
+        s.name as source_name
+      FROM scraped_content sc
+      LEFT JOIN sources s ON sc.source_id = s.id
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY sc.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `, [...params, pageSize, offset]),
     
     pool.query(`
-      SELECT COUNT(*) as total FROM scraped_content ${whereClause}
+      SELECT COUNT(*) as total 
+      FROM scraped_content sc
+      LEFT JOIN sources s ON sc.source_id = s.id
+      ${whereClause}
     `, params)
   ]);
   
@@ -353,6 +376,7 @@ export async function getArticles(filters: ArticleFilters): Promise<PaginatedRes
       content: row.content,
       author: row.author,
       sourceUrl: row.source_url,
+      sourceId: row.source_id,
       sourceName: row.source_name,
       publicationDate: row.publication_date?.toISOString(),
       language: row.language,
@@ -362,8 +386,7 @@ export async function getArticles(filters: ArticleFilters): Promise<PaginatedRes
       processingStatus: row.processing_status,
       contentHash: row.content_hash,
       fullHtml: row.full_html,
-      createdAt: row.created_at.toISOString(),
-      processedAt: row.processed_at?.toISOString()
+      createdAt: row.created_at.toISOString()
     })),
     total: parseInt(count.rows[0].total),
     page,
@@ -375,7 +398,26 @@ export async function getArticles(filters: ArticleFilters): Promise<PaginatedRes
 // Get article by ID
 export async function getArticleById(id: string): Promise<ScrapedArticle | null> {
   const result = await pool.query(`
-    SELECT * FROM scraped_content WHERE id = $1
+    SELECT 
+      sc.id,
+      sc.title,
+      sc.content,
+      sc.author,
+      sc.source_url,
+      sc.source_id,
+      sc.publication_date,
+      sc.language,
+      sc.category,
+      sc.tags,
+      sc.content_type,
+      sc.processing_status,
+      sc.content_hash,
+      sc.full_html,
+      sc.created_at,
+      s.name as source_name
+    FROM scraped_content sc
+    LEFT JOIN sources s ON sc.source_id = s.id
+    WHERE sc.id = $1
   `, [id]);
   
   if (!result.rows[0]) {
@@ -389,6 +431,7 @@ export async function getArticleById(id: string): Promise<ScrapedArticle | null>
     content: row.content,
     author: row.author,
     sourceUrl: row.source_url,
+    sourceId: row.source_id,
     sourceName: row.source_name,
     publicationDate: row.publication_date?.toISOString(),
     language: row.language,
@@ -398,8 +441,7 @@ export async function getArticleById(id: string): Promise<ScrapedArticle | null>
     processingStatus: row.processing_status,
     contentHash: row.content_hash,
     fullHtml: row.full_html,
-    createdAt: row.created_at.toISOString(),
-    processedAt: row.processed_at?.toISOString()
+    createdAt: row.created_at.toISOString()
   };
 }
 
@@ -408,29 +450,36 @@ export async function getSources(): Promise<NewsSource[]> {
   const result = await pool.query(`
     SELECT 
       id, name, domain, rss_url, icon_url,
-      respect_robots_txt, delay_between_requests,
-      user_agent, timeout_ms, created_at
+      scraping_config, created_at
     FROM sources
+    WHERE is_active = true
     ORDER BY name
   `);
   
-  return result.rows.map(row => ({
-    id: row.id,
-    name: row.name,
-    domain: row.domain,
-    rssUrl: row.rss_url,
-    iconUrl: row.icon_url,
-    respectRobotsTxt: row.respect_robots_txt,
-    delayBetweenRequests: row.delay_between_requests,
-    userAgent: row.user_agent,
-    timeoutMs: row.timeout_ms,
-    createdAt: row.created_at.toISOString()
-  }));
+  return result.rows.map(row => {
+    const config = row.scraping_config || {};
+    return {
+      id: row.id,
+      name: row.name,
+      domain: row.domain,
+      rssUrl: row.rss_url,
+      iconUrl: row.icon_url,
+      respectRobotsTxt: config.respectRobotsTxt ?? true,
+      delayBetweenRequests: config.delayBetweenRequests ?? 1000,
+      userAgent: config.userAgent ?? 'Veritas-Scraper/1.0',
+      timeoutMs: config.timeoutMs ?? 30000,
+      createdAt: row.created_at.toISOString()
+    };
+  });
 }
 
 export async function getSourceByName(name: string): Promise<NewsSource> {
   const result = await pool.query(`
-    SELECT * FROM sources WHERE name = $1
+    SELECT 
+      id, name, domain, rss_url, icon_url,
+      scraping_config, created_at
+    FROM sources 
+    WHERE name = $1 AND is_active = true
   `, [name]);
   
   if (!result.rows[0]) {
@@ -438,64 +487,81 @@ export async function getSourceByName(name: string): Promise<NewsSource> {
   }
   
   const row = result.rows[0];
+  const config = row.scraping_config || {};
   return {
     id: row.id,
     name: row.name,
     domain: row.domain,
     rssUrl: row.rss_url,
     iconUrl: row.icon_url,
-    respectRobotsTxt: row.respect_robots_txt,
-    delayBetweenRequests: row.delay_between_requests,
-    userAgent: row.user_agent,
-    timeoutMs: row.timeout_ms,
+    respectRobotsTxt: config.respectRobotsTxt ?? true,
+    delayBetweenRequests: config.delayBetweenRequests ?? 1000,
+    userAgent: config.userAgent ?? 'Veritas-Scraper/1.0',
+    timeoutMs: config.timeoutMs ?? 30000,
     createdAt: row.created_at.toISOString()
   };
 }
 
 export async function createSource(source: Omit<NewsSource, 'id' | 'createdAt'>): Promise<NewsSource> {
+  const scrapingConfig = {
+    respectRobotsTxt: source.respectRobotsTxt ?? true,
+    delayBetweenRequests: source.delayBetweenRequests ?? 1000,
+    userAgent: source.userAgent ?? 'Veritas-Scraper/1.0',
+    timeoutMs: source.timeoutMs ?? 30000
+  };
+  
   const result = await pool.query(`
     INSERT INTO sources (
-      name, domain, rss_url, icon_url,
-      respect_robots_txt, delay_between_requests,
-      user_agent, timeout_ms
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING *
+      name, domain, rss_url, icon_url, scraping_config, is_active
+    ) VALUES ($1, $2, $3, $4, $5, true)
+    RETURNING id, name, domain, rss_url, icon_url, scraping_config, created_at
   `, [
     source.name,
     source.domain,
     source.rssUrl,
     source.iconUrl || null,
-    source.respectRobotsTxt !== false, // defaults to true
-    source.delayBetweenRequests || 1000,
-    source.userAgent || 'Veritas-Scraper/1.0',
-    source.timeoutMs || 30000
+    JSON.stringify(scrapingConfig)
   ]);
   
   const row = result.rows[0];
+  const config = row.scraping_config || {};
   return {
     id: row.id,
     name: row.name,
     domain: row.domain,
     rssUrl: row.rss_url,
     iconUrl: row.icon_url,
-    respectRobotsTxt: row.respect_robots_txt,
-    delayBetweenRequests: row.delay_between_requests,
-    userAgent: row.user_agent,
-    timeoutMs: row.timeout_ms,
+    respectRobotsTxt: config.respectRobotsTxt ?? true,
+    delayBetweenRequests: config.delayBetweenRequests ?? 1000,
+    userAgent: config.userAgent ?? 'Veritas-Scraper/1.0',
+    timeoutMs: config.timeoutMs ?? 30000,
     createdAt: row.created_at.toISOString()
   };
 }
 
 export async function updateSource(id: string, updates: Partial<NewsSource>): Promise<void> {
   const updateFields: Record<string, any> = {};
+  const scrapingConfigUpdates: Record<string, any> = {};
+  
+  // Handle basic fields
   if ('name' in updates) updateFields.name = updates.name;
   if ('domain' in updates) updateFields.domain = updates.domain;
   if ('rssUrl' in updates) updateFields.rss_url = updates.rssUrl;
   if ('iconUrl' in updates) updateFields.icon_url = updates.iconUrl;
-  if ('respectRobotsTxt' in updates) updateFields.respect_robots_txt = updates.respectRobotsTxt;
-  if ('delayBetweenRequests' in updates) updateFields.delay_between_requests = updates.delayBetweenRequests;
-  if ('userAgent' in updates) updateFields.user_agent = updates.userAgent;
-  if ('timeoutMs' in updates) updateFields.timeout_ms = updates.timeoutMs;
+  
+  // Handle scraping config fields
+  if ('respectRobotsTxt' in updates) scrapingConfigUpdates.respectRobotsTxt = updates.respectRobotsTxt;
+  if ('delayBetweenRequests' in updates) scrapingConfigUpdates.delayBetweenRequests = updates.delayBetweenRequests;
+  if ('userAgent' in updates) scrapingConfigUpdates.userAgent = updates.userAgent;
+  if ('timeoutMs' in updates) scrapingConfigUpdates.timeoutMs = updates.timeoutMs;
+  
+  // If we have scraping config updates, fetch current config and merge
+  if (Object.keys(scrapingConfigUpdates).length > 0) {
+    const currentResult = await pool.query('SELECT scraping_config FROM sources WHERE id = $1', [id]);
+    const currentConfig = currentResult.rows[0]?.scraping_config || {};
+    const newConfig = { ...currentConfig, ...scrapingConfigUpdates };
+    updateFields.scraping_config = JSON.stringify(newConfig);
+  }
   
   if (Object.keys(updateFields).length === 0) return;
   
