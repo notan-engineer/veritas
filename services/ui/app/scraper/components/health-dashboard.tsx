@@ -520,7 +520,7 @@ export function HealthDashboard() {
                         </td>
                         <td className="py-3 px-2">
                           <div className="text-sm">
-                            {job.sourcesRequested.join(', ')}
+                            {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.join(', ') : 'No sources'}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {job.articlesPerSource} per source

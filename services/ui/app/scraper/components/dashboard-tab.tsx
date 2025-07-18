@@ -216,7 +216,7 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                     {getStatusIcon(job.status)}
                     <div>
                       <div className="font-medium">
-                        {job.sourcesRequested.join(', ')}
+                        {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.join(', ') : 'No sources'}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {new Date(job.triggeredAt).toLocaleString()}

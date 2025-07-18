@@ -2,7 +2,7 @@
 export interface ScrapingJob {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  sourcesRequested: string[];
+  sourcesRequested?: string[];
   articlesPerSource: number;
   totalArticlesScraped: number;
   totalErrors: number;
