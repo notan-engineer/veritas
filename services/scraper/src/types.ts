@@ -8,13 +8,10 @@ export interface ScrapingJob {
   totalErrors: number;
   triggeredAt: string;
   completedAt?: string;
-  jobLogs?: string;
   createdAt: string;
   updatedAt: string;
   // Calculated fields (not in database)
   duration?: number;      // calculated from completedAt - triggeredAt
-  progress?: number;      // derived from logs
-  currentSource?: string; // derived from latest log
 }
 
 export type JobStatus = ScrapingJob['status'];

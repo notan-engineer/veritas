@@ -8,7 +8,6 @@ export interface ScrapingJob {
   totalErrors: number;
   triggeredAt: string;
   completedAt?: string;
-  jobLogs?: string;
   createdAt: string;
   updatedAt: string;
   // Calculated fields (not in database)
