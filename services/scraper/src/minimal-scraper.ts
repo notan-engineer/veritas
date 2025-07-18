@@ -43,7 +43,7 @@ export class MinimalRSSScraper {
             author: article.author || undefined,
             publicationDate: article.date || undefined,
             sourceUrl: request.url,
-            sourceName,
+            sourceId,
             language,
             contentHash: generateContentHash(article.title, article.content),
           });

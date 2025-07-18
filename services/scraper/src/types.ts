@@ -34,7 +34,8 @@ export interface ScrapedArticle {
   content: string;
   author?: string;
   sourceUrl: string;
-  sourceName: string;
+  sourceId: string;        // UUID foreign key to sources table
+  sourceName?: string;     // Calculated field from JOIN with sources table
   publicationDate?: string;
   language: string;
   category?: string;
@@ -44,7 +45,7 @@ export interface ScrapedArticle {
   contentHash: string;     // For duplicate detection
   fullHtml?: string;       // Original HTML
   createdAt: string;
-  processedAt?: string;
+  // Note: processedAt column doesn't exist in database schema
 }
 
 export type ProcessingStatus = ScrapedArticle['processingStatus'];
