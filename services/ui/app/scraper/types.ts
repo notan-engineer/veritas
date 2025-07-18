@@ -2,16 +2,19 @@
 export interface ScrapingJob {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  sourcesRequested?: string[];
+  sourcesRequested: string[];
   articlesPerSource: number;
   totalArticlesScraped: number;
   totalErrors: number;
   triggeredAt: string;
-  startedAt?: string;
   completedAt?: string;
-  duration?: number;      // seconds
-  progress?: number;      // 0-100
-  currentSource?: string; // Currently processing
+  jobLogs?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Calculated fields (not in database)
+  duration?: number;      // calculated from completedAt - triggeredAt
+  progress?: number;      // derived from logs
+  currentSource?: string; // derived from latest log
 }
 
 export type JobStatus = ScrapingJob['status'];
