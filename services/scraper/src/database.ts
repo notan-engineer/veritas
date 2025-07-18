@@ -83,9 +83,8 @@ export async function createJobWithInitialLog(
 export async function updateJobStatus(jobId: string, status: JobStatus): Promise<void> {
   const updateFields: any = { status };
   
-  if (status === 'running' && !await getJobStartedAt(jobId)) {
-    updateFields.started_at = 'NOW()';
-  }
+  // Remove started_at logic - use triggered_at as the start time
+  // Job starts when created, not when status changes to 'running'
   
   if (['completed', 'failed', 'cancelled'].includes(status)) {
     updateFields.completed_at = 'NOW()';
@@ -101,14 +100,9 @@ export async function updateJobStatus(jobId: string, status: JobStatus): Promise
   
   await pool.query(`
     UPDATE scraping_jobs 
-    SET ${setClause}
+    SET ${setClause}, updated_at = NOW()
     WHERE id = $1
   `, values);
-}
-
-async function getJobStartedAt(jobId: string): Promise<Date | null> {
-  const result = await pool.query('SELECT started_at FROM scraping_jobs WHERE id = $1', [jobId]);
-  return result.rows[0]?.started_at || null;
 }
 
 // Save article with duplicate check
@@ -133,45 +127,84 @@ export async function saveArticle(article: Partial<ScrapedArticle>): Promise<voi
   ]);
 }
 
-// Update job progress
+// Update job progress (store in logs instead of non-existent columns)
 export async function updateJobProgress(jobId: string, state: ProgressState): Promise<void> {
   const progress = Math.round(
     (state.processedSources / state.totalSources * 30) + // 30% for sources
     (state.articlesProcessed / state.totalArticlesExpected * 70) // 70% for articles
   );
   
+  // Only update the fields that actually exist
   await pool.query(`
     UPDATE scraping_jobs 
     SET 
-      progress = $2,
-      current_source = $3,
-      total_articles_scraped = $4,
-      total_errors = $5,
+      total_articles_scraped = $2,
+      total_errors = $3,
       updated_at = NOW()
     WHERE id = $1
-  `, [jobId, progress, state.currentSource, state.articlesProcessed, state.articlesErrored]);
+  `, [jobId, state.articlesProcessed, state.articlesErrored]);
   
-  // Log progress milestone
-  if (progress % 25 === 0) { // Log at 25%, 50%, 75%, 100%
-    await logJobActivity({
-      jobId,
-      level: 'info',
-      message: `Job progress: ${progress}%`,
-      additionalData: state
-    });
-  }
+  // Log progress details including current source and percentage
+  await logJobActivity({
+    jobId,
+    level: 'info',
+    message: `Progress: ${progress}% - Processing ${state.currentSource || 'sources'}`,
+    additionalData: {
+      ...state,
+      progress_percentage: progress,
+      milestone: progress % 25 === 0 ? `${progress}%` : undefined
+    }
+  });
 }
 
-// Get job by ID
+// Get job by ID with calculated fields
 export async function getJob(jobId: string): Promise<ScrapingJob | null> {
-  const result = await pool.query(`
-    SELECT * FROM scraping_jobs WHERE id = $1
+  const jobResult = await pool.query(`
+    SELECT 
+      id,
+      status,
+      sources_requested as "sourcesRequested",
+      articles_per_source as "articlesPerSource",
+      total_articles_scraped as "totalArticlesScraped",
+      total_errors as "totalErrors",
+      triggered_at as "triggeredAt",
+      completed_at as "completedAt",
+      job_logs as "jobLogs",
+      created_at as "createdAt",
+      updated_at as "updatedAt",
+      CASE 
+        WHEN completed_at IS NOT NULL 
+        THEN EXTRACT(EPOCH FROM (completed_at - triggered_at))
+        ELSE NULL
+      END as duration
+    FROM scraping_jobs 
+    WHERE id = $1
   `, [jobId]);
   
-  return result.rows[0] || null;
+  if (jobResult.rows.length === 0) return null;
+  
+  const job = jobResult.rows[0];
+  
+  // Get latest progress from logs
+  const progressResult = await pool.query(`
+    SELECT additional_data->>'progress_percentage' as progress,
+           additional_data->>'currentSource' as "currentSource"
+    FROM scraping_logs
+    WHERE job_id = $1 
+      AND additional_data->>'progress_percentage' IS NOT NULL
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `, [jobId]);
+  
+  if (progressResult.rows.length > 0) {
+    job.progress = parseInt(progressResult.rows[0].progress) || 0;
+    job.currentSource = progressResult.rows[0].currentSource;
+  }
+  
+  return job;
 }
 
-// Get jobs with pagination
+// Get jobs with pagination and calculated fields
 export async function getJobs(limit: number = 20, offset: number = 0, status?: JobStatus): Promise<PaginatedResponse<ScrapingJob>> {
   let whereClause = '';
   const params: any[] = [limit, offset];
@@ -183,7 +216,24 @@ export async function getJobs(limit: number = 20, offset: number = 0, status?: J
   
   const [jobs, count] = await Promise.all([
     pool.query(`
-      SELECT * FROM scraping_jobs 
+      SELECT 
+        id,
+        status,
+        sources_requested as "sourcesRequested",
+        articles_per_source as "articlesPerSource",
+        total_articles_scraped as "totalArticlesScraped",
+        total_errors as "totalErrors",
+        triggered_at as "triggeredAt",
+        completed_at as "completedAt",
+        job_logs as "jobLogs",
+        created_at as "createdAt",
+        updated_at as "updatedAt",
+        CASE 
+          WHEN completed_at IS NOT NULL 
+          THEN EXTRACT(EPOCH FROM (completed_at - triggered_at))
+          ELSE NULL
+        END as duration
+      FROM scraping_jobs 
       ${whereClause}
       ORDER BY triggered_at DESC
       LIMIT $1 OFFSET $2
