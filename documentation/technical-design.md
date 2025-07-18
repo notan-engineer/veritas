@@ -251,13 +251,15 @@ startCommand = "npm start"
 DATABASE_URL=postgresql://... # Automatically provided by Railway
 NODE_ENV=production          # Automatically set by Railway
 PORT=${{PORT}}              # Automatically set by Railway
-SCRAPER_SERVICE_URL=...     # URL of scraper service for API calls
+SCRAPER_SERVICE_URL=...     # URL of scraper service for API calls (Railway internal URL)
 
 # Scraper Service
 DATABASE_URL=postgresql://... # Shared with UI service
 NODE_ENV=production          # Automatically set by Railway
 PORT=${{PORT}}              # Automatically set by Railway
 ```
+
+**Service Communication**: UI service connects to scraper service using Railway's internal service discovery via `SCRAPER_SERVICE_URL` environment variable. Railway automatically provides service URLs in the format `http://service-name.railway.internal:PORT`.
 
 ## Development Guidelines
 
