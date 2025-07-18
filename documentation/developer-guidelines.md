@@ -314,6 +314,8 @@ Each service has its own environment configuration:
 - **Scraper Service**: `DATABASE_URL`, `NODE_ENV`, `PORT`
 - **Database Service**: Automatically configured by Railway
 
+**Railway Service URLs**: Services communicate using Railway's internal service discovery. Railway automatically provides service URLs in environment variables (e.g., `SCRAPER_SERVICE_URL`) following the pattern `http://service-name.railway.internal:PORT`.
+
 ### Development Workflow
 1. **Local Development**: Both services can run independently
 2. **Database Access**: Both services share the same PostgreSQL instance  
