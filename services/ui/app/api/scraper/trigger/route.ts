@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SCRAPER_API_URL = process.env.SCRAPER_API_URL || 'http://localhost:3001'
+const SCRAPER_API_URL = process.env.SCRAPER_SERVICE_URL || 'http://localhost:3001'
 
 export async function POST(request: NextRequest) {
   try {

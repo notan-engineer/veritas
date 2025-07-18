@@ -31,8 +31,8 @@ export function ContentTab() {
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedSource, setSelectedSource] = useState('')
-  const [selectedLanguage, setSelectedLanguage] = useState('')
+  const [selectedSource, setSelectedSource] = useState('all-sources')
+  const [selectedLanguage, setSelectedLanguage] = useState('all-languages')
   
   // Pagination
   const [page, setPage] = useState(1)
@@ -62,8 +62,8 @@ export function ContentTab() {
         pageSize: '20'
       })
       if (searchQuery) params.append('search', searchQuery)
-      if (selectedSource) params.append('source', selectedSource)
-      if (selectedLanguage) params.append('language', selectedLanguage)
+      if (selectedSource && selectedSource !== 'all-sources') params.append('source', selectedSource)
+      if (selectedLanguage && selectedLanguage !== 'all-languages') params.append('language', selectedLanguage)
       
       const response = await fetch(`/api/scraper/content?${params}`)
       if (response.ok) {
@@ -136,7 +136,7 @@ export function ContentTab() {
                 <SelectValue placeholder="All sources" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All sources</SelectItem>
+                <SelectItem value="all-sources">All sources</SelectItem>
                 {sources.map(source => (
                   <SelectItem key={source.id} value={source.name}>
                     {source.name}
@@ -150,7 +150,7 @@ export function ContentTab() {
                 <SelectValue placeholder="All languages" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All languages</SelectItem>
+                <SelectItem value="all-languages">All languages</SelectItem>
                 <SelectItem value="en">English</SelectItem>
                 <SelectItem value="he">Hebrew</SelectItem>
                 <SelectItem value="ar">Arabic</SelectItem>
