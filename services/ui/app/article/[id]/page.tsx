@@ -60,7 +60,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         </p>
 
         <div className={`flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent ${getRTLClasses(factoid.language)}`}>
-          {factoid.tags.map((tag) => (
+          {(factoid.tags || []).map((tag) => (
             <Badge key={tag.id} variant="secondary" className="text-xs sm:text-sm">
               {tag.name}
             </Badge>
@@ -109,7 +109,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3 sm:space-y-4">
-            {factoid.bullet_points.map((point, index) => (
+            {(factoid.bullet_points || []).map((point, index) => (
               <div key={index} className={`flex items-start gap-3 p-3 bg-muted/50 rounded-lg ${getRTLFlexDirection(factoid.language)}`}>
                 <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold">
                   {index + 1}
@@ -131,7 +131,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {factoid.sources.map((source, index) => (
+            {(factoid.sources || []).map((source, index) => (
               <div key={source.id} className={`flex items-center justify-between p-3 border rounded-lg ${getRTLFlexDirection(factoid.language)}`}>
                 <div className={`flex items-center gap-3 min-w-0 flex-1 ${getRTLFlexDirection(factoid.language)}`}>
                   <div className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">

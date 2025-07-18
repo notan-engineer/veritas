@@ -46,7 +46,7 @@ export default function HomePage() {
 
   const filteredFactoids = selectedTopic === "All" 
     ? factoids 
-    : factoids.filter(factoid => factoid.tags.some(tag => tag.name === selectedTopic));
+    : factoids.filter(factoid => factoid.tags?.some(tag => tag.name === selectedTopic));
 
   const toggleArticleExpansion = (articleId: string) => {
     const newExpanded = new Set(expandedArticles);
@@ -220,7 +220,7 @@ export default function HomePage() {
               <CardContent className="space-y-3 pt-0">
                 {/* Tags */}
                 <div className={`flex flex-wrap gap-1 ${factoid.language === 'he' ? 'justify-end' : 'justify-start'} ${getRTLClasses(factoid.language)}`}>
-                  {factoid.tags.map((tag) => (
+                  {(factoid.tags || []).map((tag) => (
                     <Badge key={tag.id} variant="secondary" className="text-xs">
                       {tag.name}
                     </Badge>

@@ -9,14 +9,14 @@ export interface Factoid {
   id: string;
   title: string;
   description: string;
-  bullet_points: string[];
+  bullet_points?: string[];  // Make optional
   language: 'en' | 'he' | 'ar' | 'other';
   confidence_score: number;
   status: 'draft' | 'published' | 'archived' | 'flagged';
   created_at: string;
   updated_at: string;
-  tags: Tag[];
-  sources: Source[];
+  tags?: Tag[];  // Make optional
+  sources?: Source[];  // Make optional
 }
 
 export interface Tag {
@@ -91,7 +91,7 @@ export async function getFactoidsByTag(tagId: string): Promise<Factoid[]> {
   try {
     const factoids = await getAllFactoids();
     return factoids.filter(factoid => 
-      factoid.tags.some((tag: Tag) => tag.id === tagId)
+      factoid.tags?.some((tag: Tag) => tag.id === tagId)
     );
   } catch (error) {
     console.error('Error fetching factoids by tag:', error);
@@ -106,7 +106,7 @@ export async function getFactoidsBySource(sourceId: string): Promise<Factoid[]> 
   try {
     const factoids = await getAllFactoids();
     return factoids.filter(factoid => 
-      factoid.sources.some((source: Source) => source.id === sourceId)
+      factoid.sources?.some((source: Source) => source.id === sourceId)
     );
   } catch (error) {
     console.error('Error fetching factoids by source:', error);
@@ -123,7 +123,7 @@ export async function getAllSources(): Promise<Source[]> {
     const sourceMap = new Map<string, Source>();
     
     factoids.forEach(factoid => {
-      factoid.sources.forEach((source: Source) => {
+      factoid.sources?.forEach((source: Source) => {
         sourceMap.set(source.id, source);
       });
     });

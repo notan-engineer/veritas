@@ -2,7 +2,7 @@
 export interface ScrapingJob {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  sourcesRequested: string[];
+  sourcesRequested?: string[];
   articlesPerSource: number;
   totalArticlesScraped: number;
   totalErrors: number;
@@ -31,7 +31,7 @@ export interface JobLog {
 export interface ScrapedArticle {
   id: string;
   title: string;
-  content: string;
+  content?: string;  // Make optional
   author?: string;
   sourceUrl: string;
   sourceName: string;

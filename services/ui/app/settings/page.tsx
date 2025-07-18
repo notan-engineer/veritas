@@ -77,7 +77,7 @@ export default function SettingsPage() {
 
       if (result.success) {
         setLastScrapingResult(`✅ Success: ${result.message}`);
-        setScrapingLogs(result.logs.map((log: ScrapingLogDisplay) => `${log.level}: ${log.message}`));
+        setScrapingLogs(result.logs?.map((log: ScrapingLogDisplay) => `${log.level}: ${log.message}`) || []);
       } else {
         setLastScrapingResult(`❌ Error: ${result.message}`);
         setScrapingLogs(result.logs?.map((log: ScrapingLogDisplay) => `${log.level}: ${log.message}`) || []);
