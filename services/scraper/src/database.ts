@@ -282,7 +282,16 @@ export async function getJobLogs(jobId: string, page = 1, pageSize = 100): Promi
   ]);
   
   return {
-    data: logs.rows,
+    data: logs.rows.map(row => ({
+      id: row.id,
+      jobId: jobId,
+      sourceId: row.source_id,
+      sourceName: row.source_name,
+      timestamp: row.timestamp.toISOString(),
+      logLevel: row.log_level,  // Note: log_level in DB, logLevel in interface
+      message: row.message,
+      additionalData: row.additional_data
+    })),
     total: parseInt(count.rows[0].total),
     page,
     pageSize,
@@ -338,7 +347,24 @@ export async function getArticles(filters: ArticleFilters): Promise<PaginatedRes
   ]);
   
   return {
-    data: articles.rows,
+    data: articles.rows.map(row => ({
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      author: row.author,
+      sourceUrl: row.source_url,
+      sourceName: row.source_name,
+      publicationDate: row.publication_date?.toISOString(),
+      language: row.language,
+      category: row.category,
+      tags: row.tags,
+      contentType: row.content_type,
+      processingStatus: row.processing_status,
+      contentHash: row.content_hash,
+      fullHtml: row.full_html,
+      createdAt: row.created_at.toISOString(),
+      processedAt: row.processed_at?.toISOString()
+    })),
     total: parseInt(count.rows[0].total),
     page,
     pageSize,
@@ -352,7 +378,29 @@ export async function getArticleById(id: string): Promise<ScrapedArticle | null>
     SELECT * FROM scraped_content WHERE id = $1
   `, [id]);
   
-  return result.rows[0] || null;
+  if (!result.rows[0]) {
+    return null;
+  }
+  
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    title: row.title,
+    content: row.content,
+    author: row.author,
+    sourceUrl: row.source_url,
+    sourceName: row.source_name,
+    publicationDate: row.publication_date?.toISOString(),
+    language: row.language,
+    category: row.category,
+    tags: row.tags,
+    contentType: row.content_type,
+    processingStatus: row.processing_status,
+    contentHash: row.content_hash,
+    fullHtml: row.full_html,
+    createdAt: row.created_at.toISOString(),
+    processedAt: row.processed_at?.toISOString()
+  };
 }
 
 // Source management functions
@@ -389,7 +437,19 @@ export async function getSourceByName(name: string): Promise<NewsSource> {
     throw new Error(`Source not found: ${name}`);
   }
   
-  return result.rows[0];
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    name: row.name,
+    domain: row.domain,
+    rssUrl: row.rss_url,
+    iconUrl: row.icon_url,
+    respectRobotsTxt: row.respect_robots_txt,
+    delayBetweenRequests: row.delay_between_requests,
+    userAgent: row.user_agent,
+    timeoutMs: row.timeout_ms,
+    createdAt: row.created_at.toISOString()
+  };
 }
 
 export async function createSource(source: Omit<NewsSource, 'id' | 'createdAt'>): Promise<NewsSource> {
