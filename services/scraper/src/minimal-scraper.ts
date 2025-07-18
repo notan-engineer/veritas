@@ -109,6 +109,27 @@ export class MinimalRSSScraper {
       for (const sourceName of sources) {
         const source = await getSourceByName(sourceName);
         
+        // Defensive checks
+        if (!source.rssUrl) {
+          totalErrors++;
+          await logJobActivity({
+            jobId,
+            sourceId: source.id,
+            level: 'error',
+            message: `Source "${sourceName}" has no RSS URL configured`,
+            additionalData: { source_id: source.id }
+          });
+          processedSources++;
+          continue;
+        }
+        
+        // Add debug logging
+        console.log('Source retrieved:', {
+          name: source.name,
+          hasRssUrl: !!source.rssUrl,
+          rssUrl: source.rssUrl
+        });
+        
         // Update progress
         await updateJobProgress(jobId, { 
           currentSource: source.name,
