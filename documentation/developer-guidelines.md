@@ -278,6 +278,14 @@ npm run clean    # Remove dist/ directory
 - [ ] UI ↔ Scraper service communication works
 - [ ] Shared database access functions correctly
 - [ ] Fallback modes activate when services unavailable
+
+#### Local Database Testing
+- [ ] Set up local PostgreSQL with production schema
+- [ ] Configure .env with local DATABASE_URL
+- [ ] Run test-local-scraping.js for scraper testing
+- [ ] Verify no production credentials in code
+- [ ] Clear test data after testing
+- See `documentation/local-testing/` for setup instructions
 - [ ] Environment variables configured properly
 
 ## Railway Infrastructure
