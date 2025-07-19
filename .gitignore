@@ -69,3 +69,6 @@ railway-interface.md
 # IDE
 .vscode/
 .idea/
+
+# Local development directory
+local/
