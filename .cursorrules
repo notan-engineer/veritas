@@ -1,361 +1,50 @@
-# Veritas Project - AI Development Rules
+# Keystone Framework - Core Rules & Project Context
 
-**Last Updated**: 11-07-25 (Use dynamic dates from `lib/utils.ts`)  
-**Project Status**: Maximally simplified (85% complexity reduction), production-ready  
-**For**: AI coding agents and human developers
+## Project: Veritas News Aggregation Platform
+**Summary**: Lean news platform presenting verified facts as "factoids" from multiple sources
+**Vision**: Transform news consumption with accuracy, bias reduction, and multilingual support (EN/HE)
+**Tech Stack**: Next.js 15.3.5, TypeScript 5, Tailwind CSS, PostgreSQL, Railway deployment
 
-## 🚀 TOKEN OPTIMIZATION FRAMEWORK (HIGHEST PRIORITY)
+## Framework Structure
+- `keystone/`: Generic, reusable framework files (no project-specific details)
+- `documentation/`: Project-specific knowledge for Veritas
+- `projects/`: Development projects with user stories
+- `local/`: Git-ignored local development files
 
-**⚠️ MANDATORY: Follow all procedures in the cursor optimization framework**
-
-📖 **Master Guide**: @.notes/cursor-master-guide.md  
-🎯 **Quick Start**: @.notes/START-HERE.md
-
-**Core Rules (ALWAYS ACTIVE):**
-1. **Context**: Use @file NEVER @folder
-2. **Sessions**: One task = One session
-3. **Tabs**: Keep 3-5 files maximum
-4. **Builds**: ALWAYS from services/ui directory
-5. **Docs**: Reference @docs, never include full content
-
-**Before ANY work, check the framework for:**
-- [BASIC] procedures for your task type
-- Context selection templates
-- Session management triggers
-- Error resolution patterns
-
----
-
-## Project Context
-
-**Veritas** is a lean news aggregation platform presenting verified information as structured "factoids". The system was recently simplified through massive code reduction (2,235+ lines removed) while maintaining 100% functionality.
-
-### Core Mission
-Transform news consumption by presenting only verified facts in easily digestible format, eliminating information overload.
-
-## Technology Stack (Current)
-
-```
-Framework: Next.js 15.3.5 with App Router (React 19.0.0)
-Language: TypeScript 5 (strict mode enabled)
-Styling: Tailwind CSS v4 with PostCSS
-UI: shadcn/ui (Radix UI primitives)
-Database: Railway PostgreSQL with connection pooling
-Deployment: Railway (minimal configuration)
-```
-
-## File Structure (Simplified)
-```
-veritas/
-├── railway.toml              # Deployment (7 lines only)
-├── services/ui/              # Main Next.js application
-│   ├── app/                 # App Router pages
-│   │   ├── api/factoids/    # GET factoids endpoint
-│   │   ├── api/tags/        # GET tags endpoint  
-│   │   ├── article/[id]/    # Article detail pages
-│   │   ├── settings/        # Settings page
-│   │   └── page.tsx         # Homepage
-│   ├── components/ui/       # Essential components only
-│   │   ├── card.tsx, button.tsx, badge.tsx
-│   │   ├── skeleton.tsx, switch.tsx, theme-toggle.tsx
-│   └── lib/                 # Core utilities
-│       ├── data-service.ts  # Client data functions
-│       ├── data.server.ts   # Server data functions
-│       ├── railway-database.ts # DB connection
-│       ├── rtl-utils.ts     # Hebrew/Arabic support
-│       └── utils.ts         # Date utilities, helpers
-├── database/                # Schema & migration files
-└── documentation/           # Project documentation
-```
+## Critical Non-Negotiable Rules
+1. **NEVER push directly to main branch** - Use feature branches only
+2. **Builds MUST run from service directory**: `cd services/[service] && npm run build`
+   - UI Service: `cd services/ui && npm run build`
+   - Scraper Service: `cd services/scraper && npm run build`
+   - Future services follow same pattern
+3. **Context Selection**: ALWAYS use @file, NEVER use @folder
+4. **Simplicity & Minimal Code**: Write least code to achieve goal, avoid complexity
+5. **User-Centric Development**: Every feature must serve clear user need
 
 ## Core Development Principles
+- **Simplicity First**: Minimum viable code, no over-engineering
+- **User-Centric**: Features driven by actual user needs, not assumptions
+- **Incremental**: Start minimal, expand only when proven necessary
+- **Test Always**: No commits without successful builds
+- **Document Immediately**: Keep docs current with code
 
-### 1. Simplicity First
-- Write minimum code necessary to achieve goal
-- Favor existing solutions over creating new ones
-- Question complexity - if something seems complex, find simpler approach
-- Use established patterns rather than inventing new ones
+## Framework Navigation
+- **Agent Behavior**: See `keystone/agentic-principles.md`
+- **Code Standards**: See `keystone/development-principles.md`
+- **Procedures**: See `keystone/procedures/` for task-specific guides
+- **Architecture**: See `documentation/software-architecture.md`
+- **Product Details**: See `documentation/the-product.md`
 
-### 2. Incremental Development
-- Add features only when actually needed
-- Start with minimal viable implementation
-- Test thoroughly before expanding functionality
-- Document changes immediately
+## Development Workflow
+1. Create feature branch: `git checkout -b feature/description`
+2. Follow appropriate procedure from `keystone/procedures/`
+3. Test thoroughly with build commands
+4. Update documentation in same commit
+5. Request manual merge to main
 
-### 3. Build Validation (CRITICAL)
-- Test after every significant change
-- **CRITICAL**: ALL build commands MUST be run from `services/ui` directory
-- Required: `cd services/ui && npm run build && npm run lint` must pass (PowerShell: use `;` instead of `&&`)
-- **NEVER run build from project root** - it will fail
-- Manual testing of changed functionality
-- No commits without successful builds
-
-## Current System State
-
-### Database (6 tables only)
-```sql
-factoids         -- Core content (title, description, bullet_points, language, status)
-sources          -- News sources (name, domain, url, description)  
-scraped_content  -- Raw content (for future scraper service)
-tags             -- Simple categorization (name, slug, description)
-factoid_tags     -- Many-to-many factoid-tag relationships
-factoid_sources  -- Many-to-many factoid-source relationships
-```
-
-### API Endpoints (2 only)
-- `GET /api/factoids` - All published factoids with relationships
-- `GET /api/tags` - All active tags for filtering
-
-### Pages (3 only)
-- Homepage (`/`) - Factoid cards with topic filtering
-- Article Detail (`/article/[id]`) - Individual factoid display
-- Settings (`/settings`) - Theme toggle only
-
-### Components (Essential only)
-- Card, Button, Badge - Core UI elements
-- Skeleton - Loading states
-- Switch, ThemeToggle - Settings
-- NO authentication, user management, or complex forms
-
-## Mandatory Documentation Rules
-
-### CRITICAL: Update these files with every relevant commit
-1. **`documentation/technical-design.md`** - Architecture/database changes
-2. **`documentation/developer-guidelines.md`** - Development practice changes  
-3. **`documentation/product-requirements.md`** - Feature/UX changes
-
-### Documentation Standards
-- Keep concise and LLM-optimized
-- Remove outdated content immediately
-- Include current status and next steps
-- Use dynamic dates from `lib/utils.ts`
-
-## Branching & Workflow (Absolute Rules)
-
-- **NEVER push directly to main branch**
-- Always create feature branches: `git checkout -b feature/description`
-- Test thoroughly before requesting review
-- Update documentation in same branch as code changes
-- Manual merge only by project maintainer
-
-## Code Quality Standards
-
-### TypeScript Requirements
-- Strict mode enabled - no `any` types without justification
-- Comprehensive interfaces for data structures
-- Type safety at boundaries - validate external data
-
-### Component Architecture
-```typescript
-// ✅ Use shadcn/ui components
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-
-// ✅ Standard component pattern
-interface ComponentProps {
-  data: DataType
-  onAction?: (id: string) => void
-}
-
-export function Component({ data, onAction }: ComponentProps) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{data.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* Component content */}
-      </CardContent>
-    </Card>
-  )
-}
-```
-
-### Database Development
-
-#### Current Schema (Simplified)
-- **NO user management** (removed for simplicity)
-- **NO authentication system** (removed for simplicity)  
-- **NO complex scoring** (removed for simplicity)
-- **Read-optimized** (no update tracking, simple timestamps)
-
-#### Data Access Patterns
-```typescript
-// ✅ Server-side (pages/API routes)
-import { getFactoidById } from '@/lib/data.server'
-const factoid = await getFactoidById(id)
-
-// ✅ Client-side (components)
-import { getAllFactoids } from '@/lib/data-service'
-const factoids = await getAllFactoids()
-```
-
-### RTL Support (Required)
-```typescript
-import { getRTLClasses, getRTLContainerClasses } from "@/lib/rtl-utils"
-
-<div className={getRTLContainerClasses(language)}>
-  <h1 className={getRTLClasses(language)}>{title}</h1>
-</div>
-```
-
-### Date Handling (Required)
-```bash
-# ✅ Use terminal command to get current date (never hardcode dates)
-# For planning documents (DD-MM-YY format):
-Get-Date -Format "dd-MM-yy"
-
-# For display purposes:
-Get-Date -Format "MMMM dd, yyyy"  # "July 13, 2025"
-
-# For short format:
-Get-Date -Format "yyyy-MM-dd"     # "2025-07-13"
-```
-
-## AI Agent Specific Guidelines
-
-### Decision-Making Priorities
-When choosing between options, prefer:
-1. **Simpler solution** over complex solution
-2. **Existing library** over custom implementation
-3. **Configuration change** over code change
-4. **Proven pattern** over experimental approach
-
-### Incremental Development (CRITICAL)
-- Work in small, testable iterations (15-30 minutes max)
-- Test current state before making changes
-- Validate each step before proceeding
-- Run `cd services/ui && npm run build && npm run lint` after each logical change
-- **REMEMBER**: Always change to `services/ui` directory before build/lint commands
-- Keep backup of original code when making significant changes
-
-### Code Changes
-- Always read current documentation before making changes
-- Use existing patterns rather than creating new ones
-- Test changes thoroughly before considering complete
-- Update documentation in same commit as code changes
-
-### Error Handling Pattern
-```typescript
-try {
-  const data = await databaseFunction()
-  if (!data) {
-    throw new Error(`Data not found: ${id}`)
-  }
-  return data
-} catch (error) {
-  console.error('Operation failed:', error)
-  throw new Error(`Database error: ${error.message}`)
-}
-```
-
-## Removed Features Reference
-
-### Available for Re-implementation
-See `documentation/removed-code-and-features.md` for:
-- **Authentication system** (JWT-based when needed)
-- **Search functionality** (start simple, upgrade gradually)
-- **User interactions** (like/dislike/comment system)
-- **Advanced validation** (per-form as needed)
-- **Development tools** (specific scripts when team grows)
-
-### Implementation Approach
-1. Check removed features documentation for lessons learned
-2. Start with minimal version
-3. Test thoroughly at each step
-4. Document new additions immediately
-
-## Railway Infrastructure
-
-### Railway Services Architecture
-The project uses three Railway services:
-- **UI Service**: Next.js application
-- **Scraper Service**: Crawlee-based content scraping
-- **Database Service**: PostgreSQL instance
-
-**Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, and deployment procedures. This file is git-ignored and contains sensitive project information.
-
-### PostgreSQL Database Access (Critical Guidelines)
-**✅ WORKING CONNECTION METHODS:**
-1. **Railway CLI (Interactive)**: `railway connect` → select 'db' service
-2. **Direct psql (Scripts/Files)**: `psql "postgresql://postgres:PASSWORD@mainline.proxy.rlwy.net:PORT/railway" -f script.sql`
-3. **pgAdmin (GUI)**: Use public connection details from `railway variables`
-
-**⚠️ CRITICAL NOTES:**
-- **PUBLIC URL REQUIRED**: Use `mainline.proxy.rlwy.net` (public) NOT `postgres.railway.internal` (internal-only)
-- **Script Execution**: Use `-f` flag for executing .sql files directly
-- **Migration Safety**: Always test on development database first, have rollback scripts ready
-- **Constraint Syntax**: PostgreSQL may not support `ADD CONSTRAINT IF NOT EXISTS` - use DO blocks instead
-
-## Environment & Configuration
-
-### Required Environment Variables
-```bash
-DATABASE_URL=postgresql://... # Automatically provided by Railway
-NODE_ENV=production          # Automatically set by Railway
-PORT=${{PORT}}              # Automatically set by Railway
-```
-
-### Development Commands
-```bash
-# ⚠️ CRITICAL: ALWAYS cd to services/ui first - builds WILL FAIL from project root
-cd services/ui   
-npm run dev      # Development server
-npm run build    # Production build (MUST pass)
-npm run start    # Production server
-npm run lint     # ESLint check (MUST pass)
-```
-
-**PowerShell Note**: Use separate commands: `cd services/ui; npm run build; npm run lint`
-**⚠️ NEVER run npm commands from project root - always from services/ui**
-
-### Local Testing Setup
-- Database setup: `documentation/local-testing/setup-local-db.ps1`
-- Test scraper: `cd services/scraper && node test-local-scraping.js`
-- NEVER commit: .env files, *.sql dumps, database passwords
-- See: `documentation/local-testing/LOCAL-TESTING-GUIDE.md`
-
-## Deployment (Ultra-simplified)
-
-### Railway Configuration (7 lines only)
-```toml
-[[services]]
-name = "ui"
-source = "services/ui"
-
-[services.ui.build]
-buildCommand = "npm install && npm run build"
-
-[services.ui.deploy]  
-startCommand = "npm start"
-```
-
-### Process
-1. Work on feature branch
-2. Test: `cd services/ui && npm run build && npm run lint`
-3. Manual merge to main
-4. Railway auto-deploys
-5. Verify production functionality
-
-## Project Status Summary
-
-**Current**: Core functionality operational, ready for incremental expansion  
-**Complexity**: Reduced by 85% (2,235+ lines removed, 3 directories eliminated)  
-**Next**: Feature additions based on user needs  
-**Key Insight**: Start minimal, add incrementally, test thoroughly, document everything
-
-## Emergency Procedures
-
-### Build Failures
-1. Check TypeScript errors first
-2. Verify all imports are correct
-3. Ensure removed files aren't referenced
-4. Test with fresh `npm install`
-
-### Production Issues
-1. Check Railway dashboard for errors
-2. Use Railway deployment history for rollback
-3. Document issue and resolution
-4. Update guidelines to prevent recurrence
-
-Remember: Good software solves problems with the least appropriate code while maintaining quality and functionality. 
+## Quick Reference
+- Reference docs: @documentation/file.md (section)
+- Never include full document content in responses
+- Use line-specific references when needed: @file.ts:20-40
+- Session Management: One Task = One Session
+- Tab Management: Keep 3-5 files maximum open at once 
