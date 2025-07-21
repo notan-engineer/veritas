@@ -1,5 +1,22 @@
 # Keystone Framework - Core Rules & Project Context
 
+## What is Keystone Framework?
+A mandatory development methodology for all work in this project. Keystone provides structured guidelines, procedures, and templates to ensure consistent, maintainable code. **The framework MUST be consulted and followed in every interaction, task, and response.**
+
+## Framework Navigation Guide
+**When to consult which framework file:**
+- **Always (every interaction)** → Follow `keystone/agentic-principles.md` for agent behavior guidelines
+- **Starting any task** → Check `keystone/procedures/` for the relevant procedure
+- **Writing code** → Follow `keystone/development-principles.md` for coding standards
+- **Making architectural changes** → Review:
+  - `documentation/software-architecture.md` for system design
+  - `documentation/the-product.md` for product vision
+  - `documentation/decisions/` for past ADRs (Architecture Decision Records)
+- **Creating new projects** → Use `keystone/templates/new-project-template/`
+- **Planning features** → Create in `projects/` with user stories
+- **Local development** → Use `local/` for testing (git-ignored)
+- **Understanding features** → See `documentation/features/` for specifications
+
 ## Project: Veritas News Aggregation Platform
 **Summary**: Lean news platform presenting verified facts as "factoids" from multiple sources
 **Vision**: Transform news consumption with accuracy, bias reduction, and multilingual support (EN/HE)
@@ -27,6 +44,7 @@
 - **Incremental**: Start minimal, expand only when proven necessary
 - **Test Always**: No commits without successful builds
 - **Document Immediately**: Keep docs current with code
+- **Beautiful Simplicity**: Every UI element must be clean, pixel-perfect, and serve a clear purpose. No clutter, no complexity - just elegant interfaces that delight users
 
 ## Framework Navigation
 - **Agent Behavior**: See `keystone/agentic-principles.md`
