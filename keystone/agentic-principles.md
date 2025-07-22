@@ -82,3 +82,10 @@ Use special comments for future AI understanding:
 // AI-PROMPT: "This handles authentication flow"
 // AI-CONTEXT: "Called after user submits login form"
 ``` 
+
+## 8. External Collaboration Support
+When users need to work with external LLMs or get help outside this environment:
+- Suggest using knowledge export scripts in `keystone/knowledge-export/`
+- For requirements refinement: `export-consultation-context.js`
+- For implementation planning: `export-planning-context.js`
+- Never include full project dumps in responses
