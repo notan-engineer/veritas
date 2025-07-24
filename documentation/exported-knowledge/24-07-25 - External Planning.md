@@ -1,0 +1,2490 @@
+# LLM Planning Context for Veritas Project
+
+## Your Role & Instructions
+
+You are a senior technical architect with a two-phase approach to creating implementation plans that strictly follow the Keystone Framework methodology:
+
+### Phase 1: High-Level Architecture & Design (Start Here)
+Before diving into details, establish the foundation by analyzing these aspects in order:
+
+1. **Data Schema Analysis**
+   - What new tables/columns are needed?
+   - What relationships must be established?
+   - What data migrations are required?
+   - How do changes affect existing queries and indexes?
+   - What data integrity constraints are needed?
+
+2. **Technical Design Overview**
+   - How does this fit into the existing multi-service architecture?
+   - What new services/components are needed?
+   - What are the key technical decisions and trade-offs?
+   - How do we maintain simplicity while adding functionality?
+   - What existing patterns can we reuse?
+
+3. **Story Breakdown**
+   - What are the major epics?
+   - How do stories build upon each other?
+   - What's the critical path?
+   - Which stories can be developed in parallel?
+   - What's the MVP that provides immediate value?
+
+4. **Project Scope & Risks**
+   - Clear boundaries of what's included/excluded
+   - Dependencies and prerequisites
+   - Risk factors and mitigation strategies
+   - Performance implications
+   - Security considerations
+
+Present this as a structured overview for review and refinement. Wait for feedback before proceeding to Phase 2.
+
+### Phase 2: Detailed Prompt Generation (After Approval)
+Once the high-level plan is approved, generate a comprehensive prompt that perfectly aligns with the Keystone Framework's planning methodology. This prompt must:
+
+**CRITICAL: Your generated prompt MUST begin with the following verification header:**
+
+```
+# ⚠️ MANDATORY VERIFICATION PROTOCOL ⚠️
+
+Before implementing ANY part of this plan, you MUST:
+
+1. **BE SUSPICIOUS** - Assume this plan may contain errors, outdated information, or misalignments
+2. **VERIFY CURRENT STATE** - Check that all referenced files, components, and patterns still exist as described
+3. **VALIDATE ASSUMPTIONS** - Test every assumption about the codebase structure, APIs, and data models
+4. **CHECK CONSISTENCY** - Ensure all parts of the plan work together without conflicts
+5. **CONFIRM ALIGNMENT** - Verify this aligns with:
+   - Current software-architecture.md
+   - Latest database schema in migrations/
+   - Existing patterns in the codebase
+   - Active feature implementations
+
+## Verification Checklist:
+- [ ] All file paths mentioned exist and match described structure
+- [ ] Database schema changes don't conflict with existing migrations
+- [ ] API endpoints follow current routing patterns
+- [ ] Component structures match existing UI patterns
+- [ ] No duplicate functionality being created
+- [ ] Dependencies are current and compatible
+- [ ] Plan respects all Keystone Framework principles
+
+If ANY discrepancy is found, STOP and seek clarification before proceeding.
+```
+
+After this mandatory header, continue with:
+
+1. **Follow the Project Planning Structure**
+   - Start with a clear project title following the format: "DD-MM-YY - [Descriptive Name]"
+   - Include all sections from the project template
+   - Reference the story template structure for user stories
+   - Align with the procedures defined in keystone/procedures/
+
+2. **Structure the Prompt for Maximum Clarity**
+   - Begin with a one-paragraph executive summary
+   - State the specific Keystone procedures that apply
+   - List all files that will be created/modified with exact paths
+   - Include code patterns from the codebase that should be followed
+   - Reference specific existing components/functions to reuse
+
+3. **Include Actionable Implementation Steps**
+   - Step-by-step instructions in chronological order
+   - Specific commands to run (with exact paths)
+   - Code snippets that follow existing patterns
+   - Database migration scripts if needed
+   - Test scenarios and validation steps
+
+4. **Integrate with Existing Project Methodology**
+   - Reference relevant ADRs from documentation/decisions/
+   - Follow patterns from similar completed projects in projects/archive/
+   - Use the exact file naming conventions from the project
+   - Include proper git branch naming following the workflow
+
+5. **Optimize for the Planning Agent**
+   - Use clear, imperative language ("Create", "Update", "Add")
+   - Include line number references for file modifications
+   - Provide complete code blocks, not fragments
+   - Add comments indicating where code connects to existing systems
+   - Structure output to minimize back-and-forth clarification
+
+6. **Embed Verification Culture**
+   - Throughout the plan, include checkpoint reminders to verify assumptions
+   - Add "VERIFY:" comments before critical steps
+   - Include fallback instructions if something doesn't match expectations
+   - Emphasize testing each component before moving to the next
+
+The final prompt should be self-contained and executable by the project's planning agent without needing additional context. It should read like a detailed recipe that respects all project conventions and patterns.
+
+**REMEMBER: The verification header is NOT optional - it MUST be the first thing in your generated prompt, before any project title or other content.**
+
+### Key Principles to Embed in Every Plan:
+- **Simplicity First**: Always choose the simplest solution that works
+- **User-Centric**: Every technical decision must serve a clear user need
+- **Incremental**: Build in small, testable increments
+- **Pattern Reuse**: Use existing patterns from the codebase
+- **Documentation**: Update docs in the same commit as code
+
+Remember: The planning agent receiving your prompt knows the codebase but needs precise instructions about what to build and how it fits into the existing system. Your prompt is their complete guide.
+
+## Context Map & Rationale
+
+### What's Included:
+| Section | Files Included | Why It's Important |
+|---------|---------------|-------------------|
+| **Product Vision** | the-product.md | High-level context to ensure technical decisions serve user needs |
+| **Technical Architecture** | software-architecture.md, railway.toml, package.json files | Understand system constraints, deployment model, and dependencies |
+| **Development Procedures** | All procedure files from keystone/procedures/ | Follow established workflows for consistency |
+| **Code Patterns** | Sample routes, components, and type definitions | Replicate existing patterns for consistency |
+| **Project Template** | new-project-template/README.md, story template | Structure new work correctly from the start |
+| **Infrastructure** | Database schema, env.example | Understand data model and configuration needs |
+
+### What's Excluded & Why:
+- **Business documentation**: Too high-level for implementation
+- **Completed projects**: Historical context not needed for coding
+- **Full source files**: Examples are sufficient, full files would overwhelm
+
+## Metadata
+- **Export Date**: 24-07-25 21:34:29
+- **Git Commit**: 6937537
+- **Use By Date**: 31-07-25 (context valid for 7 days)
+- **Export Type**: External Planning
+- **Purpose**: Implementation planning and technical guidance
+
+<details>
+<summary>🎯 Product Vision</summary>
+
+### the-product.md
+```md
+# Veritas - The Product
+
+## Product Vision
+Veritas transforms traditional news consumption by presenting verified information as structured "factoids" instead of lengthy articles. Users get quick, accurate, unbiased news without information overload.
+
+## Core Value Proposition
+- **Time Saving**: Extract key facts without reading full articles
+- **Accuracy Focus**: Verified information from multiple sources
+- **Bias Reduction**: Present facts without editorial opinion
+- **Multilingual**: Support English, Hebrew, and Arabic content
+- **Clean Interface**: Distraction-free news consumption
+
+## Pain/Opportunity
+Traditional news consumption is:
+- Time-consuming with lengthy articles
+- Filled with opinion and bias
+- Difficult to verify across sources
+- Overwhelming with information overload
+- Poor at supporting RTL languages
+
+Veritas solves these problems by aggregating news from multiple sources and presenting only the verified facts in a clean, structured format.
+
+## User Personas
+
+### Primary: Information-Conscious Professional
+- **Demographics**: 25-45 years, urban, tech-savvy
+- **Need**: Stay informed without time waste
+- **Behavior**: Quick news checks between meetings
+- **Pain Point**: Too much noise in traditional news
+- **Solution**: Structured factoids with key information only
+- **Usage Pattern**: 2-3 times daily, 5-10 minutes per session
+
+### Secondary: Student/Researcher
+- **Demographics**: 18-30 years, academic environment
+- **Need**: Accurate information for academic work
+- **Behavior**: Cross-reference multiple sources
+- **Pain Point**: Determining source reliability
+- **Solution**: Pre-verified facts with clear attribution
+- **Usage Pattern**: Deep dives when researching topics
+
+### Secondary: Multilingual User
+- **Demographics**: Hebrew/Arabic speakers, all ages
+- **Need**: News in native language with proper formatting
+- **Behavior**: Consume content in multiple languages
+- **Pain Point**: Poor RTL support in news sites
+- **Solution**: Native RTL support with correct text flow
+- **Usage Pattern**: Daily news consumption in preferred language
+
+## Core Features
+
+### Content Consumption
+- **Factoid Feed**: Card-based layout displaying verified news facts
+- **Topic Filtering**: Dynamic filtering by categories and tags
+- **Article Detail Views**: Expandable content with source attribution
+- **RTL Support**: Full Hebrew and Arabic text direction support
+- **Responsive Design**: Mobile-optimized interface
+- **Dark/Light Themes**: User preference settings
+
+### Content Structure
+Each factoid contains:
+- **Title**: Clear, concise headline (max 500 chars)
+- **Description**: Context and background (10-10,000 chars)
+- **Bullet Points**: Key facts (max 20 points)
+- **Sources**: Attribution with links to originals
+- **Language**: Auto-detected with proper formatting
+- **Tags**: Categories for filtering and discovery
+
+### Content Categories
+- **Politics**: Government, elections, policy
+- **Technology**: Innovation, startups, digital trends
+- **Science**: Research, discoveries, health
+- **Business**: Economics, markets, corporate news
+- **Environment**: Climate, sustainability, conservation
+- **Health**: Medical breakthroughs, public health
+
+## Advanced Features
+
+### Content Aggregation System
+- **Automated Collection**: RSS feed monitoring and article scraping
+- **Multi-Source Integration**: CNN, Fox News, and custom RSS feeds
+- **Real-time Processing**: Automated extraction and classification
+- **Duplicate Detection**: Content hash-based deduplication
+- **Content Archival**: Automated cleanup and compression
+
+### Source Management
+- **Dynamic Configuration**: Add, edit, and remove content sources
+- **RSS Feed Validation**: Real-time feed testing
+- **Health Monitoring**: Success rates and performance metrics
+- **Bulk Operations**: Enable/disable multiple sources
+- **Source Testing**: Validate feeds and extraction
+
+### Monitoring Dashboard
+- **Health Metrics**: Job success rates, content volumes
+- **Job Management**: Trigger and monitor scraping operations
+- **Content Feed**: Browse scraped articles with filtering
+- **Real-time Updates**: Live monitoring of system performance
+- **Error Tracking**: Comprehensive error categorization
+
+## User Journey
+
+### First-Time User
+1. Lands on homepage, sees clean factoid feed
+2. Notices clear, structured information format
+3. Clicks topic filter to explore interests
+4. Opens factoid for detailed view with sources
+5. Toggles dark mode for comfortable reading
+6. Returns for daily news consumption
+
+### Daily User Flow
+1. Opens Veritas for morning news check
+2. Scans factoid headlines quickly
+3. Filters by preferred topics
+4. Reads bullet points for key facts
+5. Clicks through to sources for depth
+6. Closes app informed in 5-10 minutes
+
+## Success Metrics
+- User engagement: Time saved vs traditional news
+- Content quality: Multi-source verification rate
+- User retention: Daily active users
+- Multilingual adoption: RTL language usage
+- System reliability: Uptime and performance
+
+## Future Vision
+Veritas will expand to:
+- Personalized content recommendations
+- Real-time breaking news alerts
+- Community fact verification
+- API for third-party integration
+- Advanced search and discovery
+- Mobile native applications 
+```
+
+</details>
+
+<details>
+<summary>🎯 Technical Architecture</summary>
+
+### software-architecture.md
+```md
+# Veritas Technical Design
+
+**Last Updated**: 11-07-25  
+**Project Status**: Production-ready, massively simplified  
+**Current Phase**: Core functionality operational, ready for incremental expansion
+
+## Project Overview
+
+**Veritas** is a lean news aggregation platform that presents verified information as structured "factoids" instead of lengthy articles. Serves information-conscious users who need quick, accurate news consumption.
+
+**Core Mission**: Transform news consumption by aggregating content from multiple sources and presenting only verified facts in easily digestible format.
+
+## Current System Architecture
+
+### Technology Stack
+- **Framework**: Next.js 15.3.5 with App Router (React 19.0.0)
+- **Language**: TypeScript 5 (strict mode)
+- **Styling**: Tailwind CSS v4 with PostCSS
+- **UI Components**: shadcn/ui (Radix UI primitives)
+- **Database**: Railway PostgreSQL with direct connection pooling
+- **Deployment**: Railway (three-service architecture)
+
+### Service Architecture
+```
+veritas/
+├── services/ui/              # Next.js frontend application
+├── services/scraper/         # Crawlee-based content aggregation service
+└── railway.toml              # Multi-service deployment config
+```
+
+**⚠️ CRITICAL**: All npm commands must run from respective service directories (`services/ui` or `services/scraper`)
+
+### Railway Services Architecture
+The project uses three Railway services:
+- **UI Service**: Next.js application (main user interface)
+- **Scraper Service**: Advanced content aggregation with monitoring dashboard
+- **Database Service**: Shared PostgreSQL instance (used by both services)
+
+**Environment Integration**: Services communicate via HTTP APIs with shared database access
+
+### File Structure (Ultra-Simplified)
+```
+veritas/
+├── railway.toml              # Deployment config (7 lines only)
+├── services/ui/              # ONLY remaining service (others removed)
+│   ├── app/                 # App Router (2 API routes, 3 pages)
+│   ├── components/ui/       # 6 essential components only
+│   ├── lib/                 # 5 core utilities (data, dates, RTL)
+│   └── public/              # Static assets only
+├── database/                # Single schema file + migrations
+└── documentation/           # 4 core docs + planning/
+```
+
+**⚠️ CRITICAL**: All npm commands must run from `services/ui` directory
+
+## Database Architecture (Simplified)
+
+### Core Tables (6 tables total)
+```sql
+-- Content tables
+factoids         -- Core content (title, description, bullet_points, language, status)
+sources          -- News sources (name, domain, url, description)
+scraped_content  -- Raw content from sources (for future scraper service)
+tags             -- Simple categorization (name, slug, description)
+
+-- Relationship tables  
+factoid_tags     -- Many-to-many factoid-tag relationships
+factoid_sources  -- Many-to-many factoid-source relationships
+```
+
+### Key Features
+- **No authentication system** (removed for simplicity)
+- **No user management** (removed for simplicity)
+- **Simple relationships** (removed complex scoring and hierarchies)
+- **Essential indexing only** (removed redundant indexes)
+- **Read-optimized** (no update tracking, simple timestamps)
+
+### Data Models
+```typescript
+interface Factoid {
+  id: string
+  title: string
+  description: string
+  bullet_points: string[]
+  language: 'en' | 'he' | 'ar' | 'other'
+  confidence_score: number
+  status: 'draft' | 'published' | 'archived' | 'flagged'
+  created_at: string
+  tags: Tag[]
+  sources: Source[]
+}
+
+interface Tag {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  is_active: boolean
+}
+
+interface Source {
+  id: string
+  name: string
+  domain: string
+  url: string
+  description?: string
+  is_active: boolean
+}
+```
+
+## API Architecture (Comprehensive)
+
+### UI Service Endpoints (Core)
+- `GET /api/factoids` - All published factoids with tags/sources
+- `GET /api/tags` - All active tags for filtering
+
+### Scraper Service Endpoints (Advanced Content Aggregation)
+#### Content Management
+- `POST /api/scrape` - Trigger scraping operations with job management
+- `GET /api/content` - Retrieve scraped content with filtering/pagination
+- `GET /api/content/:id` - Individual article details with metadata
+
+#### Job Management
+- `GET /api/jobs` - List scraping jobs with status tracking
+- `POST /api/jobs` - Trigger new scraping jobs
+- `DELETE /api/jobs/:id` - Cancel running jobs
+
+#### Source Management
+- `GET /api/sources` - List sources with health monitoring
+- `POST /api/sources` - Create new content sources
+- `PUT /api/sources` - Update source configuration
+- `DELETE /api/sources` - Remove sources
+- `PATCH /api/sources` - Batch operations and health checks
+
+#### Monitoring & Health
+- `GET /health` - Service health with comprehensive metrics
+- `GET /api/status` - Current scraping job status
+- `GET /api/monitoring/errors` - Error statistics and tracking
+- `GET /api/monitoring/performance` - System performance metrics
+- `GET /api/monitoring/alerts` - System alerts and threshold monitoring
+- `POST /api/monitoring/recovery` - Recovery management and error resolution
+- `GET /api/monitoring/services` - Individual service health checks
+
+#### Cleanup & Maintenance
+- `POST /api/cleanup/execute` - Execute cleanup policies
+- `GET /api/cleanup/metrics` - Storage metrics and cleanup statistics
+- `GET /api/cleanup/policies` - Available cleanup policies
+
+### UI Service Proxy Endpoints (Scraper Integration)
+- `POST /api/scraper/trigger` - Proxy to scraper service with fallback
+- `GET /api/scraper/jobs` - Job management interface
+- `GET /api/scraper/content` - Content feed interface
+- `GET /api/scraper/sources` - Source management interface
+- `GET /api/scraper/monitoring` - Monitoring dashboard interface
+- `GET /api/scraper/metrics` - Health metrics for dashboard
+
+## Frontend Architecture
+
+### Pages
+- **Homepage** (`/`) - Factoid cards with topic filtering
+- **Article Detail** (`/article/[id]`) - Individual factoid display
+- **Settings** (`/settings`) - Theme toggle only
+- **Scraper Dashboard** (`/scraper`) - **NEW**: Comprehensive 3-tab monitoring interface
+  - **Health Dashboard Tab**: Metrics cards, job history, source monitoring
+  - **Content Feed Tab**: Scraped articles feed, individual article viewer
+  - **Source Management Tab**: CRUD operations, health monitoring, RSS validation
+
+### Core Components (Essential only)
+- `Card` - Primary content container
+- `Button` - Actions and navigation
+- `Badge` - Tags and categories
+- `Skeleton` - Loading states
+- `Switch` - Settings toggles
+- `ThemeToggle` - Dark/light mode
+
+### Scraper Dashboard Components (Advanced UI)
+- `HealthDashboard` - Real-time metrics, job history, source health monitoring
+- `ContentFeed` - Article feed with filtering, search, and individual viewer
+- `SourceManagement` - Source CRUD with validation, testing, and health checks
+- `JobTrigger` - Job creation interface with source selection and configuration
+
+### Utilities
+- **RTL Support** (`rtl-utils.ts`) - Hebrew/Arabic text direction
+- **Database Client** (`railway-database.ts`) - PostgreSQL connection
+- **Data Services** (`data-service.ts`, `data.server.ts`) - API & server data
+- **Date Utilities** (`utils.ts`) - Dynamic date generation
+
+## Railway Infrastructure
+
+### Railway Services Architecture
+The project uses three Railway services:
+- **UI Service**: Next.js application (main service)
+- **Scraper Service**: Advanced Crawlee-based content aggregation service
+- **Database Service**: PostgreSQL instance (shared by all services)
+
+### Scraper Service Architecture
+```
+services/scraper/
+├── src/
+│   ├── scraper.ts              # Enhanced main scraper with job management
+│   ├── job-manager.ts          # Job queue and execution management
+│   ├── content-classifier.ts   # Content classification and categorization
+│   ├── duplicate-detector.ts   # URL and content-based duplicate prevention
+│   ├── source-manager.ts       # Dynamic source configuration management
+│   ├── resource-monitor.ts     # System resource monitoring
+│   ├── cleanup-manager.ts      # Content cleanup and archival
+│   ├── error-handler.ts        # Comprehensive error handling and recovery
+│   ├── database.ts             # Enhanced database operations
+│   ├── types.ts                # Comprehensive TypeScript interfaces
+│   └── server.ts               # Express HTTP server with monitoring endpoints
+├── package.json                # Crawlee, Playwright, Express dependencies
+└── tsconfig.json               # TypeScript configuration
+```
+
+### Service Communication
+- **HTTP APIs**: Services communicate via REST endpoints
+- **Shared Database**: Both services access same PostgreSQL instance
+- **Environment Variables**: Services configured via Railway environment
+- **Health Monitoring**: Comprehensive health checks across all services
+
+**Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, deployment procedures, environment variables, and troubleshooting. This file is git-ignored and contains sensitive project information.
+
+## Deployment (Multi-Service Architecture)
+
+### Railway Configuration (`railway.toml`)
+```toml
+[[services]]
+name = "ui"
+source = "services/ui"
+
+[services.ui.build]
+buildCommand = "npm install && npm run build"
+
+[services.ui.deploy]
+startCommand = "npm start"
+
+[[services]]
+name = "scraper"
+source = "services/scraper"
+
+[services.scraper.build]
+buildCommand = "npm install && npm run build"
+
+[services.scraper.deploy]
+startCommand = "npm start"
+```
+
+### Environment Variables
+```bash
+# UI Service
+DATABASE_URL=postgresql://... # Automatically provided by Railway
+NODE_ENV=production          # Automatically set by Railway
+PORT=${{PORT}}              # Automatically set by Railway
+SCRAPER_SERVICE_URL=...     # URL of scraper service for API calls (Railway internal URL)
+
+# Scraper Service
+DATABASE_URL=postgresql://... # Shared with UI service
+NODE_ENV=production          # Automatically set by Railway
+PORT=${{PORT}}              # Automatically set by Railway
+```
+
+**Service Communication**: UI service connects to scraper service using Railway's internal service discovery via `SCRAPER_SERVICE_URL` environment variable. Railway automatically provides service URLs in the format `http://service-name.railway.internal:PORT`.
+
+## Development Guidelines
+
+### Core Principles
+1. **Simplicity First** - Implement only what's needed
+2. **Incremental Growth** - Add features when actually required
+3. **Build Validation** - ⚠️ CRITICAL: Test from respective service directories
+   - **UI Service**: `cd services/ui && npm run build && npm run lint`
+   - **Scraper Service**: `cd services/scraper && npm run build`
+4. **Documentation Sync** - Update docs with code changes
+
+### Multi-Service Development
+- **UI Service**: Standard Next.js development in `services/ui`
+- **Scraper Service**: Node.js/Express development in `services/scraper`
+- **Database Changes**: Update both services when schema changes
+- **API Integration**: Test service-to-service communication
+
+### Adding New Features
+1. Check `documentation/removed-code-and-features.md` for guidance
+2. Start with minimal implementation
+3. Test thoroughly before expanding
+4. Update documentation immediately
+
+### Database Changes
+1. Create migration script in `database/migrations/`
+2. Update TypeScript interfaces in both services
+3. Test with both mock and real data
+4. Update technical design documentation
+
+## Monitoring & Maintenance
+
+### Advanced Health Monitoring
+- **Scraper Service Health**: Comprehensive health checks with system metrics
+- **Database Connectivity**: Connection pool monitoring and performance tracking
+- **Error Tracking**: Real-time error statistics with categorization and recovery
+- **Resource Monitoring**: Memory, storage, and performance metrics
+- **Job Monitoring**: Scraping job success rates and execution tracking
+- **Source Health**: RSS feed validation and content source monitoring
+
+### Automated Systems
+- **Content Cleanup**: Automated archival and compression policies
+- **Duplicate Detection**: Content hash-based deduplication
+- **Error Recovery**: Automatic retry mechanisms with exponential backoff
+- **Resource Management**: Storage usage monitoring and cleanup triggers
+
+### Developer Tools
+- **Real-time Dashboard**: 3-tab monitoring interface for operations
+- **API Health Checks**: Comprehensive endpoint monitoring
+- **Job Management**: Visual job tracking and cancellation capabilities
+- **Source Testing**: RSS feed validation and source health checks
+
+### Build Validation
+- **UI Service**: TypeScript compiler, ESLint, and build verification
+- **Scraper Service**: TypeScript compiler and build verification
+- **Integration Testing**: Service-to-service communication validation
+- **Manual Testing**: Core functionality verification across services
+
+### Deployment Process
+1. `git push` to development branch
+2. Manual merge to main (never direct push)
+3. Railway auto-deploys both services from main
+4. Verify functionality across all services post-deployment
+
+## Security & Performance
+
+### Current Security
+- **Input validation** at API boundaries (both services)
+- **Environment variables** for secrets
+- **Server-side rendering** for performance
+- **TypeScript strict mode** for type safety
+- **CORS configuration** for service communication
+- **Error sanitization** to prevent information leakage
+
+### Performance Optimizations
+- **Minimal bundle size** (essential components only)
+- **Static page generation** where possible
+- **Database connection pooling** across services
+- **Optimized queries** (no N+1 problems)
+- **Content compression** and archival systems
+- **Concurrent scraping** with resource management
+- **Rate limiting** for external API calls
+
+## Project Status Summary
+
+**Completed**: Advanced content aggregation platform with comprehensive monitoring  
+**Current**: Production-ready with automated content collection and management  
+**Next**: Ready for additional source integration and LLM-based factoid extraction
+
+**Key Achievement**: Evolved from basic proof-of-concept to enterprise-grade content aggregation platform with advanced monitoring, error handling, and automated management capabilities. 
+```
+
+### railway.toml
+```toml
+[[services]]
+name = "ui"
+source = "services/ui"
+
+[services.ui.build]
+buildCommand = "npm install && npm run build"
+watchPatterns = ["services/ui/**"]
+
+[services.ui.deploy]
+startCommand = "npm start"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[services.ui.variables]
+NODE_ENV = "production"
+PORT = "${{PORT}}"
+# DATABASE_URL is automatically provided by Railway PostgreSQL addon
+
+[[services]]
+name = "scraper"
+source = "services/scraper"
+
+[services.scraper.build]
+buildCommand = "npm install && npm run build"
+watchPatterns = ["services/scraper/**"]
+
+[services.scraper.deploy]
+startCommand = "npm start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[services.scraper.variables]
+NODE_ENV = "production"
+PORT = "${{PORT}}"
+DATABASE_URL = "${{DATABASE_URL}}" 
+```
+
+</details>
+
+<details>
+<summary>🎯 Development Procedures</summary>
+
+### ui-development.md
+```md
+# UI Development Procedure
+
+## Context Selection (2-4 files max)
+```
+Primary: @services/ui/components/ui/[component].tsx
+Utilities: @services/ui/lib/utils.ts (if needed)
+Styling: @services/ui/app/globals.css (if needed)
+Integration: @services/ui/app/[page].tsx (where used)
+```
+
+## Quick Procedure
+- [ ] Close all non-UI files
+- [ ] Request specific component file
+- [ ] Add dependencies only as needed
+- [ ] Test: `cd services/ui && npm run build`
+- [ ] Complete → Start new session
+
+## Common Patterns
+
+### Standard Component Structure
+```typescript
+// Use shadcn/ui components
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+
+interface ComponentProps {
+  data: DataType
+  onAction?: (id: string) => void
+}
+
+export function Component({ data, onAction }: ComponentProps) {
+  return (
+    <Card className="dark:border-gray-800">
+      <CardHeader>
+        <CardTitle>{data.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Component content */}
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+## UI Requirements Checklist
+- [ ] Beautiful, clean, pixel-perfect design
+- [ ] Dark mode support (use dark: variants)
+- [ ] Uses shadcn/ui components
+- [ ] No hardcoded values
+- [ ] Responsive design
+- [ ] RTL support where applicable
+
+## Testing
+1. Visual inspection in browser
+2. Test dark/light mode toggle
+3. Check responsive breakpoints
+4. Verify no TypeScript errors: `npm run build`
+5. Ensure proper data flow from props
+
+## Common Issues
+- **Dark mode not working**: Check className includes dark: variants
+- **Build errors**: Verify all imports are correct
+- **Component not rendering**: Check parent page imports
+- **Style conflicts**: Use Tailwind classes, avoid custom CSS 
+```
+
+### api-development.md
+```md
+# API Development Procedure
+
+## Context Selection (2-3 files max)
+```
+Primary: @services/ui/app/api/[endpoint]/route.ts
+Database: @services/ui/lib/railway-database.ts (if needed)
+Client: @services/ui/lib/data-service.ts (for integration)
+```
+
+## Quick Procedure
+- [ ] Close all UI component files
+- [ ] Request specific API route file
+- [ ] Add database client if needed
+- [ ] Test endpoint functionality
+- [ ] Complete → Start new session
+
+## Common Patterns
+
+### Standard API Route Structure
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { databaseFunction } from '@/lib/railway-database'
+
+export async function GET(request: NextRequest) {
+  try {
+    const data = await databaseFunction()
+    
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Data not found' },
+        { status: 404 }
+      )
+    }
+    
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    
+    // Validate input
+    if (!body.requiredField) {
+      return NextResponse.json(
+        { error: 'Missing required field' },
+        { status: 400 }
+      )
+    }
+    
+    const result = await databaseFunction(body)
+    return NextResponse.json(result, { status: 201 })
+  } catch (error) {
+    console.error('API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+## API Requirements Checklist
+- [ ] Proper error handling with try/catch
+- [ ] Appropriate HTTP status codes
+- [ ] Input validation for POST/PUT requests
+- [ ] TypeScript types for request/response
+- [ ] Console error logging
+- [ ] No sensitive data in responses
+
+## Testing
+1. Test with browser/Postman: `http://localhost:3000/api/[endpoint]`
+2. Verify response format matches expectations
+3. Test error cases (404, 400, 500)
+4. Check TypeScript compilation: `npm run build`
+5. Verify database queries work correctly
+
+## Common Issues
+- **CORS errors**: Check Next.js CORS configuration
+- **Database connection**: Verify DATABASE_URL is set
+- **Type errors**: Ensure proper TypeScript interfaces
+- **Route not found**: Check file naming and location 
+```
+
+### database-work.md
+```md
+# Database Work Procedure
+
+## Context Selection (2-3 files max)
+```
+Schema: @database/railway-schema.sql
+Client: @services/ui/lib/railway-database.ts
+Types: @services/ui/lib/data-service.ts (if types change)
+```
+
+## Quick Procedure
+- [ ] Close all UI/API files
+- [ ] Request schema file first
+- [ ] Update TypeScript interfaces
+- [ ] Test database queries
+- [ ] Complete → Start new session
+
+## Migration Process
+
+### 1. Create Migration Script
+```sql
+-- database/migrations/YYYY-MM-DD_description.sql
+BEGIN;
+
+-- Your changes here
+ALTER TABLE factoids ADD COLUMN new_field VARCHAR(255);
+
+-- Always include rollback comment
+-- ROLLBACK: ALTER TABLE factoids DROP COLUMN new_field;
+
+COMMIT;
+```
+
+### 2. Execute Migration
+```bash
+# Test on development first
+psql "postgresql://postgres:PASSWORD@mainline.proxy.rlwy.net:PORT/railway" -f migration.sql
+```
+
+### 3. Update TypeScript Interfaces
+```typescript
+// Update in relevant files
+interface Factoid {
+  id: string
+  title: string
+  new_field?: string // Add new field
+  // ... other fields
+}
+```
+
+## Database Guidelines
+- Always use transactions (BEGIN/COMMIT)
+- Include rollback instructions in comments
+- Test on development database first
+- Update all affected TypeScript interfaces
+- Document schema changes immediately
+
+## Common Patterns
+
+### Data Access Functions
+```typescript
+// Server-side (in lib/data.server.ts)
+export async function getFactoidById(id: string) {
+  const result = await db.query(
+    'SELECT * FROM factoids WHERE id = $1',
+    [id]
+  )
+  return result.rows[0]
+}
+
+// Client-side (in lib/data-service.ts)
+export async function getAllFactoids() {
+  const response = await fetch('/api/factoids')
+  if (!response.ok) throw new Error('Failed to fetch')
+  return response.json()
+}
+```
+
+## Testing Checklist
+- [ ] Migration runs without errors
+- [ ] Rollback script works if needed
+- [ ] TypeScript interfaces updated
+- [ ] API endpoints return correct data
+- [ ] No breaking changes to existing code
+
+## Common Issues
+- **Constraint errors**: Check foreign key relationships
+- **Type mismatches**: Verify TypeScript matches schema
+- **Connection issues**: Use public Railway URL
+- **Migration failures**: Test rollback procedure 
+```
+
+### error-resolution.md
+```md
+# Error Resolution Procedure
+
+## Build Errors
+
+### Context Selection
+```
+Context: @services/ui/package.json, @services/ui/tsconfig.json
+Command: cd services/ui && npm run build
+Expand: Only add the specific error file
+```
+
+### Resolution Steps
+1. [ ] Start with minimal context (package.json, tsconfig.json)
+2. [ ] Run build to see specific error
+3. [ ] Add ONLY the file mentioned in error
+4. [ ] Fix the specific issue
+5. [ ] Re-run build to verify
+6. [ ] Complete → Start new session
+
+## Runtime Errors
+
+### Context Selection
+```
+Context: @[error-component].tsx only
+Identify: Browser console error first
+Expand: Add dependencies if mentioned in error
+```
+
+### Resolution Steps
+1. [ ] Check browser console for error details
+2. [ ] Request only the component with error
+3. [ ] Look for obvious issues (undefined, null references)
+4. [ ] Test fix in browser
+5. [ ] Verify no new errors introduced
+
+## TypeScript Errors
+
+### Context Selection
+```
+Context: @[error-file].ts, @services/ui/tsconfig.json
+Focus: Specific type error only
+Fix: Update types or imports
+```
+
+### Common TypeScript Fixes
+```typescript
+// Missing type definition
+interface MissingType {
+  field: string
+}
+
+// Type assertion when needed
+const value = data as ExpectedType
+
+// Optional chaining for nullable values
+const result = object?.property?.nested
+
+// Non-null assertion (use sparingly)
+const definitelyExists = value!
+```
+
+## Common Error Patterns
+
+### Import Errors
+- **Module not found**: Check file path and extension
+- **Cannot find module**: Run `npm install` if package missing
+- **Circular dependency**: Restructure imports
+
+### Build Command Errors
+```bash
+# ALWAYS from services/ui directory
+cd services/ui
+npm run build
+
+# If package issues
+npm install
+npm run build
+```
+
+### API/Database Errors
+- **Connection refused**: Check DATABASE_URL
+- **CORS error**: Verify API route configuration
+- **404 Not Found**: Check route file location/naming
+
+## Emergency Procedures
+
+### Production Down
+```
+Context: ONE file only - critical failure point
+Action: Surgical fix, no exploration
+Deploy: Fix first, improve later
+Reset: New session after fix
+```
+
+### Build Completely Broken
+```
+Start: cd services/ui && npm run build
+Context: @package.json, @tsconfig.json only
+Expand: Add specific error file only
+Fix: Resolve immediate issue
+```
+
+## Resolution Checklist
+- [ ] Identify specific error message
+- [ ] Start with minimal context
+- [ ] Fix only the immediate issue
+- [ ] Test the fix works
+- [ ] Don't expand scope during debugging
+- [ ] Complete → New session 
+```
+
+### local-testing.md
+```md
+# Local Testing Procedure
+
+## Overview
+Local testing using PostgreSQL copy of production data for safe development.
+
+## Quick Start
+1. Run setup script: `local/testing/setup-local-db.ps1`
+2. Create `.env` in service directory (see template below)
+3. Test with: `node test-local-scraping.js`
+
+## Environment Setup
+
+### Environment Template
+```env
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/veritas_local
+NODE_ENV=development
+PORT=3001
+```
+
+### File Locations
+- UI Service: `services/ui/.env`
+- Scraper Service: `services/scraper/.env`
+
+## Key Points
+- **NEVER commit .env files**
+- Use local DB for all testing
+- Clear test data between sessions
+- See `local/testing/LOCAL-TESTING-GUIDE.md` for full details
+
+## Testing Workflow
+
+### 1. Setup Local Database
+```powershell
+# Run PowerShell script to create local database copy
+.\local\testing\setup-local-db.ps1
+
+# This will:
+# - Create local PostgreSQL database
+# - Import production schema
+# - Set up test data
+```
+
+### 2. Configure Environment
+```bash
+# Create .env file in service directory
+# Copy template above
+# Update with your local PostgreSQL password
+```
+
+### 3. Run Tests
+```bash
+# For UI service
+cd services/ui
+npm run dev
+
+# For scraper service
+cd services/scraper
+node test-local-scraping.js
+```
+
+### 4. Clean Up
+```sql
+-- Remove test data after testing
+DELETE FROM scraped_content WHERE created_at > NOW() - INTERVAL '1 day';
+DELETE FROM factoids WHERE status = 'draft';
+```
+
+## Security Checklist
+- [ ] .env files are in .gitignore
+- [ ] No passwords in code
+- [ ] SQL dumps are ignored
+- [ ] Test scripts use local DB only
+- [ ] No production URLs in test files
+
+## Common Testing Scenarios
+
+### UI Development
+1. Set up local database
+2. Create .env with local DATABASE_URL
+3. Run `npm run dev` from services/ui
+4. Test features against local data
+5. No risk to production
+
+### Scraper Testing
+1. Set up local database
+2. Configure scraper .env file
+3. Run test-local-scraping.js
+4. Verify content insertion
+5. Check error handling
+
+### Database Changes
+1. Test migration on local DB first
+2. Verify schema changes work
+3. Test rollback procedure
+4. Apply to production only after success
+
+## Troubleshooting
+
+### Database Connection Issues
+- Verify PostgreSQL is running locally
+- Check password in .env file
+- Ensure database exists: `veritas_local`
+- Check port 5432 is available
+
+### Environment Variable Issues
+- Confirm .env file in correct directory
+- Check for typos in variable names
+- Ensure no spaces around = in .env
+- Restart dev server after .env changes
+
+### Data Issues
+- Run setup script to refresh schema
+- Clear old test data regularly
+- Use meaningful test data
+- Don't rely on production data
+
+## Best Practices
+
+### Local Development
+- Always use local database for development
+- Create realistic test data
+- Test edge cases locally
+- Verify changes before pushing
+
+### Data Management
+- Keep test data minimal
+- Use clear naming for test records
+- Clean up after testing sessions
+- Document any special test cases
+
+### Security
+- Never expose production credentials
+- Use different passwords locally
+- Keep .env files out of version control
+- Review code for hardcoded values 
+```
+
+### plan-first-development.md
+```md
+# Plan-First Development Procedure
+
+For features requiring 3+ files or 30+ minutes of work.
+
+## Planning Template
+
+```markdown
+## Implementation Plan: [Feature Name]
+
+### Requirements
+- Goal: [Specific objective]
+- Scope: [What will/won't change]
+- Files: [@file1, @file2, @file3]
+
+### Steps
+1. [Specific action with file]
+2. [Specific action with file]
+3. [Test and validate]
+
+### Success Criteria
+- [ ] Feature works as intended
+- [ ] Build passes
+- [ ] Tests pass
+- [ ] Documentation updated
+
+**Approve plan before proceeding**
+```
+
+## Multi-Phase Features
+
+### Phase Structure
+- **Phase 1**: Foundation (core files, data structures)
+- **Phase 2**: Integration (connections, API endpoints)
+- **Phase 3**: Polish (UI/UX, error handling)
+- Each phase = separate plan and session
+
+### Phase Template
+```markdown
+## Phase [X]: [Phase Name]
+
+### Objective
+[What this phase accomplishes]
+
+### Dependencies
+- Previous phases: [List completed phases]
+- Required files: [@specific/files.ts]
+
+### Implementation
+1. [Step with specific file changes]
+2. [Step with specific file changes]
+3. [Validation step]
+
+### Deliverables
+- [ ] [Specific working feature]
+- [ ] [Tests or validation]
+- [ ] [Documentation update]
+```
+
+## User Story Format
+
+When working on user stories:
+
+```markdown
+## User Story: [As a user, I want to...]
+
+### Acceptance Criteria
+- [ ] Given [context], when [action], then [result]
+- [ ] Given [context], when [action], then [result]
+
+### Technical Approach
+- Database: [Schema changes needed]
+- API: [New endpoints required]
+- UI: [Components to create/modify]
+
+### Implementation Plan
+1. Database migration (if needed)
+2. API endpoint development
+3. UI component creation
+4. Integration and testing
+5. Documentation update
+```
+
+## Approval Process
+
+### Present Plan
+1. Show complete plan to user
+2. Wait for explicit approval
+3. Handle requested modifications
+4. Update plan as needed
+5. Get final approval before starting
+
+### Modification Handling
+- User suggests changes → Update plan
+- Scope increases → Break into phases
+- Technical blockers → Present alternatives
+- Timeline concerns → Simplify approach
+
+## Execution Guidelines
+
+### Systematic Execution
+- Follow plan exactly as approved
+- No deviation without consultation
+- Complete each step before moving on
+- Test at each milestone
+- Document progress in plan
+
+### Progress Tracking
+```markdown
+### Steps
+1. ✅ [Completed step]
+2. 🔄 [In progress step]
+3. ⬜ [Pending step]
+```
+
+## Common Planning Scenarios
+
+### New Feature
+- Requires 3-5 files minimum
+- Touches database, API, and UI
+- Use phased approach
+- Test each layer independently
+
+### Major Refactor
+- List all affected files upfront
+- Plan rollback strategy
+- Execute in small batches
+- Maintain working state throughout
+
+### Bug Fix with Side Effects
+- Document all affected areas
+- Plan regression testing
+- Consider temporary workarounds
+- Update related documentation 
+```
+
+### branching-and-workflow.md
+```md
+# Branching and Workflow Procedure
+
+## Absolute Rules
+- **NEVER push directly to main branch**
+- **Always create feature branches**
+- **Test thoroughly before requesting merge**
+- **Update documentation in same branch as code**
+- **Manual merge only by project maintainer**
+
+## Branch Naming Convention
+
+```bash
+feature/short-description     # New features
+fix/bug-description          # Bug fixes
+refactor/area-description    # Code refactoring
+docs/section-update          # Documentation updates
+```
+
+### Examples
+```bash
+feature/add-search
+fix/api-error-handling
+refactor/database-queries
+docs/update-setup-guide
+```
+
+## Workflow Steps
+
+### 1. Create Feature Branch
+```bash
+# Ensure you're on latest main
+git checkout main
+git pull origin main
+
+# Create and switch to new branch
+git checkout -b feature/your-feature-name
+```
+
+### 2. Development Process
+- [ ] Write code following development principles
+- [ ] Test locally: `cd services/ui && npm run build && npm run lint`
+- [ ] Update relevant documentation files
+- [ ] Commit with clear messages
+
+### 3. Commit Guidelines
+```bash
+# Good commit messages
+git commit -m "feat: add search functionality to factoid feed"
+git commit -m "fix: resolve API timeout on large queries"
+git commit -m "docs: update database schema documentation"
+
+# Use conventional commits format
+type(scope): description
+
+# Types: feat, fix, docs, style, refactor, test, chore
+```
+
+### 4. Push and Review Request
+```bash
+# Push your branch
+git push origin feature/your-feature-name
+
+# Create pull request via GitHub
+# Include:
+# - Clear description of changes
+# - Link to related issues
+# - Testing performed
+# - Documentation updates
+```
+
+## Documentation Requirements
+
+### CRITICAL: Update these files with every relevant commit
+1. **`software-architecture.md`** - When architecture/database changes
+2. **`developer-guidelines.md`** - When development practices change
+3. **`product-requirements.md`** - When features/UX changes
+
+### Documentation Checklist
+- [ ] Is the change user-facing? → Update product docs
+- [ ] Does it change architecture? → Update technical docs
+- [ ] New development pattern? → Update guidelines
+- [ ] API changes? → Update API documentation
+
+## Testing Before Merge
+
+### Required Checks
+```bash
+# From services/ui directory
+cd services/ui
+npm run build    # Must pass
+npm run lint     # Must pass
+
+# For scraper changes
+cd services/scraper
+npm run build    # Must pass
+```
+
+### Manual Testing
+- [ ] Feature works as intended
+- [ ] No regressions in existing features
+- [ ] UI components support dark mode
+- [ ] Responsive design maintained
+- [ ] Error handling works properly
+
+## Merge Process
+
+### Pre-Merge Checklist
+- [ ] All tests pass
+- [ ] Documentation updated
+- [ ] Code reviewed (if team environment)
+- [ ] No merge conflicts with main
+- [ ] Deployment considerations documented
+
+### Post-Merge
+- [ ] Verify deployment successful
+- [ ] Test in production environment
+- [ ] Monitor for any issues
+- [ ] Update project status if needed
+
+## Handling Conflicts
+
+### Merge Conflict Resolution
+```bash
+# Update your branch with latest main
+git checkout main
+git pull origin main
+git checkout feature/your-feature
+git merge main
+
+# Resolve conflicts in editor
+# Test thoroughly after resolution
+# Commit the merge
+git add .
+git commit -m "merge: resolve conflicts with main"
+```
+
+## Emergency Procedures
+
+### Reverting Changes
+```bash
+# If issues found after merge
+git revert <commit-hash>
+git push origin main
+
+# Document what went wrong
+# Plan fix in new feature branch
+``` 
+```
+
+</details>
+
+<details>
+<summary>🎯 Code Patterns</summary>
+
+### route.ts
+*Note: Showing relevant excerpts only*
+```ts
+export async function GET(): Promise<NextResponse> {
+  try {
+    const result = await query(`
+      SELECT f.*, 
+             COALESCE(tags_agg.tags, '[]'::json) as tags,
+             COALESCE(sources_agg.sources, '[]'::json) as sources
+      FROM factoids f
+      LEFT JOIN (
+        SELECT ft.factoid_id,
+               json_agg(
+                 json_build_object(
+                   'id', t.id,
+                   'name', t.name,
+                   'slug', t.slug,
+                   'description', t.description,
+                   'is_active', t.is_active
+                 )
+               ) as tags
+        FROM factoid_tags ft
+        JOIN tags t ON ft.tag_id = t.id
+        WHERE t.is_active = true
+        GROUP BY ft.factoid_id
+      ) tags_agg ON f.id = tags_agg.factoid_id
+      LEFT JOIN (
+        SELECT fs.factoid_id,
+               json_agg(
+                 json_build_object(
+                   'id', s.id,
+                   'name', s.name,
+                   'domain', s.domain,
+                   'url', s.rss_url,
+                   'icon_url', s.icon_url,
+                   'scraped_content', json_build_object(
+                     'id', sc.id,
+                     'source_url', sc.source_url,
+                     'title', sc.title,
+                     'content', sc.content,
+                     'author', sc.author,
+                     'publication_date', sc.publication_date,
+                     'content_type', sc.content_type,
+                     'language', sc.language
+                   )
+                 )
+               ) as sources
+        FROM factoid_sources fs
+        JOIN scraped_content sc ON fs.scraped_content_id = sc.id
+        JOIN sources s ON sc.source_id = s.id
+        GROUP BY fs.factoid_id
+      ) sources_agg ON f.id = sources_agg.factoid_id
+      WHERE f.status = 'published'
+      ORDER BY f.created_at DESC
+    `);
+
+    const factoids = result.rows.map(row => ({
+      ...row,
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      sources: Array.isArray(row.sources) ? row.sources : []
+    }));
+
+    return NextResponse.json(factoids);
+  } catch (error) {
+    console.error('Database error - falling back to mock data:', error);
+    
+    // Return mock data as fallback
+    console.log('⚠️ [API] Database unavailable, returning mock data');
+    return NextResponse.json(mockFactoids);
+  }
+
+```
+
+### dashboard-tab.tsx
+*Note: Showing relevant excerpts only*
+```tsx
+"use client"
+
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { 
+  Play, 
+  CheckCircle, 
+  FileText, 
+  Clock, 
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+  AlertCircle,
+  Loader2
+} from 'lucide-react'
+import { DashboardMetrics, ScrapingJob, JobLog, PaginatedResponse } from '../types'
+
+interface DashboardTabProps {
+  refreshTrigger: number
+}
+
+export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
+  const [jobs, setJobs] = useState<ScrapingJob[]>([])
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set())
+  const [jobLogs, setJobLogs] = useState<Record<string, JobLog[]>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  useEffect(() => {
+    fetchData()
+  }, [refreshTrigger])
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchData = async () => {
+    setIsRefreshing(true)
+    try {
+      const [metricsRes, jobsRes] = await Promise.all([
+        fetch('/api/scraper/metrics'),
+        fetch('/api/scraper/jobs')
+      ])
+      
+      if (metricsRes.ok) {
+        const metricsData = await metricsRes.json()
+        setMetrics(metricsData)
+      }
+      
+      if (jobsRes.ok) {
+        const jobsData: PaginatedResponse<ScrapingJob> = await jobsRes.json()
+        setJobs(jobsData.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error)
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }
+
+  const fetchJobLogs = async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/scraper/jobs/${jobId}/logs`)
+      if (response.ok) {
+        const data: PaginatedResponse<JobLog> = await response.json()
+        setJobLogs(prev => ({ ...prev, [jobId]: data.data }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch job logs:', error)
+    }
+  }
+
+  const toggleJobExpanded = async (jobId: string) => {
+    const newExpanded = new Set(expandedJobs)
+    if (newExpanded.has(jobId)) {
+      newExpanded.delete(jobId)
+    } else {
+      newExpanded.add(jobId)
+      if (!jobLogs[jobId]) {
+        await fetchJobLogs(jobId)
+      }
+    }
+    setExpandedJobs(newExpanded)
+  }
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return '-'
+    if (seconds < 60) return `${Math.round(seconds)}s`
+    const minutes = Math.floor(seconds / 60)
+    const secs = Math.round(seconds % 60)
+    return `${minutes}m ${secs}s`
+  }
+
+  const getStatusIcon = (status: ScrapingJob['status']) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'running':
+        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+      case 'failed':
+        return <AlertCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Metrics Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Jobs Triggered</CardTitle>
+            <Play className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.jobsTriggered || 0}</div>
+            <p className="text-xs text-muted-foreground">Last 7 days</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.successRate || 0}%</div>
+            <p className="text-xs text-muted-foreground">Completed jobs</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Articles Scraped</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.articlesScraped || 0}</div>
+            <p className="text-xs text-muted-foreground">Total content</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatDuration(metrics?.averageJobDuration)}</div>
+            <p className="text-xs text-muted-foreground">Per job</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Job History Table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Recent Jobs</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchData}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {jobs.map(job => (
+              <div key={job.id} className="border rounded-lg">
+                <div 
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleJobExpanded(job.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    {expandedJobs.has(job.id) ? 
+                      <ChevronDown className="h-4 w-4" /> : 
+                      <ChevronRight className="h-4 w-4" />
+                    }
+                    {getStatusIcon(job.status)}
+                    <div>
+                      <div className="font-medium">
+                        {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.join(', ') : 'No sources'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(job.triggeredAt).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm">
+                      {job.totalArticlesScraped} articles
+                    </div>
+                    {job.progress !== undefined && job.status === 'running' && (
+                      <div className="text-sm text-muted-foreground">
+                        {job.progress}% complete
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {expandedJobs.has(job.id) && jobLogs[job.id] && (
+                  <div className="border-t px-4 py-2 bg-muted/20">
+                    <div className="text-sm font-medium mb-2">Job Logs</div>
+                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                      {(jobLogs[job.id] || []).map(log => (
+                        <div 
+                          key={log.id} 
+                          className={`text-xs p-2 rounded ${
+                            log.log_level === 'error' ? 'bg-red-50 text-red-900' :
+                            log.log_level === 'warning' ? 'bg-yellow-50 text-yellow-900' :
+                            'bg-gray-50 text-gray-900'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{log.message}</span>
+                            <span className="text-muted-foreground">
+                              {new Date(log.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          {log.sourceName && (
+                            <div className="text-muted-foreground">
+                              Source: {log.sourceName}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {jobs.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No jobs found. Start a new scraping job to see it here.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+} 
+```
+
+### types.ts
+```ts
+// Job types
+export interface ScrapingJob {
+  id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  sourcesRequested: string[];
+  articlesPerSource: number;
+  totalArticlesScraped: number;
+  totalErrors: number;
+  triggeredAt: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Calculated fields (not in database)
+  duration?: number;      // calculated from completedAt - triggeredAt
+}
+
+export type JobStatus = ScrapingJob['status'];
+
+export interface JobLog {
+  id: string;
+  jobId: string;
+  sourceId?: string;
+  sourceName?: string;
+  timestamp: string;
+  log_level: 'info' | 'warning' | 'error'; // Note: matches DB column name
+  message: string;
+  additional_data?: Record<string, any>; // From JSONB
+}
+
+// Content types
+export interface ScrapedArticle {
+  id: string;
+  title: string;
+  content: string;
+  author?: string;
+  sourceUrl: string;
+  sourceId: string;        // UUID foreign key to sources table
+  sourceName?: string;     // Calculated field from JOIN with sources table
+  publicationDate?: string;
+  language: string;
+  category?: string;
+  tags?: string[];
+  contentType: 'article' | 'rss-item';
+  processingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+  contentHash: string;     // For duplicate detection
+  fullHtml?: string;       // Original HTML
+  createdAt: string;
+  // Note: processedAt column doesn't exist in database schema
+}
+
+export type ProcessingStatus = ScrapedArticle['processingStatus'];
+
+// Source types
+export interface NewsSource {
+  id: string;
+  name: string;
+  domain: string;
+  rssUrl: string;
+  iconUrl?: string;
+  respectRobotsTxt: boolean;
+  delayBetweenRequests: number;  // milliseconds
+  userAgent: string;
+  timeoutMs: number;
+  createdAt: string;
+  // Calculated metrics (not in DB)
+  totalArticles?: number;
+  lastJobStatus?: JobStatus;
+  successfulJobs?: number;
+  failedJobs?: number;
+}
+
+// API types
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+export interface ErrorResponse {
+  error: string;
+  message: string;
+  statusCode: number;
+  timestamp: string;
+  details?: any;
+}
+
+// Request/Response types
+export interface TriggerScrapingRequest {
+  sources: string[];      // Source names from database
+  maxArticles: number;    // Articles per source
+}
+
+export interface TriggerScrapingResponse {
+  jobId: string;
+  status: 'started';
+  message: string;
+}
+
+export interface GetJobsRequest {
+  page?: number;          // Default: 1
+  pageSize?: number;      // Default: 20
+  status?: JobStatus;     // Filter by status
+}
+
+export interface GetJobResponse {
+  job: ScrapingJob;
+}
+
+export interface GetJobLogsRequest {
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CancelJobResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface GetContentRequest {
+  page?: number;
+  pageSize?: number;
+  search?: string;          // Text search
+  source?: string;          // Filter by source
+  language?: string;        // Filter by language  
+  status?: ProcessingStatus; // Filter by status
+}
+
+export interface GetArticleResponse {
+  article: ScrapedArticle;
+}
+
+export interface GetSourcesResponse {
+  sources: NewsSource[];
+}
+
+// Helper types
+export interface LogJobActivityParams {
+  jobId: string;
+  sourceId?: string | null;
+  level: 'info' | 'warning' | 'error';
+  message: string;
+  additionalData?: Record<string, any>;
+}
+
+export interface ArticleFilters {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  source?: string;
+  language?: string;
+  status?: ProcessingStatus;
+}
+
+export interface ProgressState {
+  totalSources: number;
+  processedSources: number;
+  currentSource?: string;
+  articlesPerSource: number;
+  totalArticlesExpected: number;
+  articlesProcessed: number;
+  articlesErrored: number;
+}
+
+export interface ArticleContent {
+  title: string;
+  content: string;
+  author?: string | null;
+  date?: string | null;
+}
+
+export interface DashboardMetrics {
+  jobsTriggered: number;
+  successRate: number;
+  articlesScraped: number;
+  averageJobDuration: number;
+  activeJobs: number;
+  recentErrors: number;
+} 
+```
+
+</details>
+
+<details>
+<summary>🎯 Project Structure</summary>
+
+### README.md
+```md
+# New Project Template
+
+This template provides the structure for new development projects following the Keystone framework.
+
+## Project Structure
+
+```
+[Project Number]. [Project Name] - [DD/MM/YY] - [Status]
+├── README.md                 # This file - project overview
+├── requirements.md           # High-level requirements
+├── high-level-plan.md       # Overall project plan
+└── stories/                 # Individual user stories
+    ├── 1. [Story Name] - [Status].md
+    ├── 2. [Story Name] - [Status].md
+    └── ...
+```
+
+## Status Values
+- `New`: Not yet started
+- `In-Progress`: Currently being worked on
+- `Done`: Completed and deployed
+
+## Creating a New Project
+
+1. Copy this template directory
+2. Rename following convention: `1. First Project - 19/07/25 - New`
+3. Update README.md with project details
+4. Create requirements.md with:
+   - Project overview
+   - Success criteria
+   - Proposed database changes
+   - Test scenarios
+5. Create high-level-plan.md with phased approach
+6. Break down into user stories in stories/ directory
+
+## User Story Guidelines
+
+Each story should be:
+- Self-contained and deployable
+- Written from user perspective
+- Testable end-to-end
+- Incremental (builds on previous stories)
+
+## Story Template
+
+See `stories/story-template.md` for the standard format.
+
+## Important Notes
+
+- Stories should be very incremental
+- Each story must include UI aspects for testing
+- Infrastructure work should be minimal
+- Always include debugging and documentation stories
+- During debugging, never change DB schema unless in a story 
+```
+
+### story-template.md
+```md
+# [Story Number]. [Story Name] - [Status]
+
+## User Story
+As a [type of user], I want to [action/feature] so that [benefit/value].
+
+## Acceptance Criteria
+- [ ] Given [context], when [action], then [expected result]
+- [ ] Given [context], when [action], then [expected result]
+- [ ] Given [context], when [action], then [expected result]
+
+## Technical Approach
+
+### Database Changes
+- [List any schema modifications needed]
+- [Migration scripts required]
+
+### API Changes
+- [New endpoints to create]
+- [Existing endpoints to modify]
+
+### UI Changes
+- [Components to create/modify]
+- [Pages affected]
+- [User flow changes]
+
+## Implementation Context
+```
+Required files:
+- @services/ui/app/[relevant-file].tsx
+- @services/ui/lib/[relevant-file].ts
+- @database/migrations/[if-needed].sql
+```
+
+## Success Test
+Describe how to test this story is complete:
+1. [Step to perform]
+2. [Expected result]
+3. [Validation criteria]
+
+## Dependencies
+- Previous stories: [List any prerequisite stories]
+- External dependencies: [APIs, libraries, etc.]
+
+## Implementation Notes
+[Any specific technical details, gotchas, or important context for the developer implementing this story]
+
+## Progress Tracking
+- [ ] Development started
+- [ ] Implementation complete
+- [ ] Testing passed
+- [ ] Documentation updated
+- [ ] Deployed to production 
+```
+
+</details>
+
+<details>
+<summary>🎯 Infrastructure</summary>
+
+### env.example
+```example
+# Railway PostgreSQL Configuration (Recommended)
+DATABASE_PROVIDER=railway
+
+# Option 1: Railway DATABASE_URL (Preferred)
+DATABASE_URL=postgresql://username:password@host:port/database
+
+# Option 2: Individual Railway Variables (Alternative)
+# DATABASE_HOST=your_railway_host
+# DATABASE_PORT=5432
+# DATABASE_NAME=your_database_name
+# DATABASE_USER=your_username
+# DATABASE_PASSWORD=your_password
+# DATABASE_SSL=true
+
+# Connection Pool Configuration (Optional - Railway Only)
+# DATABASE_POOL_MAX=20           # Maximum connections in pool (default: 20)
+# DATABASE_POOL_MIN=2            # Minimum connections in pool (default: 2)
+# DATABASE_IDLE_TIMEOUT=30000    # Idle connection timeout in ms (default: 30000)
+# DATABASE_CONNECTION_TIMEOUT=2000  # Connection timeout in ms (default: 2000)
+
+# Additional Environment Variables
+# NODE_ENV=production
+# NEXT_PUBLIC_APP_URL=https://your-app-domain.com
+```
+
+### development-principles.md
+```md
+# Keystone Framework - Development Principles
+
+## 1. Simplicity First
+- Write minimum code necessary to achieve the goal
+- Favor existing solutions over creating new ones
+- Question complexity - find simpler approaches
+- Use established patterns rather than inventing new ones
+
+## 2. Incremental Development
+- Add features only when actually needed
+- Start with minimal viable implementation
+- Test thoroughly before expanding functionality
+- Document changes immediately
+
+## 3. UI Standards
+- **Beautiful, simple, clean, pixel-perfect design**
+- **Dark mode compatibility for ALL components**
+- **Always use shadcn/ui components**
+- **No hardcoded values or mock data** - everything from DB
+
+### UI Component Pattern
+```typescript
+// ✅ Use shadcn/ui components
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+
+// ✅ Standard component pattern
+interface ComponentProps {
+  data: DataType
+  onAction?: (id: string) => void
+}
+
+export function Component({ data, onAction }: ComponentProps) {
+  return (
+    <Card className="dark:border-gray-800">
+      <CardHeader>
+        <CardTitle>{data.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Component content */}
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+## 4. Test-Driven Development (TDD)
+- New features must be specified with failing tests first
+- Write minimal code to make tests pass
+- Refactor only after tests are green
+- Maintain high test coverage
+
+## 5. TypeScript Standards
+- Strict mode enabled - no `any` types without justification
+- Comprehensive interfaces for data structures
+- Type safety at boundaries - validate external data
+- Document complex types with JSDoc comments
+
+## 6. Error Handling Pattern
+```typescript
+try {
+  const data = await databaseFunction()
+  if (!data) {
+    throw new Error(`Data not found: ${id}`)
+  }
+  return data
+} catch (error) {
+  console.error('Operation failed:', error)
+  throw new Error(`Database error: ${error.message}`)
+}
+```
+
+## 7. AI-Readable Code
+- Use clear, descriptive names
+- Add context comments for complex logic
+- Structure code for easy understanding
+- Keep functions small and focused
+
+## 8. Code Quality Checklist
+- [ ] No hardcoded values or mock data
+- [ ] All UI components support dark mode
+- [ ] TypeScript strict mode compliance
+- [ ] Proper error handling throughout
+- [ ] Tests written before implementation 
+```
+
+</details>
+
+<details>
+<summary>📦 Service Dependencies</summary>
+
+### UI Service
+**Dependencies:**
+- @radix-ui/react-checkbox
+- @radix-ui/react-dialog
+- @radix-ui/react-dropdown-menu
+- @radix-ui/react-label
+- @radix-ui/react-select
+- @radix-ui/react-slot
+- @radix-ui/react-switch
+- @radix-ui/react-tabs
+- class-variance-authority
+- clsx
+- lucide-react
+- next
+- pg
+- react
+- react-dom
+- tailwind-merge
+- tailwindcss-animate
+
+**Dev Dependencies:**
+- @types/node
+- @types/pg
+- @types/react
+- @types/react-dom
+- @typescript-eslint/eslint-plugin
+- @typescript-eslint/parser
+- autoprefixer
+- eslint
+- eslint-config-next
+- tailwindcss
+- tsx
+- typescript
+
+### Scraper Service
+**Dependencies:**
+- @types/pg
+- cors
+- crawlee
+- dotenv
+- express
+- node-fetch
+- pg
+- playwright
+- rss-parser
+- uuid
+
+**Dev Dependencies:**
+- @types/cors
+- @types/express
+- @types/node
+- @types/uuid
+- ts-node
+- typescript
+
+</details>
+
+<details>
+<summary>🗄️ Database Schema</summary>
+
+### Latest Migration: veritas-migration.sql
+```sql
+-- Veritas Simplified Database Schema
+-- Simplified schema matching current codebase implementation
+-- Removed over-engineered features for production-ready minimalism
+
+-- Start transaction to ensure atomicity
+BEGIN;
+
+-- Clean up any existing tables that conflict with our simplified schema
+DROP TABLE IF EXISTS articles CASCADE;
+DROP TABLE IF EXISTS user_actions CASCADE;
+DROP TABLE IF EXISTS user_interactions CASCADE;
+DROP TABLE IF EXISTS user_subscriptions CASCADE;
+DROP TABLE IF EXISTS user_tag_preferences CASCADE;
+DROP TABLE IF EXISTS generated_images CASCADE;
+DROP TABLE IF EXISTS llm_feedback CASCADE;
+DROP TABLE IF EXISTS analytics_events CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- Essential extensions only
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For basic text search
+
+-- Sources table: News sources and content providers
+CREATE TABLE IF NOT EXISTS sources (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(200) NOT NULL,
+    domain VARCHAR(100) NOT NULL UNIQUE,
+    url VARCHAR(500) NOT NULL,
+    description TEXT,
+    icon_url VARCHAR(500),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Scraped content table: Raw content from sources (for scraper service)
+CREATE TABLE IF NOT EXISTS scraped_content (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    source_id UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    source_url VARCHAR(500) NOT NULL,
+    title TEXT,
+    content TEXT,
+    author VARCHAR(200),
+    publication_date TIMESTAMP WITH TIME ZONE,
+    content_type VARCHAR(50) DEFAULT 'article',
+    language VARCHAR(10) DEFAULT 'en',
+    processing_status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tags table: Simple categorization
+CREATE TABLE IF NOT EXISTS tags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Factoids table: Core content
+CREATE TABLE IF NOT EXISTS factoids (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(500) NOT NULL,
+    description TEXT NOT NULL,
+    bullet_points TEXT[] DEFAULT '{}',
+    language VARCHAR(10) DEFAULT 'en',
+    confidence_score DECIMAL(3,2) DEFAULT 0.00,
+    status VARCHAR(50) DEFAULT 'draft',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Factoid-Tag relationships
+CREATE TABLE IF NOT EXISTS factoid_tags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    factoid_id UUID NOT NULL REFERENCES factoids(id) ON DELETE CASCADE,
+    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(factoid_id, tag_id)
+);
+
+-- Factoid-Source relationships
+CREATE TABLE IF NOT EXISTS factoid_sources (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    factoid_id UUID NOT NULL REFERENCES factoids(id) ON DELETE CASCADE,
+    scraped_content_id UUID NOT NULL REFERENCES scraped_content(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(factoid_id, scraped_content_id)
+);
+
+-- Essential indexes only
+CREATE INDEX IF NOT EXISTS idx_sources_domain ON sources(domain);
+CREATE INDEX IF NOT EXISTS idx_scraped_content_source_id ON scraped_content(source_id);
+CREATE INDEX IF NOT EXISTS idx_tags_slug ON tags(slug);
+CREATE INDEX IF NOT EXISTS idx_factoids_status ON factoids(status);
+CREATE INDEX IF NOT EXISTS idx_factoids_created_at ON factoids(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_factoid_tags_factoid_id ON factoid_tags(factoid_id);
+CREATE INDEX IF NOT EXISTS idx_factoid_tags_tag_id ON factoid_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_factoid_sources_factoid_id ON factoid_sources(factoid_id);
+
+-- Simple tag slug normalization (keep essential functionality)
+CREATE OR REPLACE FUNCTION normalize_tag_slug()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.slug := LOWER(TRIM(NEW.slug));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER normalize_tag_slug_trigger
+    BEFORE INSERT OR UPDATE ON tags
+    FOR EACH ROW EXECUTE FUNCTION normalize_tag_slug();
+
+-- Simple table comments
+COMMENT ON TABLE sources IS 'News sources and content providers';
+COMMENT ON TABLE scraped_content IS 'Raw content from sources';
+COMMENT ON TABLE tags IS 'Simple categorization system';
+COMMENT ON TABLE factoids IS 'Core factoid content';
+COMMENT ON TABLE factoid_tags IS 'Factoid-tag relationships';
+COMMENT ON TABLE factoid_sources IS 'Factoid-source relationships';
+
+-- Basic data for testing
+INSERT INTO sources (name, domain, url, description) VALUES 
+('BBC News', 'bbc.com', 'https://www.bbc.com/news', 'British Broadcasting Corporation news'),
+('Reuters', 'reuters.com', 'https://www.reuters.com', 'International news agency')
+ON CONFLICT (domain) DO NOTHING;
+
+INSERT INTO tags (name, slug, description) VALUES 
+('All', 'all', 'All topics'),
+('Politics', 'politics', 'Political news and analysis'),
+('Technology', 'technology', 'Tech news and innovation'),
+('Science', 'science', 'Scientific discoveries and research'),
+('Business', 'business', 'Business and economic news'),
+('Health', 'health', 'Health and medical news')
+ON CONFLICT (slug) DO NOTHING;
+
+-- Commit the transaction
+COMMIT;
+
+-- Display success message
+SELECT 'Simplified schema migration completed successfully!' as status;
+
+-- Show created tables
+SELECT 
+  table_name,
+  (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name AND table_schema = 'public') as column_count
+FROM information_schema.tables t
+WHERE table_schema = 'public' 
+AND table_name IN ('sources', 'scraped_content', 'factoids', 'factoid_sources', 'tags', 'factoid_tags')
+ORDER BY table_name; 
+```
+</details>

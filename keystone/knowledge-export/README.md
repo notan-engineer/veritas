@@ -20,15 +20,15 @@ These scripts aggregate project context for external LLM consultation, enabling:
 ## Usage
 
 ### Consultation Context (Requirements Refinement)
+From the root directory - 
 ```bash
-cd /path/to/veritas
 node keystone/knowledge-export/export-consultation-context.js
 ```
 Creates: `documentation/exported-knowledge/DD-MM-YY - External Consultation.md`
 
 ### Planning Context (Implementation Guidance)
+From the root directory - 
 ```bash
-cd /path/to/veritas
 node keystone/knowledge-export/export-planning-context.js
 ```
 Creates: `documentation/exported-knowledge/DD-MM-YY - External Planning.md`
