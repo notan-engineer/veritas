@@ -126,16 +126,31 @@ async function generateMetadata() {
  */
 function scanForSensitiveData(content, filePath) {
   const warnings = [];
+  const lines = content.split('\n');
   
   SENSITIVE_PATTERNS.forEach(pattern => {
-    const matches = content.match(pattern);
-    if (matches) {
-      warnings.push({
-        file: filePath,
-        pattern: pattern.source.substring(0, 50) + '...',
-        matches: matches.length
-      });
-    }
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+      const matches = line.match(pattern);
+      
+      if (matches) {
+        // Redact the sensitive part
+        let redactedLine = line;
+        matches.forEach(match => {
+          // Keep first 3 chars and redact the rest
+          const redacted = match.substring(0, 3) + '*'.repeat(Math.max(0, match.length - 3));
+          redactedLine = redactedLine.replace(match, redacted);
+        });
+        
+        warnings.push({
+          file: filePath,
+          lineNumber: lineNumber,
+          line: redactedLine.trim(),
+          pattern: pattern.source.substring(0, 50) + '...',
+          matches: matches.length
+        });
+      }
+    });
   });
   
   return warnings;
@@ -246,6 +261,37 @@ Present this as a structured overview for review and refinement. Wait for feedba
 ### Phase 2: Detailed Prompt Generation (After Approval)
 Once the high-level plan is approved, generate a comprehensive prompt that perfectly aligns with the Keystone Framework's planning methodology. This prompt must:
 
+**CRITICAL: Your generated prompt MUST begin with the following verification header:**
+
+\`\`\`
+# ⚠️ MANDATORY VERIFICATION PROTOCOL ⚠️
+
+Before implementing ANY part of this plan, you MUST:
+
+1. **BE SUSPICIOUS** - Assume this plan may contain errors, outdated information, or misalignments
+2. **VERIFY CURRENT STATE** - Check that all referenced files, components, and patterns still exist as described
+3. **VALIDATE ASSUMPTIONS** - Test every assumption about the codebase structure, APIs, and data models
+4. **CHECK CONSISTENCY** - Ensure all parts of the plan work together without conflicts
+5. **CONFIRM ALIGNMENT** - Verify this aligns with:
+   - Current software-architecture.md
+   - Latest database schema in migrations/
+   - Existing patterns in the codebase
+   - Active feature implementations
+
+## Verification Checklist:
+- [ ] All file paths mentioned exist and match described structure
+- [ ] Database schema changes don't conflict with existing migrations
+- [ ] API endpoints follow current routing patterns
+- [ ] Component structures match existing UI patterns
+- [ ] No duplicate functionality being created
+- [ ] Dependencies are current and compatible
+- [ ] Plan respects all Keystone Framework principles
+
+If ANY discrepancy is found, STOP and seek clarification before proceeding.
+\`\`\`
+
+After this mandatory header, continue with:
+
 1. **Follow the Project Planning Structure**
    - Start with a clear project title following the format: "DD-MM-YY - [Descriptive Name]"
    - Include all sections from the project template
@@ -279,7 +325,15 @@ Once the high-level plan is approved, generate a comprehensive prompt that perfe
    - Add comments indicating where code connects to existing systems
    - Structure output to minimize back-and-forth clarification
 
+6. **Embed Verification Culture**
+   - Throughout the plan, include checkpoint reminders to verify assumptions
+   - Add "VERIFY:" comments before critical steps
+   - Include fallback instructions if something doesn't match expectations
+   - Emphasize testing each component before moving to the next
+
 The final prompt should be self-contained and executable by the project's planning agent without needing additional context. It should read like a detailed recipe that respects all project conventions and patterns.
+
+**REMEMBER: The verification header is NOT optional - it MUST be the first thing in your generated prompt, before any project title or other content.**
 
 ### Key Principles to Embed in Every Plan:
 - **Simplicity First**: Always choose the simplest solution that works
@@ -458,8 +512,22 @@ async function exportPlanningContext() {
     // Check for sensitive data warnings
     if (allWarnings.length > 0) {
       console.warn('\n⚠️  Potential sensitive data detected:');
+      
+      // Group warnings by file
+      const warningsByFile = {};
       allWarnings.forEach(w => {
-        console.warn(`   - ${w.file}: ${w.matches} matches`);
+        if (!warningsByFile[w.file]) {
+          warningsByFile[w.file] = [];
+        }
+        warningsByFile[w.file].push(w);
+      });
+      
+      // Display warnings grouped by file
+      Object.entries(warningsByFile).forEach(([file, fileWarnings]) => {
+        console.warn(`\n   📄 ${file}:`);
+        fileWarnings.forEach(w => {
+          console.warn(`      Line ${w.lineNumber}: ${w.line}`);
+        });
       });
       
       // For now, continue anyway but log the warning

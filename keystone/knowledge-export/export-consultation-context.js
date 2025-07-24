@@ -120,16 +120,31 @@ async function generateMetadata() {
  */
 function scanForSensitiveData(content, filePath) {
   const warnings = [];
+  const lines = content.split('\n');
   
   SENSITIVE_PATTERNS.forEach(pattern => {
-    const matches = content.match(pattern);
-    if (matches) {
-      warnings.push({
-        file: filePath,
-        pattern: pattern.source.substring(0, 50) + '...',
-        matches: matches.length
-      });
-    }
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+      const matches = line.match(pattern);
+      
+      if (matches) {
+        // Redact the sensitive part
+        let redactedLine = line;
+        matches.forEach(match => {
+          // Keep first 3 chars and redact the rest
+          const redacted = match.substring(0, 3) + '*'.repeat(Math.max(0, match.length - 3));
+          redactedLine = redactedLine.replace(match, redacted);
+        });
+        
+        warnings.push({
+          file: filePath,
+          lineNumber: lineNumber,
+          line: redactedLine.trim(),
+          pattern: pattern.source.substring(0, 50) + '...',
+          matches: matches.length
+        });
+      }
+    });
   });
   
   return warnings;
@@ -391,8 +406,22 @@ async function exportConsultationContext() {
     // Check for sensitive data warnings
     if (allWarnings.length > 0) {
       console.warn('\n⚠️  Potential sensitive data detected:');
+      
+      // Group warnings by file
+      const warningsByFile = {};
       allWarnings.forEach(w => {
-        console.warn(`   - ${w.file}: ${w.matches} matches`);
+        if (!warningsByFile[w.file]) {
+          warningsByFile[w.file] = [];
+        }
+        warningsByFile[w.file].push(w);
+      });
+      
+      // Display warnings grouped by file
+      Object.entries(warningsByFile).forEach(([file, fileWarnings]) => {
+        console.warn(`\n   📄 ${file}:`);
+        fileWarnings.forEach(w => {
+          console.warn(`      Line ${w.lineNumber}: ${w.line}`);
+        });
       });
       
       // For now, continue anyway but log the warning
