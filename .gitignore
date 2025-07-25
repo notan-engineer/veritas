@@ -37,7 +37,9 @@ yarn-error.log*
 **/.env.*
 
 # Database dumps - CRITICAL
+# NOTE: schema.sql is excluded as it contains only schema definitions, not data
 *.sql
+!database/schema.sql
 *.dump
 *.backup
 *.pgdump

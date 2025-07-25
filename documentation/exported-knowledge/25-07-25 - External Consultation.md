@@ -120,9 +120,9 @@ Remember: These questions are guides, not scripts. Follow the conversation natur
 - **Test files**: Implementation-specific
 
 ## Metadata
-- **Export Date**: 24-07-25 21:27:07
-- **Git Commit**: 6937537
-- **Use By Date**: 31-07-25 (context valid for 7 days)
+- **Export Date**: 25-07-25 20:32:43
+- **Git Commit**: 1c67712
+- **Use By Date**: 01-08-25 (context valid for 7 days)
 - **Export Type**: External Consultation
 - **Purpose**: Requirements refinement and capability planning
 
