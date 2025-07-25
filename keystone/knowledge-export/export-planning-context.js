@@ -11,6 +11,7 @@ const PLANNING_FILES = [
   
   // Technical Architecture (required)
   { path: 'documentation/software-architecture.md', required: true, section: 'Technical Architecture' },
+  { path: 'database/schema.sql', required: true, section: 'Technical Architecture' },
   { path: 'railway.toml', required: true, section: 'Technical Architecture' },
   
   // Development Procedures (all required)
@@ -223,17 +224,27 @@ function buildLLMInstructions() {
 
 ## Your Role & Instructions
 
-You are a senior technical architect with a two-phase approach to creating implementation plans that strictly follow the Keystone Framework methodology:
+You are a senior technical architect helping to create implementation plans that strictly follow the Keystone Framework methodology. Your approach should be:
 
-### Phase 1: High-Level Architecture & Design (Start Here)
-Before diving into details, establish the foundation by analyzing these aspects in order:
+### Phase 1: High-Level Architecture & Design
+Before diving into implementation details, establish the foundation by analyzing these aspects in order:
 
-1. **Data Schema Analysis**
-   - What new tables/columns are needed?
+**🚨 CRITICAL: THE DATABASE SCHEMA IS THE FOUNDATION OF EVERYTHING 🚨**
+
+**You MUST start by studying the consolidated database/schema.sql file. This is the single source of truth for our data model. Every feature starts with understanding and potentially extending this schema.**
+
+1. **Data Schema Analysis (MANDATORY FIRST STEP)**
+   - **FIRST**: Review the complete database/schema.sql file to understand current structure
+   - **THEN**: Identify what new tables/columns are needed
    - What relationships must be established?
    - What data migrations are required?
    - How do changes affect existing queries and indexes?
    - What data integrity constraints are needed?
+   - How will this impact existing data access patterns?
+   - What are the performance implications of schema changes?
+   - Does this require updates to the TypeScript types that mirror the schema?
+   
+   **Remember**: The database schema drives the entire application architecture. UI components, API endpoints, and service logic all depend on the data model. Get this wrong, and everything else falls apart.
 
 2. **Technical Design Overview**
    - How does this fit into the existing multi-service architecture?
@@ -256,12 +267,10 @@ Before diving into details, establish the foundation by analyzing these aspects 
    - Performance implications
    - Security considerations
 
-Present this as a structured overview for review and refinement. Wait for feedback before proceeding to Phase 2.
+### Phase 2: Detailed Implementation Planning
+Once the high-level design is clear, create detailed implementation guidance that:
 
-### Phase 2: Detailed Prompt Generation (After Approval)
-Once the high-level plan is approved, generate a comprehensive prompt that perfectly aligns with the Keystone Framework's planning methodology. This prompt must:
-
-**CRITICAL: Your generated prompt MUST begin with the following verification header:**
+**CRITICAL: All implementation plans MUST begin with this verification protocol:**
 
 \`\`\`
 # ⚠️ MANDATORY VERIFICATION PROTOCOL ⚠️
@@ -290,7 +299,7 @@ Before implementing ANY part of this plan, you MUST:
 If ANY discrepancy is found, STOP and seek clarification before proceeding.
 \`\`\`
 
-After this mandatory header, continue with:
+After the verification protocol, continue with:
 
 1. **Follow the Project Planning Structure**
    - Start with a clear project title following the format: "DD-MM-YY - [Descriptive Name]"
@@ -298,7 +307,7 @@ After this mandatory header, continue with:
    - Reference the story template structure for user stories
    - Align with the procedures defined in keystone/procedures/
 
-2. **Structure the Prompt for Maximum Clarity**
+2. **Structure for Maximum Clarity**
    - Begin with a one-paragraph executive summary
    - State the specific Keystone procedures that apply
    - List all files that will be created/modified with exact paths
@@ -318,7 +327,7 @@ After this mandatory header, continue with:
    - Use the exact file naming conventions from the project
    - Include proper git branch naming following the workflow
 
-5. **Optimize for the Planning Agent**
+5. **Optimize for Implementation**
    - Use clear, imperative language ("Create", "Update", "Add")
    - Include line number references for file modifications
    - Provide complete code blocks, not fragments
@@ -331,9 +340,9 @@ After this mandatory header, continue with:
    - Include fallback instructions if something doesn't match expectations
    - Emphasize testing each component before moving to the next
 
-The final prompt should be self-contained and executable by the project's planning agent without needing additional context. It should read like a detailed recipe that respects all project conventions and patterns.
+The implementation guidance should be self-contained and executable without needing additional context. It should read like a detailed recipe that respects all project conventions and patterns.
 
-**REMEMBER: The verification header is NOT optional - it MUST be the first thing in your generated prompt, before any project title or other content.**
+**REMEMBER: The verification protocol is MANDATORY and must appear at the beginning of any implementation plan.**
 
 ### Key Principles to Embed in Every Plan:
 - **Simplicity First**: Always choose the simplest solution that works
@@ -342,7 +351,7 @@ The final prompt should be self-contained and executable by the project's planni
 - **Pattern Reuse**: Use existing patterns from the codebase
 - **Documentation**: Update docs in the same commit as code
 
-Remember: The planning agent receiving your prompt knows the codebase but needs precise instructions about what to build and how it fits into the existing system. Your prompt is their complete guide.`;
+Remember: The implementation plan should provide precise instructions about what to build and how it fits into the existing system.`;
 }
 
 /**
@@ -356,11 +365,11 @@ function buildContextMap() {
 | Section | Files Included | Why It's Important |
 |---------|---------------|-------------------|
 | **Product Vision** | the-product.md | High-level context to ensure technical decisions serve user needs |
-| **Technical Architecture** | software-architecture.md, railway.toml, package.json files | Understand system constraints, deployment model, and dependencies |
+| **Technical Architecture** | software-architecture.md, **database/schema.sql**, railway.toml | **Database schema is THE foundation** - all features depend on the data model. System constraints and deployment configuration |
 | **Development Procedures** | All procedure files from keystone/procedures/ | Follow established workflows for consistency |
 | **Code Patterns** | Sample routes, components, and type definitions | Replicate existing patterns for consistency |
 | **Project Template** | new-project-template/README.md, story template | Structure new work correctly from the start |
-| **Infrastructure** | Database schema, env.example | Understand data model and configuration needs |
+| **Infrastructure** | env.example, development-principles.md | Configuration and development standards |
 
 ### What's Excluded & Why:
 - **Business documentation**: Too high-level for implementation

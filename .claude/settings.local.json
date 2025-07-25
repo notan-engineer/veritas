@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(railway link:*)",
+      "Bash(railway service:*)",
+      "Bash(railway variables:*)",
+      "Bash(railway connect:*)",
+      "Bash(rm:*)",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__move_file",
+      "Bash(del get_schema.sql.delete current_schema.txt get_full_schema.sql full_schema.txt)",
+      "Bash(mkdir:*)",
+      "mcp__filesystem__create_directory",
+      "Bash(node:*)",
+      "Bash(git checkout:*)"
+    ],
+    "deny": []
+  }
+}

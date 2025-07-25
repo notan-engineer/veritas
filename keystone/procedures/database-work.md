@@ -2,7 +2,7 @@
 
 ## Context Selection (2-3 files max)
 ```
-Schema: @database/railway-schema.sql
+Schema: @database/schema.sql
 Client: @services/ui/lib/railway-database.ts
 Types: @services/ui/lib/data-service.ts (if types change)
 ```
