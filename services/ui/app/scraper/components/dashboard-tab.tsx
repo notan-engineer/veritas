@@ -12,6 +12,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { 
   Play, 
   CheckCircle, 
@@ -303,7 +309,7 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                     onClick={() => handleSort('sourcesRequested')}
                   >
                     <div className="flex items-center gap-2">
-                      # of Sources
+                      Sources
                       <ArrowUpDown className="h-4 w-4" />
                     </div>
                   </TableHead>
@@ -346,7 +352,31 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                         {new Date(job.triggeredAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length : 0}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help">
+                                {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length : 0}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="max-w-xs">
+                                {Array.isArray(job.sourcesRequested) && job.sourcesRequested.length > 0 ? (
+                                  <div className="space-y-1">
+                                    <div className="font-medium">Sources:</div>
+                                    {job.sourcesRequested.map((source, index) => (
+                                      <div key={index} className="text-sm">
+                                        • {source}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-sm">No sources</div>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length * job.articlesPerSource : 0}
