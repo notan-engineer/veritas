@@ -77,6 +77,7 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
       
       if (jobsRes.ok) {
         const jobsData: PaginatedResponse<ScrapingJob> = await jobsRes.json()
+        console.log('Dashboard jobs data:', jobsData.data) // Debug log
         setJobs(jobsData.data)
       }
     } catch (error) {
@@ -89,10 +90,18 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
 
   const fetchJobLogs = async (jobId: string) => {
     try {
+      console.log('Fetching logs for job:', jobId); // Debug log
       const response = await fetch(`/api/scraper/jobs/${jobId}/logs`)
+      console.log('Logs response status:', response.status); // Debug log
+      
       if (response.ok) {
         const data: PaginatedResponse<JobLog> = await response.json()
+        console.log('Logs data:', data); // Debug log
         setJobLogs(prev => ({ ...prev, [jobId]: data.data }))
+      } else {
+        console.error('Logs API returned error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
       }
     } catch (error) {
       console.error('Failed to fetch job logs:', error)

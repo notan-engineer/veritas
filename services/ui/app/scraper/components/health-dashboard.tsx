@@ -40,7 +40,7 @@ interface JobHistory {
   id: string;
   triggeredAt: string;
   completedAt?: string;
-  status: 'running' | 'completed' | 'failed' | 'cancelled' | 'in progress' | 'successful';
+  status: 'running' | 'completed' | 'failed' | 'cancelled' | 'in progress' | 'successful' | 'partial';
   sourcesRequested: string[];
   articlesPerSource: number;
   totalArticlesScraped: number;
@@ -261,6 +261,8 @@ export function HealthDashboard() {
       case 'successful':
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'partial':
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
       case 'failed':
         return <XCircle className="h-4 w-4 text-red-500" />;
       case 'in progress':
@@ -276,6 +278,7 @@ export function HealthDashboard() {
   const getStatusBadge = (status: string) => {
     const variants = {
       successful: "default",
+      partial: "secondary",
       completed: "default",
       failed: "destructive",
       "in progress": "secondary",
@@ -283,8 +286,8 @@ export function HealthDashboard() {
       cancelled: "outline"
     } as const;
     
-    const displayStatus = status === 'completed' ? 'successful' : 
-                         status === 'running' ? 'in progress' : status;
+    // Don't override the actual status - display exactly what's in the database
+    const displayStatus = status === 'running' ? 'in progress' : status;
     
     return (
       <Badge variant={variants[status as keyof typeof variants] || "outline"}>

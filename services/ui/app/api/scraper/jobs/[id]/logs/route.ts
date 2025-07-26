@@ -76,7 +76,7 @@ export async function GET(
         FROM scraping_logs sl
         LEFT JOIN sources s ON sl.source_id = s.id
         WHERE sl.job_id = $1
-        ORDER BY sl.timestamp DESC
+        ORDER BY sl.timestamp ASC
         LIMIT $2 OFFSET $3
       `, [jobId, pageSize, offset]);
 

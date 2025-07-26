@@ -166,7 +166,14 @@ export function detectLanguage(text: string): string {
 
 // Content hashing for duplicate detection
 export function generateContentHash(title: string, content: string): string {
-  const combined = `${title}:${content.substring(0, 1000)}`;
+  // Normalize content for better duplicate detection
+  const normalizedTitle = title.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normalizedContent = content.trim().toLowerCase().replace(/\s+/g, ' ');
+  
+  // Use more content for better uniqueness while avoiding very long strings
+  const contentSample = normalizedContent.substring(0, 2000);
+  const combined = `${normalizedTitle}:${contentSample}`;
+  
   return crypto.createHash('sha256').update(combined).digest('hex');
 }
 

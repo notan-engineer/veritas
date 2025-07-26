@@ -109,21 +109,8 @@ app.post('/api/scraper/trigger', async (req: Request<{}, {}, TriggerScrapingRequ
         await db.updateJobStatus(jobId, 'in-progress');
         await scraper.scrapeJob(jobId, sources, maxArticles);
         
-        // Determine final status based on job results
-        const job = await db.getJob(jobId);
-        if (!job) {
-          throw new Error(`Job ${jobId} not found after completion`);
-        }
-        const hasErrors = job.totalErrors > 0;
-        const hasArticles = job.totalArticlesScraped > 0;
-        
-        if (hasArticles && !hasErrors) {
-          await db.updateJobStatus(jobId, 'successful');
-        } else if (hasArticles && hasErrors) {
-          await db.updateJobStatus(jobId, 'partial');
-        } else {
-          await db.updateJobStatus(jobId, 'failed');
-        }
+        // Status is already set correctly by the scrapeJob transaction
+        // No need to override it here
       } catch (error: any) {
         console.error('Scraping job failed:', error);
         await db.updateJobStatus(jobId, 'failed');
