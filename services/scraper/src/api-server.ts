@@ -53,10 +53,10 @@ async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const result = await db.pool.query(`
     SELECT 
       COUNT(DISTINCT id) as jobs_triggered,
-      AVG(CASE WHEN status = 'completed' THEN 100 ELSE 0 END) as success_rate,
+      AVG(CASE WHEN status IN ('successful', 'partial') THEN 100 ELSE 0 END) as success_rate,
       SUM(total_articles_scraped) as articles_scraped,
       AVG(EXTRACT(EPOCH FROM (completed_at - triggered_at))) as avg_duration,
-      COUNT(CASE WHEN status = 'running' THEN 1 END) as active_jobs,
+      COUNT(CASE WHEN status = 'in-progress' THEN 1 END) as active_jobs,
       COUNT(CASE WHEN status = 'failed' AND triggered_at > NOW() - INTERVAL '24 hours' THEN 1 END) as recent_errors
     FROM scraping_jobs
     WHERE triggered_at > NOW() - INTERVAL '7 days'
@@ -106,9 +106,24 @@ app.post('/api/scraper/trigger', async (req: Request<{}, {}, TriggerScrapingRequ
     // Start scraping in background
     (async () => {
       try {
-        await db.updateJobStatus(jobId, 'running');
+        await db.updateJobStatus(jobId, 'in-progress');
         await scraper.scrapeJob(jobId, sources, maxArticles);
-        await db.updateJobStatus(jobId, 'completed');
+        
+        // Determine final status based on job results
+        const job = await db.getJob(jobId);
+        if (!job) {
+          throw new Error(`Job ${jobId} not found after completion`);
+        }
+        const hasErrors = job.totalErrors > 0;
+        const hasArticles = job.totalArticlesScraped > 0;
+        
+        if (hasArticles && !hasErrors) {
+          await db.updateJobStatus(jobId, 'successful');
+        } else if (hasArticles && hasErrors) {
+          await db.updateJobStatus(jobId, 'partial');
+        } else {
+          await db.updateJobStatus(jobId, 'failed');
+        }
       } catch (error: any) {
         console.error('Scraping job failed:', error);
         await db.updateJobStatus(jobId, 'failed');
@@ -196,7 +211,7 @@ app.delete('/api/scraper/jobs/:id', async (req: Request<{ id: string }>, res: Re
       });
     }
     
-    if (job.status !== 'running') {
+    if (job.status !== 'in-progress') {
       return res.status(400).json({
         error: 'InvalidOperation',
         message: `Cannot cancel job in ${job.status} state`,
@@ -206,7 +221,7 @@ app.delete('/api/scraper/jobs/:id', async (req: Request<{ id: string }>, res: Re
     }
     
     await scraper.cancelJob(req.params.id);
-    await db.updateJobStatus(req.params.id, 'cancelled');
+    await db.updateJobStatus(req.params.id, 'failed');
     await db.logJobActivity({
       jobId: req.params.id,
       level: 'info',
