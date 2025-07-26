@@ -29,7 +29,14 @@
       "Bash(C:UsersUSERVeritasveritascleanup-ports.bat)",
       "Bash(cmd //c:*)",
       "Bash(cleanup-ports.bat)",
-      "Bash(cmd:*)"
+      "Bash(cmd:*)",
+      "mcp__filesystem__read_file",
+      "mcp__filesystem__edit_file",
+      "Bash(npm run:*)",
+      "Bash(pkill:*)",
+      "Bash(powershell:*)",
+      "Bash(npm start)",
+      "Bash(PORT=3002 npm start)"
     ],
     "deny": []
   }

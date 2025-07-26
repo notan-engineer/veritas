@@ -276,7 +276,7 @@ export async function getJobLogs(jobId: string, page = 1, pageSize = 100): Promi
       FROM scraping_logs sl
       LEFT JOIN sources s ON sl.source_id = s.id::varchar
       WHERE sl.job_id = $1::uuid
-      ORDER BY sl.timestamp DESC
+      ORDER BY sl.timestamp ASC
       LIMIT $2 OFFSET $3
     `, [jobId, pageSize, offset]),
     
