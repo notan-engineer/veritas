@@ -24,9 +24,9 @@ export interface JobLog {
   sourceId?: string;
   sourceName?: string;
   timestamp: string;
-  log_level: 'info' | 'warning' | 'error';
+  logLevel: 'info' | 'warning' | 'error';
   message: string;
-  additional_data?: Record<string, any>;
+  additionalData?: Record<string, any>;
 }
 
 // Content types

@@ -36,7 +36,7 @@ export async function GET(
     // Try to get logs from scraper service first
     try {
       const scraperServiceUrl = process.env.SCRAPER_SERVICE_URL || 'http://localhost:3001';
-      const response = await fetch(`${scraperServiceUrl}/api/jobs/${jobId}/logs`, {
+      const response = await fetch(`${scraperServiceUrl}/api/scraper/jobs/${jobId}/logs`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -47,7 +47,7 @@ export async function GET(
         const scraperData = await response.json();
         return NextResponse.json({
           success: true,
-          data: scraperData.logs || [],
+          data: scraperData.data || [],
           message: 'Job logs retrieved from scraper service'
         });
       }

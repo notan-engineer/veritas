@@ -22,9 +22,9 @@ export interface JobLog {
   sourceId?: string;
   sourceName?: string;
   timestamp: string;
-  log_level: 'info' | 'warning' | 'error'; // Note: matches DB column name
+  logLevel: 'info' | 'warning' | 'error'; // Camel case for consistency with API response
   message: string;
-  additional_data?: Record<string, any>; // From JSONB
+  additionalData?: Record<string, any>; // From JSONB
 }
 
 // Content types

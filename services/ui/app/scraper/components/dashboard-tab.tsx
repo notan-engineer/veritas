@@ -31,7 +31,9 @@ import {
   ArrowUpDown,
   CircleCheck,
   CircleX,
-  CircleDot
+  CircleDot,
+  Copy,
+  Check
 } from 'lucide-react'
 import { DashboardMetrics, ScrapingJob, JobLog, PaginatedResponse } from '../types'
 
@@ -48,6 +50,7 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [sortField, setSortField] = useState<'triggeredAt' | 'sourcesRequested' | 'totalArticlesScraped' | 'duration' | 'status'>('triggeredAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [copiedJobId, setCopiedJobId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -157,6 +160,29 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
     } else {
       setSortField(field)
       setSortDirection('desc')
+    }
+  }
+
+  const copyJobLogs = async (jobId: string) => {
+    const logs = jobLogs[jobId] || []
+    const logText = logs.map(log => {
+      const timestamp = new Date(log.timestamp).toISOString()
+      const fullLogData = {
+        timestamp,
+        level: log.logLevel,
+        message: log.message,
+        sourceName: log.sourceName,
+        additionalData: log.additionalData
+      }
+      return `[${timestamp}] ${JSON.stringify(fullLogData, null, 2)}`
+    }).join('\n\n')
+    
+    try {
+      await navigator.clipboard.writeText(logText)
+      setCopiedJobId(jobId)
+      setTimeout(() => setCopiedJobId(null), 2000)
+    } catch (error) {
+      console.error('Failed to copy logs:', error)
     }
   }
 
@@ -410,30 +436,66 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                       <TableRow>
                         <TableCell colSpan={7} className="bg-muted/20">
                           <div className="p-4">
-                            <div className="text-sm font-medium mb-2">Job Logs</div>
-                            <div className="space-y-1 max-h-64 overflow-y-auto">
-                              {(jobLogs[job.id] || []).map(log => (
-                                <div 
-                                  key={log.id} 
-                                  className={`text-xs p-2 rounded ${
-                                    log.log_level === 'error' ? 'bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-300' :
-                                    log.log_level === 'warning' ? 'bg-yellow-50 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-300' :
-                                    'bg-gray-50 text-gray-900 dark:bg-gray-900/20 dark:text-gray-300'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium">{log.message}</span>
-                                    <span className="text-muted-foreground">
-                                      {new Date(log.timestamp).toLocaleTimeString()}
-                                    </span>
-                                  </div>
-                                  {log.sourceName && (
-                                    <div className="text-muted-foreground">
-                                      Source: {log.sourceName}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-sm font-medium">Job Logs</div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => copyJobLogs(job.id)}
+                                className="flex items-center gap-2 h-8"
+                              >
+                                {copiedJobId === job.id ? (
+                                  <>
+                                    <Check className="h-3 w-3" />
+                                    Copied
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3 w-3" />
+                                    Copy All
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            <div className="border rounded-lg bg-background">
+                              <div className="bg-muted/50 px-3 py-2 border-b text-xs font-mono text-muted-foreground">
+                                Job Log Viewer - {(jobLogs[job.id] || []).length} entries
+                              </div>
+                              <div className="max-h-96 overflow-y-auto font-mono text-xs">
+                                {(jobLogs[job.id] || []).map((log, index) => {
+                                  const timestamp = new Date(log.timestamp).toISOString()
+                                  const fullLogData = {
+                                    timestamp,
+                                    level: log.logLevel,
+                                    message: log.message,
+                                    sourceName: log.sourceName,
+                                    additionalData: log.additionalData
+                                  }
+                                  
+                                  return (
+                                    <div 
+                                      key={log.id}
+                                      className="flex border-b border-muted/30 hover:bg-muted/20"
+                                    >
+                                      <div className="flex-shrink-0 w-24 px-3 py-2 bg-muted/30 text-muted-foreground border-r border-muted/30 text-right">
+                                        {String(index + 1).padStart(3, '0')}
+                                      </div>
+                                      <div className="flex-1 px-3 py-2">
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-muted-foreground">
+                                            [{timestamp}]
+                                          </span>
+                                          <div className="flex-1">
+                                            <pre className="whitespace-pre-wrap text-foreground break-words">
+                                              {JSON.stringify(fullLogData, null, 2)}
+                                            </pre>
+                                          </div>
+                                        </div>
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
-                              ))}
+                                  )
+                                })}
+                              </div>
                             </div>
                           </div>
                         </TableCell>
