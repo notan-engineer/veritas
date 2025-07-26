@@ -4,6 +4,14 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { 
   Play, 
   CheckCircle, 
@@ -13,7 +21,11 @@ import {
   ChevronDown,
   ChevronRight,
   AlertCircle,
-  Loader2
+  Loader2,
+  ArrowUpDown,
+  CircleCheck,
+  CircleX,
+  CircleDot
 } from 'lucide-react'
 import { DashboardMetrics, ScrapingJob, JobLog, PaginatedResponse } from '../types'
 
@@ -28,6 +40,8 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
   const [jobLogs, setJobLogs] = useState<Record<string, JobLog[]>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [sortField, setSortField] = useState<'triggeredAt' | 'sourcesRequested' | 'totalArticlesScraped' | 'duration' | 'status'>('triggeredAt')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     fetchData()
@@ -99,16 +113,82 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
 
   const getStatusIcon = (status: ScrapingJob['status']) => {
     switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'running':
+      case 'successful':
+        return <CircleCheck className="h-4 w-4 text-green-500" />
+      case 'partial':
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />
+      case 'in-progress':
         return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
       case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500" />
+        return <CircleX className="h-4 w-4 text-red-500" />
+      case 'new':
+        return <CircleDot className="h-4 w-4 text-gray-500" />
       default:
         return <Clock className="h-4 w-4 text-gray-500" />
     }
   }
+
+  const getStatusBadgeColor = (status: ScrapingJob['status']) => {
+    switch (status) {
+      case 'successful':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+      case 'partial':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+      case 'in-progress':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+      case 'failed':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+      case 'new':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+    }
+  }
+
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
+
+  const sortedJobs = [...jobs].sort((a, b) => {
+    let aVal: any, bVal: any
+    
+    switch (sortField) {
+      case 'triggeredAt':
+        aVal = new Date(a.triggeredAt).getTime()
+        bVal = new Date(b.triggeredAt).getTime()
+        break
+      case 'sourcesRequested':
+        aVal = Array.isArray(a.sourcesRequested) ? a.sourcesRequested.length : 0
+        bVal = Array.isArray(b.sourcesRequested) ? b.sourcesRequested.length : 0
+        break
+      case 'totalArticlesScraped':
+        aVal = a.totalArticlesScraped || 0
+        bVal = b.totalArticlesScraped || 0
+        break
+      case 'duration':
+        aVal = a.duration || 0
+        bVal = b.duration || 0
+        break
+      case 'status':
+        aVal = a.status
+        bVal = b.status
+        break
+      default:
+        aVal = 0
+        bVal = 0
+    }
+    
+    if (sortDirection === 'asc') {
+      return aVal > bVal ? 1 : -1
+    } else {
+      return aVal < bVal ? 1 : -1
+    }
+  })
 
   if (isLoading) {
     return (
@@ -200,79 +280,143 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {jobs.map(job => (
-              <div key={job.id} className="border rounded-lg">
-                <div 
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleJobExpanded(job.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    {expandedJobs.has(job.id) ? 
-                      <ChevronDown className="h-4 w-4" /> : 
-                      <ChevronRight className="h-4 w-4" />
-                    }
-                    {getStatusIcon(job.status)}
-                    <div>
-                      <div className="font-medium">
-                        {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.join(', ') : 'No sources'}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
+        <CardContent className="p-0">
+          {jobs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No jobs found. Start a new scraping job to see it here.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('triggeredAt')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Timestamp
+                      <ArrowUpDown className="h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('sourcesRequested')}
+                  >
+                    <div className="flex items-center gap-2">
+                      # of Sources
+                      <ArrowUpDown className="h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead>Requested Articles</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('totalArticlesScraped')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Scraped
+                      <ArrowUpDown className="h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('duration')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Duration
+                      <ArrowUpDown className="h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      <ArrowUpDown className="h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead>Expand</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedJobs.map(job => (
+                  <>
+                    <TableRow key={job.id}>
+                      <TableCell className="font-medium">
                         {new Date(job.triggeredAt).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm">
-                      {job.totalArticlesScraped} articles
-                    </div>
-                    {job.progress !== undefined && job.status === 'running' && (
-                      <div className="text-sm text-muted-foreground">
-                        {job.progress}% complete
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {expandedJobs.has(job.id) && jobLogs[job.id] && (
-                  <div className="border-t px-4 py-2 bg-muted/20">
-                    <div className="text-sm font-medium mb-2">Job Logs</div>
-                    <div className="space-y-1 max-h-64 overflow-y-auto">
-                      {(jobLogs[job.id] || []).map(log => (
-                        <div 
-                          key={log.id} 
-                          className={`text-xs p-2 rounded ${
-                            log.log_level === 'error' ? 'bg-red-50 text-red-900' :
-                            log.log_level === 'warning' ? 'bg-yellow-50 text-yellow-900' :
-                            'bg-gray-50 text-gray-900'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{log.message}</span>
-                            <span className="text-muted-foreground">
-                              {new Date(log.timestamp).toLocaleTimeString()}
-                            </span>
-                          </div>
-                          {log.sourceName && (
-                            <div className="text-muted-foreground">
-                              Source: {log.sourceName}
-                            </div>
-                          )}
+                      </TableCell>
+                      <TableCell>
+                        {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length : 0}
+                      </TableCell>
+                      <TableCell>
+                        {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length * job.articlesPerSource : 0}
+                      </TableCell>
+                      <TableCell>
+                        {job.totalArticlesScraped || 0}
+                      </TableCell>
+                      <TableCell>
+                        {formatDuration(job.duration)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(job.status)}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(job.status)}`}>
+                            {job.status}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {jobs.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No jobs found. Start a new scraping job to see it here.
-              </div>
-            )}
-          </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleJobExpanded(job.id)}
+                        >
+                          {expandedJobs.has(job.id) ? 
+                            <ChevronDown className="h-4 w-4" /> : 
+                            <ChevronRight className="h-4 w-4" />
+                          }
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    
+                    {expandedJobs.has(job.id) && jobLogs[job.id] && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="bg-muted/20">
+                          <div className="p-4">
+                            <div className="text-sm font-medium mb-2">Job Logs</div>
+                            <div className="space-y-1 max-h-64 overflow-y-auto">
+                              {(jobLogs[job.id] || []).map(log => (
+                                <div 
+                                  key={log.id} 
+                                  className={`text-xs p-2 rounded ${
+                                    log.log_level === 'error' ? 'bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-300' :
+                                    log.log_level === 'warning' ? 'bg-yellow-50 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-300' :
+                                    'bg-gray-50 text-gray-900 dark:bg-gray-900/20 dark:text-gray-300'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">{log.message}</span>
+                                    <span className="text-muted-foreground">
+                                      {new Date(log.timestamp).toLocaleTimeString()}
+                                    </span>
+                                  </div>
+                                  {log.sourceName && (
+                                    <div className="text-muted-foreground">
+                                      Source: {log.sourceName}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

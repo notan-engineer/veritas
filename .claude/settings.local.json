@@ -12,7 +12,14 @@
       "Bash(mkdir:*)",
       "mcp__filesystem__create_directory",
       "Bash(node:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(psql:*)",
+      "Bash(npx:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run type-check:*)",
+      "Bash(curl:*)",
+      "Bash(npm run test:*)"
     ],
     "deny": []
   }

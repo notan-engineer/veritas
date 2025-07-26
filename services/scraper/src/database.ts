@@ -59,7 +59,7 @@ export async function createJobWithInitialLog(
       INSERT INTO scraping_jobs (
         id, status, sources_requested, articles_per_source,
         triggered_at, total_articles_scraped, total_errors
-      ) VALUES ($1, 'pending', $2, $3, NOW(), 0, 0)
+      ) VALUES ($1, 'new', $2, $3, NOW(), 0, 0)
     `, [jobId, sources, articlesPerSource]);
     
     // Create initial log
@@ -90,7 +90,7 @@ export async function updateJobStatus(jobId: string, status: JobStatus): Promise
   // Remove started_at logic - use triggered_at as the start time
   // Job starts when created, not when status changes to 'running'
   
-  if (['completed', 'failed', 'cancelled'].includes(status)) {
+  if (['successful', 'partial', 'failed'].includes(status)) {
     updateFields.completed_at = 'NOW()';
   }
   
@@ -588,7 +588,7 @@ export async function recoverStuckJobs(): Promise<void> {
     UPDATE scraping_jobs 
     SET status = 'failed',
         completed_at = NOW()
-    WHERE status IN ('running', 'pending')
+    WHERE status IN ('in-progress', 'new')
       AND triggered_at < NOW() - INTERVAL '1 hour'
     RETURNING id
   `);

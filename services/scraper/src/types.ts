@@ -1,7 +1,7 @@
 // Job types
 export interface ScrapingJob {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'new' | 'in-progress' | 'successful' | 'partial' | 'failed';
   sourcesRequested: string[];
   articlesPerSource: number;
   totalArticlesScraped: number;
