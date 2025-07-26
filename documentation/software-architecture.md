@@ -42,30 +42,38 @@ The project uses three Railway services:
 ```
 veritas/
 ├── railway.toml              # Deployment config (7 lines only)
-├── services/ui/              # ONLY remaining service (others removed)
+├── services/ui/              # Next.js frontend service
 │   ├── app/                 # App Router (2 API routes, 3 pages)
 │   ├── components/ui/       # 6 essential components only
 │   ├── lib/                 # 5 core utilities (data, dates, RTL)
 │   └── public/              # Static assets only
+├── services/scraper/         # Crawlee-based content aggregation service
+│   ├── src/                 # TypeScript source files
+│   └── package.json         # Crawlee, Playwright, Express dependencies
 ├── database/                # Single schema file + migrations
 └── documentation/           # 4 core docs + planning/
 ```
 
-**⚠️ CRITICAL**: All npm commands must run from `services/ui` directory
+**⚠️ CRITICAL**: All npm commands must run from respective service directories (`services/ui` or `services/scraper`)
 
-## Database Architecture (Simplified)
+## Database Architecture (Complete)
 
-### Core Tables (6 tables total)
+### Core Tables (8 tables total)
 ```sql
 -- Content tables
-factoids         -- Core content (title, description, bullet_points, language, status)
-sources          -- News sources (name, domain, url, description)
-scraped_content  -- Raw content from sources (for future scraper service)
-tags             -- Simple categorization (name, slug, description)
+factoids                -- Core content (title, description, bullet_points, language, status)
+sources                 -- News sources (name, domain, rss_url, icons, scraping config)
+scraped_content         -- Raw content from sources with compression and metadata
+scraped_content_archive -- Archive of old scraped content for storage management
+tags                    -- Simple categorization (name, slug, description)
 
 -- Relationship tables  
 factoid_tags     -- Many-to-many factoid-tag relationships
 factoid_sources  -- Many-to-many factoid-source relationships
+
+-- Scraper service tables
+scraping_jobs    -- Job tracking and management for scraping operations
+scraping_logs    -- Detailed logging per source for each scraping job
 ```
 
 ### Key Features

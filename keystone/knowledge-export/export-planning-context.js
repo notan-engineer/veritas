@@ -224,27 +224,18 @@ function buildLLMInstructions() {
 
 ## Your Role & Instructions
 
-You are a senior technical architect helping to create implementation plans that strictly follow the Keystone Framework methodology. Your approach should be:
+You are a senior technical architect with a two-phase approach to creating implementation plans that strictly follow the Keystone Framework methodology:
 
-### Phase 1: High-Level Architecture & Design
-Before diving into implementation details, establish the foundation by analyzing these aspects in order:
+### Phase 1: High-Level Architecture & Design (Start Here)
+Before diving into details, establish the foundation by analyzing these aspects in order:
 
-**🚨 CRITICAL: THE DATABASE SCHEMA IS THE FOUNDATION OF EVERYTHING 🚨**
-
-**You MUST start by studying the consolidated database/schema.sql file. This is the single source of truth for our data model. Every feature starts with understanding and potentially extending this schema.**
-
-1. **Data Schema Analysis (MANDATORY FIRST STEP)**
-   - **FIRST**: Review the complete database/schema.sql file to understand current structure
-   - **THEN**: Identify what new tables/columns are needed
-   - What relationships must be established?
-   - What data migrations are required?
+1. **Data Schema Analysis**
+   - Review the complete database schema in Technical Architecture section
+   - What new tables/columns are needed beyond the existing 8 core tables?
+   - What relationships must be established with existing entities?
+   - What data migrations are required for schema changes?
    - How do changes affect existing queries and indexes?
    - What data integrity constraints are needed?
-   - How will this impact existing data access patterns?
-   - What are the performance implications of schema changes?
-   - Does this require updates to the TypeScript types that mirror the schema?
-   
-   **Remember**: The database schema drives the entire application architecture. UI components, API endpoints, and service logic all depend on the data model. Get this wrong, and everything else falls apart.
 
 2. **Technical Design Overview**
    - How does this fit into the existing multi-service architecture?
@@ -267,15 +258,17 @@ Before diving into implementation details, establish the foundation by analyzing
    - Performance implications
    - Security considerations
 
-### Phase 2: Detailed Implementation Planning
-Once the high-level design is clear, create detailed implementation guidance that:
+Present this as a structured overview for review and refinement. Wait for feedback before proceeding to Phase 2.
 
-**CRITICAL: All implementation plans MUST begin with this verification protocol:**
+### Phase 2: Project Creation Prompt Generation (After Approval)
+Once the high-level plan is approved, generate a comprehensive prompt that instructs Claude Code to CREATE A NEW PROJECT following the Keystone Framework methodology. This prompt must:
+
+**CRITICAL: Your generated prompt MUST begin with the following verification header:**
 
 \`\`\`
 # ⚠️ MANDATORY VERIFICATION PROTOCOL ⚠️
 
-Before implementing ANY part of this plan, you MUST:
+Before creating ANY part of this project, you MUST:
 
 1. **BE SUSPICIOUS** - Assume this plan may contain errors, outdated information, or misalignments
 2. **VERIFY CURRENT STATE** - Check that all referenced files, components, and patterns still exist as described
@@ -283,13 +276,13 @@ Before implementing ANY part of this plan, you MUST:
 4. **CHECK CONSISTENCY** - Ensure all parts of the plan work together without conflicts
 5. **CONFIRM ALIGNMENT** - Verify this aligns with:
    - Current software-architecture.md
-   - Latest database schema in migrations/
+   - Current database schema in database/schema.sql
    - Existing patterns in the codebase
    - Active feature implementations
 
 ## Verification Checklist:
 - [ ] All file paths mentioned exist and match described structure
-- [ ] Database schema changes don't conflict with existing migrations
+- [ ] Database schema changes don't conflict with current schema in database/schema.sql
 - [ ] API endpoints follow current routing patterns
 - [ ] Component structures match existing UI patterns
 - [ ] No duplicate functionality being created
@@ -299,50 +292,50 @@ Before implementing ANY part of this plan, you MUST:
 If ANY discrepancy is found, STOP and seek clarification before proceeding.
 \`\`\`
 
-After the verification protocol, continue with:
+After this mandatory header, continue with:
 
-1. **Follow the Project Planning Structure**
-   - Start with a clear project title following the format: "DD-MM-YY - [Descriptive Name]"
-   - Include all sections from the project template
-   - Reference the story template structure for user stories
-   - Align with the procedures defined in keystone/procedures/
+**CRITICAL: The generated prompt must instruct Claude Code to CREATE A PROJECT, not implement features directly. The prompt should be a project creation instruction.**
 
-2. **Structure for Maximum Clarity**
-   - Begin with a one-paragraph executive summary
-   - State the specific Keystone procedures that apply
-   - List all files that will be created/modified with exact paths
-   - Include code patterns from the codebase that should be followed
-   - Reference specific existing components/functions to reuse
+1. **Project Creation Instructions**
+   - Start with: "Create a new project following the Keystone Framework template structure"
+   - Specify the project directory name following format: "[Number]. [Project Name] - [DD-MM-YY] - New"
+   - Instruct to copy from keystone/templates/new-project-template/ as the base structure
+   - Include clear instructions to populate all template sections
 
-3. **Include Actionable Implementation Steps**
-   - Step-by-step instructions in chronological order
-   - Specific commands to run (with exact paths)
-   - Code snippets that follow existing patterns
-   - Database migration scripts if needed
-   - Test scenarios and validation steps
+2. **Project Structure Requirements**
+   - README.md with complete project overview
+   - requirements.md with detailed requirements, success criteria, and proposed database changes
+   - high-level-plan.md with phased development approach
+   - stories/ directory with complete user story breakdown
 
-4. **Integrate with Existing Project Methodology**
-   - Reference relevant ADRs from documentation/decisions/
-   - Follow patterns from similar completed projects in projects/archive/
-   - Use the exact file naming conventions from the project
-   - Include proper git branch naming following the workflow
+3. **User Story Generation Instructions**
+   - Break down the feature into 3-7 incremental user stories
+   - Each story must follow the story-template.md format exactly
+   - Stories must be deployable individually and build upon each other
+   - Include proper technical approach, acceptance criteria, and success tests
+   - Ensure stories include UI components for end-to-end testing
 
-5. **Optimize for Implementation**
-   - Use clear, imperative language ("Create", "Update", "Add")
-   - Include line number references for file modifications
-   - Provide complete code blocks, not fragments
-   - Add comments indicating where code connects to existing systems
-   - Structure output to minimize back-and-forth clarification
+4. **Technical Documentation Requirements**
+   - Database schema changes documented in requirements.md
+   - API endpoint specifications for each story
+   - Component and file structure planning
+   - Dependencies and integration points clearly identified
 
-6. **Embed Verification Culture**
-   - Throughout the plan, include checkpoint reminders to verify assumptions
-   - Add "VERIFY:" comments before critical steps
-   - Include fallback instructions if something doesn't match expectations
-   - Emphasize testing each component before moving to the next
+5. **Implementation Context Specifications**
+   - Each story must include proper @file references
+   - Migration scripts identified where needed
+   - Testing approaches defined for each story
+   - Clear success criteria for story completion
 
-The implementation guidance should be self-contained and executable without needing additional context. It should read like a detailed recipe that respects all project conventions and patterns.
+6. **Project Lifecycle Instructions**
+   - Include guidance for story-by-story implementation
+   - Specify which Keystone procedures apply to each phase
+   - Include debugging and documentation stories in the breakdown
+   - Provide project validation and completion criteria
 
-**REMEMBER: The verification protocol is MANDATORY and must appear at the beginning of any implementation plan.**
+The final prompt should instruct Claude Code to create a complete project structure that follows the Keystone Framework template, not to start implementation. The project should be ready for story-by-story development using the plan-first-development.md procedure.
+
+**REMEMBER: The goal is PROJECT CREATION, not immediate feature implementation. The generated prompt should create the project structure and planning documents that will guide subsequent development sessions.**
 
 ### Key Principles to Embed in Every Plan:
 - **Simplicity First**: Always choose the simplest solution that works
@@ -351,7 +344,7 @@ The implementation guidance should be self-contained and executable without need
 - **Pattern Reuse**: Use existing patterns from the codebase
 - **Documentation**: Update docs in the same commit as code
 
-Remember: The implementation plan should provide precise instructions about what to build and how it fits into the existing system.`;
+Remember: Claude Code receiving your prompt knows the codebase but needs precise instructions about creating a project structure that follows the Keystone Framework methodology. Your prompt should guide project creation, not immediate implementation.`;
 }
 
 /**
@@ -365,11 +358,11 @@ function buildContextMap() {
 | Section | Files Included | Why It's Important |
 |---------|---------------|-------------------|
 | **Product Vision** | the-product.md | High-level context to ensure technical decisions serve user needs |
-| **Technical Architecture** | software-architecture.md, **database/schema.sql**, railway.toml | **Database schema is THE foundation** - all features depend on the data model. System constraints and deployment configuration |
+| **Technical Architecture** | software-architecture.md, database/schema.sql, railway.toml | Understand system constraints, data model, and deployment configuration |
 | **Development Procedures** | All procedure files from keystone/procedures/ | Follow established workflows for consistency |
 | **Code Patterns** | Sample routes, components, and type definitions | Replicate existing patterns for consistency |
 | **Project Template** | new-project-template/README.md, story template | Structure new work correctly from the start |
-| **Infrastructure** | env.example, development-principles.md | Configuration and development standards |
+| **Infrastructure** | env.example, development principles | Understand configuration needs and coding standards |
 
 ### What's Excluded & Why:
 - **Business documentation**: Too high-level for implementation
@@ -407,27 +400,6 @@ async function extractDependencies() {
   return dependencies;
 }
 
-/**
- * Find and read the latest database migration
- * @returns {Promise<string>} Latest migration content
- */
-async function getLatestMigration() {
-  try {
-    const migrationsDir = path.join(process.cwd(), 'database/migrations');
-    const files = await fs.readdir(migrationsDir);
-    const sqlFiles = files.filter(f => f.endsWith('.sql')).sort();
-    
-    if (sqlFiles.length > 0) {
-      const latestFile = sqlFiles[sqlFiles.length - 1];
-      const content = await fs.readFile(path.join(migrationsDir, latestFile), 'utf-8');
-      return `### Latest Migration: ${latestFile}\n\`\`\`sql\n${content}\n\`\`\``;
-    }
-  } catch (error) {
-    console.warn('⚠️  Could not read migrations directory');
-  }
-  
-  return '### Database Schema\n*No migration files found*';
-}
 
 /**
  * Main export function
@@ -513,11 +485,6 @@ async function exportPlanningContext() {
     
     output += '</details>\n\n';
     
-    // Add database schema section
-    output += '<details>\n<summary>🗄️ Database Schema</summary>\n\n';
-    output += await getLatestMigration();
-    output += '\n</details>';
-    
     // Check for sensitive data warnings
     if (allWarnings.length > 0) {
       console.warn('\n⚠️  Potential sensitive data detected:');
@@ -563,4 +530,4 @@ async function exportPlanningContext() {
 }
 
 // Run the export
-exportPlanningContext(); 
+exportPlanningContext();
