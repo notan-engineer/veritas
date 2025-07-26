@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -292,7 +292,8 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
               No jobs found. Start a new scraping job to see it here.
             </div>
           ) : (
-            <Table>
+            <TooltipProvider delayDuration={0}>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead 
@@ -346,37 +347,33 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
               </TableHeader>
               <TableBody>
                 {sortedJobs.map(job => (
-                  <>
-                    <TableRow key={job.id}>
+                  <React.Fragment key={job.id}>
+                    <TableRow>
                       <TableCell className="font-medium">
                         {new Date(job.triggeredAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">
-                                {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length : 0}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="max-w-xs">
-                                {Array.isArray(job.sourcesRequested) && job.sourcesRequested.length > 0 ? (
-                                  <div className="space-y-1">
-                                    <div className="font-medium">Sources:</div>
-                                    {job.sourcesRequested.map((source, index) => (
-                                      <div key={index} className="text-sm">
-                                        • {source}
-                                      </div>
-                                    ))}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="cursor-pointer hover:text-blue-600 transition-colors">
+                              {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length : 0}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs p-3">
+                            {Array.isArray(job.sourcesRequested) && job.sourcesRequested.length > 0 ? (
+                              <div className="space-y-1">
+                                <div className="font-medium text-sm mb-2">Sources:</div>
+                                {job.sourcesRequested.map((source, index) => (
+                                  <div key={index} className="text-xs">
+                                    • {source}
                                   </div>
-                                ) : (
-                                  <div className="text-sm">No sources</div>
-                                )}
+                                ))}
                               </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                            ) : (
+                              <div className="text-xs">No sources</div>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
                       </TableCell>
                       <TableCell>
                         {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length * job.articlesPerSource : 0}
@@ -442,10 +439,11 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </TooltipProvider>
           )}
         </CardContent>
       </Card>
