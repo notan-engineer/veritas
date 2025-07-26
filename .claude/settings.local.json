@@ -20,7 +20,16 @@
       "Bash(npm run type-check:*)",
       "Bash(curl:*)",
       "Bash(npm run test:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(net start:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout 10 npm run dev)",
+      "Bash(timeout 15 npm run dev)",
+      "Bash(C:UsersUSERVeritasveritascleanup-ports.bat)",
+      "Bash(cmd //c:*)",
+      "Bash(cleanup-ports.bat)",
+      "Bash(cmd:*)"
     ],
     "deny": []
   }

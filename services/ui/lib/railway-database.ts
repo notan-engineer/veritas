@@ -46,13 +46,20 @@ class RailwayDatabase {
       console.log('[DB] DATABASE_URL found. Parsing...');
       try {
         const url = new URL(process.env.DATABASE_URL);
+        // Determine SSL requirement based on hostname
+        const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+        const isRailway = url.hostname.includes('railway') || url.hostname.includes('rlwy.net');
+        const sslRequired = isRailway && !isLocalhost;
+        
+        console.log(`[DB] Connection analysis: localhost=${isLocalhost}, railway=${isRailway}, ssl=${sslRequired}`);
+        
         return {
           host: url.hostname,
           port: parseInt(url.port) || 5432,
           database: url.pathname.slice(1),
           user: url.username,
           password: url.password,
-          ssl: true // Railway requires SSL
+          ssl: sslRequired
         };
       } catch (error) {
         console.error('[DB] Error parsing DATABASE_URL:', error);
