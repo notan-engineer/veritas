@@ -506,65 +506,51 @@ export async function getSourceByName(name: string): Promise<NewsSource> {
 }
 
 export async function createSource(source: Omit<NewsSource, 'id' | 'createdAt'>): Promise<NewsSource> {
-  const scrapingConfig = {
-    respectRobotsTxt: source.respectRobotsTxt ?? true,
-    delayBetweenRequests: source.delayBetweenRequests ?? 1000,
-    userAgent: source.userAgent ?? 'Veritas-Scraper/1.0',
-    timeoutMs: source.timeoutMs ?? 30000
-  };
-  
   const result = await pool.query(`
     INSERT INTO sources (
-      name, domain, rss_url, icon_url, scraping_config, is_active
-    ) VALUES ($1, $2, $3, $4, $5, true)
-    RETURNING id, name, domain, rss_url, icon_url, scraping_config, created_at
+      name, domain, rss_url, icon_url, respect_robots_txt, 
+      delay_between_requests, user_agent, timeout_ms
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id, name, domain, rss_url, icon_url, respect_robots_txt,
+              delay_between_requests, user_agent, timeout_ms, created_at
   `, [
     source.name,
     source.domain,
     source.rssUrl,
     source.iconUrl || null,
-    JSON.stringify(scrapingConfig)
+    source.respectRobotsTxt ?? true,
+    source.delayBetweenRequests ?? 1000,
+    source.userAgent ?? 'Veritas-Scraper/1.0',
+    source.timeoutMs ?? 30000
   ]);
   
   const row = result.rows[0];
-  const config = row.scraping_config || {};
   return {
     id: row.id,
     name: row.name,
     domain: row.domain,
     rssUrl: row.rss_url,
     iconUrl: row.icon_url,
-    respectRobotsTxt: config.respectRobotsTxt ?? true,
-    delayBetweenRequests: config.delayBetweenRequests ?? 1000,
-    userAgent: config.userAgent ?? 'Veritas-Scraper/1.0',
-    timeoutMs: config.timeoutMs ?? 30000,
+    respectRobotsTxt: row.respect_robots_txt,
+    delayBetweenRequests: row.delay_between_requests,
+    userAgent: row.user_agent,
+    timeoutMs: row.timeout_ms,
     createdAt: row.created_at.toISOString()
   };
 }
 
 export async function updateSource(id: string, updates: Partial<NewsSource>): Promise<void> {
   const updateFields: Record<string, any> = {};
-  const scrapingConfigUpdates: Record<string, any> = {};
   
-  // Handle basic fields
+  // Handle all fields directly
   if ('name' in updates) updateFields.name = updates.name;
   if ('domain' in updates) updateFields.domain = updates.domain;
   if ('rssUrl' in updates) updateFields.rss_url = updates.rssUrl;
   if ('iconUrl' in updates) updateFields.icon_url = updates.iconUrl;
-  
-  // Handle scraping config fields
-  if ('respectRobotsTxt' in updates) scrapingConfigUpdates.respectRobotsTxt = updates.respectRobotsTxt;
-  if ('delayBetweenRequests' in updates) scrapingConfigUpdates.delayBetweenRequests = updates.delayBetweenRequests;
-  if ('userAgent' in updates) scrapingConfigUpdates.userAgent = updates.userAgent;
-  if ('timeoutMs' in updates) scrapingConfigUpdates.timeoutMs = updates.timeoutMs;
-  
-  // If we have scraping config updates, fetch current config and merge
-  if (Object.keys(scrapingConfigUpdates).length > 0) {
-    const currentResult = await pool.query('SELECT scraping_config FROM sources WHERE id = $1', [id]);
-    const currentConfig = currentResult.rows[0]?.scraping_config || {};
-    const newConfig = { ...currentConfig, ...scrapingConfigUpdates };
-    updateFields.scraping_config = JSON.stringify(newConfig);
-  }
+  if ('respectRobotsTxt' in updates) updateFields.respect_robots_txt = updates.respectRobotsTxt;
+  if ('delayBetweenRequests' in updates) updateFields.delay_between_requests = updates.delayBetweenRequests;
+  if ('userAgent' in updates) updateFields.user_agent = updates.userAgent;
+  if ('timeoutMs' in updates) updateFields.timeout_ms = updates.timeoutMs;
   
   if (Object.keys(updateFields).length === 0) return;
   

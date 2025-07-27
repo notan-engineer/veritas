@@ -36,7 +36,13 @@
       "Bash(pkill:*)",
       "Bash(powershell:*)",
       "Bash(npm start)",
-      "Bash(PORT=3002 npm start)"
+      "Bash(PORT=3002 npm start)",
+      "Bash(mv:*)",
+      "Bash(time curl:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
