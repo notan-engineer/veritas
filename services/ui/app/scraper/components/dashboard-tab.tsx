@@ -172,6 +172,29 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
     }
   }
 
+  const calculatePerSourceStats = (jobId: string, sourcesRequested: string[], articlesPerSource: number) => {
+    const logs = jobLogs[jobId] || []
+    const sourceStats: Record<string, { scraped: number; requested: number }> = {}
+    
+    // Initialize all sources with their requested count
+    sourcesRequested.forEach(source => {
+      sourceStats[source] = { scraped: 0, requested: articlesPerSource }
+    })
+    
+    // Find completion logs for each source to get actual scraped count
+    logs.forEach(log => {
+      if (log.sourceName && log.message.includes('Source scraping completed') && log.additionalData) {
+        const sourceName = log.sourceName
+        const scrapedCount = log.additionalData.articles_scraped || 0
+        if (sourceStats[sourceName]) {
+          sourceStats[sourceName].scraped = scrapedCount
+        }
+      }
+    })
+    
+    return sourceStats
+  }
+
   const copyJobLogs = async (jobId: string) => {
     const logs = jobLogs[jobId] || []
     const logText = logs.map(log => {
@@ -390,7 +413,14 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                       <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="cursor-pointer hover:text-blue-600 transition-colors">
+                            <span 
+                              className="cursor-pointer hover:text-blue-600 transition-colors"
+                              onMouseEnter={() => {
+                                if (!jobLogs[job.id]) {
+                                  fetchJobLogs(job.id)
+                                }
+                              }}
+                            >
                               {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.length : 0}
                             </span>
                           </TooltipTrigger>
@@ -398,11 +428,20 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                             {Array.isArray(job.sourcesRequested) && job.sourcesRequested.length > 0 ? (
                               <div className="space-y-1">
                                 <div className="font-medium text-sm mb-2">Sources:</div>
-                                {job.sourcesRequested.map((source, index) => (
-                                  <div key={index} className="text-xs">
-                                    • {source}
-                                  </div>
-                                ))}
+                                {(() => {
+                                  const sourceStats = calculatePerSourceStats(job.id, job.sourcesRequested, job.articlesPerSource)
+                                  return job.sourcesRequested.map((source, index) => {
+                                    const stats = sourceStats[source]
+                                    return (
+                                      <div key={index} className="text-xs flex justify-between items-center">
+                                        <span>• {source}</span>
+                                        <span className="ml-2 text-muted-foreground">
+                                          ({stats.scraped}/{stats.requested})
+                                        </span>
+                                      </div>
+                                    )
+                                  })
+                                })()}
                               </div>
                             ) : (
                               <div className="text-xs">No sources</div>

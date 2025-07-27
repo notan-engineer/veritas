@@ -91,10 +91,10 @@ app.post('/api/scraper/trigger', async (req: Request<{}, {}, TriggerScrapingRequ
       });
     }
     
-    if (!maxArticles || maxArticles < 1 || maxArticles > 100) {
+    if (!maxArticles || maxArticles < 1 || maxArticles > 1000) {
       return res.status(400).json({
         error: 'InvalidRequest',
-        message: 'maxArticles must be between 1 and 100',
+        message: 'maxArticles must be between 1 and 1000',
         statusCode: 400,
         timestamp: new Date().toISOString()
       });

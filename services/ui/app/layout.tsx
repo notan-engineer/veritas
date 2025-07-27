@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Settings, Globe, Activity, Rss } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ScrollbarManager } from "@/components/scrollbar-manager";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -70,6 +71,7 @@ export default function RootLayout({
             {children}
           </main>
         </div>
+        <ScrollbarManager />
       </body>
     </html>
   );

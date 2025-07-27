@@ -125,7 +125,7 @@ export default function SettingsPage() {
                 Personalize your feed with topic preferences, reading time estimates, and content filters.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
               <Badge variant="outline">Topic Preferences</Badge>
               <Badge variant="outline">Reading Time</Badge>
               <Badge variant="outline">Content Filters</Badge>
@@ -151,7 +151,7 @@ export default function SettingsPage() {
                 Add, remove, and prioritize your preferred news sources and RSS feeds.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
               <Badge variant="outline">RSS Feeds</Badge>
               <Badge variant="outline">Source Priority</Badge>
               <Badge variant="outline">Source Validation</Badge>
@@ -177,7 +177,7 @@ export default function SettingsPage() {
                 Set up notifications for breaking news, topic updates, and source alerts.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
               <Badge variant="outline">Breaking News</Badge>
               <Badge variant="outline">Topic Alerts</Badge>
               <Badge variant="outline">Email Digest</Badge>
@@ -203,7 +203,7 @@ export default function SettingsPage() {
                 Configure app behavior, data preferences, and system settings.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
               <Badge variant="outline">Data Preferences</Badge>
               <Badge variant="outline">System Settings</Badge>
               <Badge variant="outline">App Behavior</Badge>
