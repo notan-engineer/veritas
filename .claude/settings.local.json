@@ -41,7 +41,8 @@
       "Bash(time curl:*)",
       "Bash(ls:*)",
       "Bash(git add:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
