@@ -93,3 +93,74 @@
 .rtl .flex-row-reverse {
   flex-direction: row-reverse;
 }
+
+/* Global Scrollbar Styles */
+/* Auto-hide scrollbars that appear only when actively scrolling */
+
+/* Default state - hidden scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 3px;
+  transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(156 163 175 / 0.7); /* gray-400 with opacity */
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+/* Show scrollbar when actively scrolling - applies to any element with 'scrolling' class */
+.scrolling::-webkit-scrollbar-thumb {
+  background-color: rgb(156 163 175 / 0.6); /* gray-400 with opacity */
+}
+
+.scrolling::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107 114 128 / 0.8); /* gray-500 with opacity */
+}
+
+.scrolling {
+  scrollbar-color: rgb(156 163 175 / 0.6) transparent;
+}
+
+/* Dark mode adjustments */
+.dark .scrolling::-webkit-scrollbar-thumb {
+  background-color: rgb(75 85 99 / 0.7); /* gray-600 with opacity */
+}
+
+.dark .scrolling::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107 114 128 / 0.9); /* gray-500 with opacity */
+}
+
+.dark .scrolling {
+  scrollbar-color: rgb(75 85 99 / 0.7) transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(75 85 99 / 0.7);
+}
+
+/* Ensure main page scrolling works */
+html.scrolling::-webkit-scrollbar-thumb,
+body.scrolling::-webkit-scrollbar-thumb {
+  background-color: rgb(156 163 175 / 0.6);
+}
+
+.dark html.scrolling::-webkit-scrollbar-thumb,
+.dark body.scrolling::-webkit-scrollbar-thumb {
+  background-color: rgb(75 85 99 / 0.7);
+}

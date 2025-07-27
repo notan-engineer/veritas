@@ -59,7 +59,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           {factoid.description}
         </p>
 
-        <div className={`flex flex-wrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent ${getRTLClasses(factoid.language)}`}>
+        <div className={`flex flex-wrap gap-2 overflow-x-auto ${getRTLClasses(factoid.language)}`}>
           {(factoid.tags || []).map((tag) => (
             <Badge key={tag.id} variant="secondary" className="text-xs sm:text-sm">
               {tag.name}
