@@ -162,7 +162,8 @@ export function SourcesTab() {
         ? { ...formData, id: selectedSource.id }
         : formData
       
-      console.log('Submitting form:', { method, body }) // Debug log
+      console.log('Submitting form:', { method, body, formData }) // Debug log
+      console.log('Body JSON:', JSON.stringify(body, null, 2)) // Debug log
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
@@ -186,7 +187,15 @@ export function SourcesTab() {
         fetchSources()
         alert(selectedSource ? 'Source updated successfully!' : 'Source created successfully!')
       } else {
-        alert('Error: ' + result.error)
+        // Show more specific error messages based on error type
+        let errorTitle = 'Error'
+        if (result.errorType === 'InvalidRSSFeed') {
+          errorTitle = 'RSS Feed Validation Failed'
+        } else if (result.errorType === 'NetworkError') {
+          errorTitle = 'Connection Error'
+        }
+        
+        alert(`${errorTitle}: ${result.error}`)
       }
     } catch (error) {
       console.error('Error submitting form:', error)
