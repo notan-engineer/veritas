@@ -2,8 +2,9 @@
 
 ## Purpose
 These scripts aggregate project context for external LLM consultation, enabling:
-1. Requirements refinement with comprehensive project context
-2. Detailed implementation planning with technical specifications
+1. General context sharing for various use cases
+2. Requirements refinement with comprehensive project context
+3. Detailed implementation planning with technical specifications
 
 ## Features
 - **Automatic file validation**: Ensures all referenced files exist
@@ -19,12 +20,19 @@ These scripts aggregate project context for external LLM consultation, enabling:
 
 ## Usage
 
-### Consultation Context (Requirements Refinement)
+### General Context (Comprehensive Documentation)
 From the root directory - 
 ```bash
-node keystone/knowledge-export/export-consultation-context.js
+node keystone/knowledge-export/export-general-context.js
 ```
-Creates: `documentation/exported-knowledge/DD-MM-YY - External Consultation.md`
+Creates: `documentation/exported-knowledge/DD-MM-YY - General Context.md`
+
+### Requirements Refinement Context
+From the root directory - 
+```bash
+node keystone/knowledge-export/export-requirements-refinement-context.js
+```
+Creates: `documentation/exported-knowledge/DD-MM-YY - Requirements Refinement.md`
 
 ### Planning Context (Implementation Guidance)
 From the root directory - 
@@ -40,13 +48,23 @@ Creates: `documentation/exported-knowledge/DD-MM-YY - External Planning.md`
 4. Use exports within 7 days for accuracy
 5. Include export file when requesting help from external LLMs
 
-## Workflow Example
-1. Export consultation context
+## Workflow Examples
+
+### Requirements Refinement Workflow
+1. Export requirements refinement context
 2. Share with external LLM along with your capability ideas
-3. Receive refined requirements
+3. Receive refined requirements through iterative questioning
 4. Export planning context
 5. Share with external LLM to generate implementation plan
 6. Paste generated plan to project AI agent
+
+### General Context Usage
+1. Export general context for:
+   - Project onboarding
+   - Technical reviews
+   - Architecture discussions
+   - Knowledge transfer
+   - General consultation without specific guidance
 
 ## Validation
 Both scripts perform pre-export validation:
@@ -62,7 +80,23 @@ Both scripts perform pre-export validation:
 
 ## Export Types
 
-### External Consultation
+### General Context
+**Purpose**: Provide comprehensive project documentation for various use cases
+
+**Includes**:
+- Complete product documentation
+- Technical architecture and database schema
+- All features and capabilities
+- Development framework and procedures
+- Code examples and patterns
+- Project templates
+- Service dependencies
+- Historical decisions and active development
+- API endpoints overview
+
+**Use when**: You need detailed project context without specific LLM guidance
+
+### Requirements Refinement
 **Purpose**: Help external LLMs understand your project to refine new capability ideas
 
 **Includes**:
