@@ -1,7 +1,7 @@
 # Feature: Job Triggering
 
 ## Overview
-Interface for manually triggering content scraping jobs with source selection and configuration options.
+Streamlined modal interface for manually triggering content scraping jobs with multi-select source selection and configuration options.
 
 ## User Story
 As a content administrator, I want to manually trigger scraping jobs so that I can collect fresh content on-demand from specific sources.
@@ -21,15 +21,18 @@ As a content administrator, I want to manually trigger scraping jobs so that I c
    - Opens modal dialog
 
 2. **Job Configuration**
-   - Articles per source (1-50)
-   - Multi-select source picker
+   - Articles per source (1-1000)
+   - Multi-select source checklist
+   - All sources selected by default
    - Validation and constraints
 
 3. **Source Selection**
-   - Checkbox list of available sources
-   - Select all/none functionality
+   - Checkbox list in scrollable container
+   - Select all/none buttons
+   - All sources selected by default
    - Active source filtering
    - Source name display
+   - Summary of selection (X sources × Y articles)
 
 4. **Job Submission**
    - Form validation
@@ -45,11 +48,11 @@ As a content administrator, I want to manually trigger scraping jobs so that I c
 
 ### Workflow
 1. Click "Trigger Scraping Job"
-2. Configure job parameters
-3. Select target sources
-4. Submit job request
-5. Monitor job progress
-6. View results in dashboard
+2. Modal opens with all sources pre-selected
+3. Adjust source selection if needed
+4. Set articles per source count
+5. Submit job with single click
+6. Monitor job progress in dashboard
 
 ### API Integration
 ```typescript
@@ -62,9 +65,10 @@ POST /api/scraper/trigger
 
 ### Validation Rules
 - At least one source required
-- Articles: 1-50 per source
+- Articles: 1-1000 per source
 - Only active sources shown
 - Duplicate job prevention
+- Support for large-scale scraping (100 sources × 1,000 articles)
 
 ### Error Handling
 - Network failures

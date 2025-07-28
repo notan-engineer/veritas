@@ -44,13 +44,13 @@ veritas/
 ├── railway.toml              # Deployment config (7 lines only)
 ├── services/ui/              # Next.js frontend service
 │   ├── app/                 # App Router (2 API routes, 3 pages)
-│   ├── components/ui/       # 6 essential components only
+│   ├── components/ui/       # 9 essential components (includes Table, Tooltip, ScrollbarManager)
 │   ├── lib/                 # 5 core utilities (data, dates, RTL)
 │   └── public/              # Static assets only
 ├── services/scraper/         # Crawlee-based content aggregation service
 │   ├── src/                 # TypeScript source files
 │   └── package.json         # Crawlee, Playwright, Express dependencies
-├── database/                # Single schema file + migrations
+├── database/                # Schema file + migrations (includes enum types)
 └── documentation/           # 4 core docs + planning/
 ```
 
@@ -72,7 +72,7 @@ factoid_tags     -- Many-to-many factoid-tag relationships
 factoid_sources  -- Many-to-many factoid-source relationships
 
 -- Scraper service tables
-scraping_jobs    -- Job tracking and management for scraping operations
+scraping_jobs    -- Job tracking with enum status (new, in-progress, successful, partial, failed)
 scraping_logs    -- Detailed logging per source for each scraping job
 ```
 
@@ -225,6 +225,7 @@ services/scraper/
 - **Shared Database**: Both services access same PostgreSQL instance
 - **Environment Variables**: Services configured via Railway environment
 - **Health Monitoring**: Comprehensive health checks across all services
+- **Enhanced APIs**: Source testing, job logs retrieval, granular status tracking
 
 **Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, deployment procedures, environment variables, and troubleshooting. This file is git-ignored and contains sensitive project information.
 
@@ -316,6 +317,8 @@ PORT=${{PORT}}              # Automatically set by Railway
 ### Developer Tools
 - **Real-time Dashboard**: 3-tab monitoring interface for operations
 - **API Health Checks**: Comprehensive endpoint monitoring
+- **Enhanced UI Components**: Sortable tables, tooltips, modal dialogs
+- **Job Monitoring**: Granular status tracking with expandable logs
 - **Job Management**: Visual job tracking and cancellation capabilities
 - **Source Testing**: RSS feed validation and source health checks
 

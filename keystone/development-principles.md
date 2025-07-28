@@ -76,9 +76,47 @@ try {
 - Structure code for easy understanding
 - Keep functions small and focused
 
-## 8. Code Quality Checklist
+## 8. Data Display Patterns
+- Use tables for lists of similar items (jobs, sources, etc.)
+- Implement client-side sorting for better performance
+- Add visual feedback for all user interactions
+- Keep data dense but scannable
+- Use tooltips for additional context without clutter
+
+### Table UI Pattern
+```typescript
+// ✅ Sortable table with clear visual hierarchy
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead className="cursor-pointer" onClick={() => sort('column')}>
+        Column {sortDirection === 'asc' ? '↑' : '↓'}
+      </TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {data.map(item => (
+      <TableRow key={item.id}>
+        <TableCell>{item.value}</TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>
+```
+
+## 9. Modal Interaction Pattern
+- Use modals for focused user tasks
+- Pre-select sensible defaults
+- Validate input before submission
+- Show clear feedback on success/error
+- Close automatically on successful completion
+
+## 10. Code Quality Checklist
 - [ ] No hardcoded values or mock data
 - [ ] All UI components support dark mode
 - [ ] TypeScript strict mode compliance
 - [ ] Proper error handling throughout
-- [ ] Tests written before implementation 
+- [ ] Tests written before implementation
+- [ ] Tables used for data lists
+- [ ] Client-side sorting implemented
+- [ ] Modals for focused interactions 

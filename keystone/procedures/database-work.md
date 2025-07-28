@@ -82,8 +82,36 @@ export async function getAllFactoids() {
 - [ ] API endpoints return correct data
 - [ ] No breaking changes to existing code
 
+## Enum Types
+- Use PostgreSQL enums for fixed value sets
+- Include migration and rollback scripts
+- Map legacy data carefully during migration
+- Test thoroughly before applying to production
+
+### Enum Migration Example
+```sql
+-- Create enum type
+CREATE TYPE job_status AS ENUM ('new', 'in-progress', 'successful', 'partial', 'failed');
+
+-- Convert existing column
+ALTER TABLE scraping_jobs 
+  ALTER COLUMN status TYPE job_status 
+  USING CASE 
+    WHEN status = 'pending' THEN 'new'::job_status
+    WHEN status = 'running' THEN 'in-progress'::job_status
+    WHEN status = 'completed' THEN 'successful'::job_status
+    ELSE status::job_status
+  END;
+
+-- Rollback strategy
+-- ALTER TABLE scraping_jobs ALTER COLUMN status TYPE VARCHAR(50);
+-- DROP TYPE job_status;
+```
+
 ## Common Issues
 - **Constraint errors**: Check foreign key relationships
 - **Type mismatches**: Verify TypeScript matches schema
 - **Connection issues**: Use public Railway URL
-- **Migration failures**: Test rollback procedure 
+- **Migration failures**: Test rollback procedure
+- **Enum conversion errors**: Ensure all values map correctly
+- **Type already exists**: Check before creating new types 

@@ -26,12 +26,13 @@ As a system administrator, I want to monitor scraping operations and performance
    - Recent errors count
 
 2. **Job Management**
-   - Real-time job status tracking
-   - Job history with pagination
-   - Expandable job logs
+   - Real-time job status tracking with granular states
+   - Job history displayed in sortable table
+   - Expandable job logs with copy functionality
    - Progress indicators
    - Duration calculations
    - Cancel running jobs
+   - Status shown with icons and color coding
 
 3. **Job Triggering**
    - Source selection interface
@@ -55,11 +56,14 @@ As a system administrator, I want to monitor scraping operations and performance
 
 ### UI Components
 - Metric cards with icons
-- Expandable job rows
+- Sortable table for job history
+- Expandable job rows with logs
 - Progress bars
-- Status badges
+- Status badges with color coding
 - Loading skeletons
 - Error alerts
+- Tooltip components for additional context
+- Table component with client-side sorting
 
 ### State Management
 - React hooks for component state
@@ -96,7 +100,21 @@ As a system administrator, I want to monitor scraping operations and performance
 - Pagination for job history
 - Optimistic UI updates
 
+### Job Logs
+- Expandable row interface for viewing detailed logs
+- Timestamp, level, and message display
+- Copy logs to clipboard functionality
+- Real-time log retrieval from API
+- Helps identify and troubleshoot issues
+
+### Sorting and Filtering
+- Client-side sorting for all table columns
+- Sort by timestamp, status, duration, etc.
+- Maintains sort state during auto-refresh
+- Instant sorting without server calls
+
 ## Related Features
 - [Content Scraping System](./03-content-scraping.md)
 - [Job Triggering](./04a-job-triggering.md)
+- [Job Monitoring and Logs](./04b-job-monitoring.md)
 - [Source Management](./05-source-management.md) 

@@ -46,7 +46,7 @@ Veritas solves these problems by aggregating news from multiple sources and pres
 - **Solution**: Native RTL support with correct text flow
 - **Usage Pattern**: Daily news consumption in preferred language
 
-## Core Features
+## Core Features (Enhanced)
 
 ### Content Consumption
 - **Factoid Feed**: Card-based layout displaying verified news facts
@@ -91,8 +91,11 @@ Each factoid contains:
 
 ### Monitoring Dashboard
 - **Health Metrics**: Job success rates, content volumes
-- **Job Management**: Trigger and monitor scraping operations
+- **Job Management**: Enhanced with sortable tables and granular statuses
+- **Job Triggering**: Streamlined modal interface with multi-select sources
+- **Job Monitoring**: Expandable logs with copy functionality
 - **Content Feed**: Browse scraped articles with filtering
+- **Source Management**: Table-based UI with inline editing
 - **Real-time Updates**: Live monitoring of system performance
 - **Error Tracking**: Comprehensive error categorization
 
