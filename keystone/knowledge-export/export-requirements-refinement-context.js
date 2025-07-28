@@ -4,8 +4,8 @@ const fs = require('fs').promises;
 const path = require('path');
 const { execSync } = require('child_process');
 
-// File lists for consultation export
-const CONSULTATION_FILES = [
+// File lists for requirements refinement export
+const REQUIREMENTS_REFINEMENT_FILES = [
   // Project Overview (all required)
   { path: 'README.md', required: true, section: 'Project Overview' },
   { path: 'documentation/the-product.md', required: true, section: 'Project Overview' },
@@ -107,7 +107,7 @@ async function generateMetadata() {
     exportDate: now,
     gitCommit: gitCommit,
     useByDate: expiryFormatted,
-    exportType: 'External Consultation',
+    exportType: 'Requirements Refinement',
     purpose: 'Requirements refinement and capability planning'
   };
 }
@@ -155,7 +155,7 @@ function scanForSensitiveData(content, filePath) {
  * @returns {string} Header content
  */
 function buildLLMInstructions() {
-  return `# LLM Consultation Context for Veritas Project
+  return `# LLM Requirements Refinement Context for Veritas Project
 
 ## Your Role & Instructions
 
@@ -286,12 +286,12 @@ function buildContextMap() {
 /**
  * Main export function
  */
-async function exportConsultationContext() {
+async function exportRequirementsRefinementContext() {
   try {
-    console.log('🚀 Starting consultation context export...');
+    console.log('🚀 Starting requirements refinement context export...');
     
     // Validate files first
-    const validFiles = await validateFiles(CONSULTATION_FILES);
+    const validFiles = await validateFiles(REQUIREMENTS_REFINEMENT_FILES);
     
     // Generate metadata
     const metadata = await generateMetadata();
@@ -434,7 +434,7 @@ async function exportConsultationContext() {
     
     // Write the output file
     const dateStr = execSync('powershell -Command "Get-Date -Format \'dd-MM-yy\'"').toString().trim();
-    const outputPath = path.join(exportDir, `${dateStr} - External Consultation.md`);
+    const outputPath = path.join(exportDir, `${dateStr} - Requirements Refinement.md`);
     
     await fs.writeFile(outputPath, output, 'utf-8');
     
@@ -448,4 +448,4 @@ async function exportConsultationContext() {
 }
 
 // Run the export
-exportConsultationContext(); 
+exportRequirementsRefinementContext(); 

@@ -5,6 +5,7 @@ dotenv.config();
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { MinimalRSSScraper } from './minimal-scraper';
+import { EnhancedRSSScraper } from './enhanced-scraper';
 import * as db from './database';
 import { 
   NewsSource, 
@@ -28,6 +29,7 @@ import { validateRSSFeed, formatDuration } from './utils';
 const app = express();
 const port = process.env.PORT || 3001;
 const scraper = new MinimalRSSScraper();
+const enhancedScraper = new EnhancedRSSScraper();
 
 // Middleware
 app.use(cors());
@@ -133,6 +135,66 @@ app.post('/api/scraper/trigger', async (req: Request<{}, {}, TriggerScrapingRequ
       message: `Job ${jobId} started successfully`
     });
   } catch (error) {
+    return next(error);
+  }
+});
+
+// POST /api/scraper/trigger-enhanced - Trigger new scraping job with enhanced failure tolerance
+app.post('/api/scraper/trigger-enhanced', async (req: Request<{}, {}, TriggerScrapingRequest>, res: Response<TriggerScrapingResponse | ErrorResponse>, next: NextFunction) => {
+  try {
+    const { sources, maxArticles } = req.body;
+    
+    if (!sources || !Array.isArray(sources) || sources.length === 0) {
+      return res.status(400).json({
+        error: 'InvalidRequest',
+        message: 'sources array is required and must not be empty',
+        statusCode: 400,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    if (!maxArticles || maxArticles < 1 || maxArticles > 1000) {
+      return res.status(400).json({
+        error: 'InvalidRequest',
+        message: 'maxArticles must be between 1 and 1000',
+        statusCode: 400,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Create job with initial log
+    const jobId = await db.createJobWithInitialLog(sources, maxArticles);
+    
+    // Start enhanced scraping in background
+    (async () => {
+      try {
+        await db.updateJobStatus(jobId, 'in-progress');
+        await enhancedScraper.scrapeJob(jobId, sources, maxArticles);
+        
+        // Status is already set correctly by the enhanced scrapeJob transaction
+      } catch (error: any) {
+        console.error('Enhanced scraping job failed:', error);
+        await db.updateJobStatus(jobId, 'failed');
+        await db.logJobActivity({
+          jobId,
+          level: 'error',
+          message: 'Enhanced job failed with error',
+          additionalData: {
+            error_type: error.constructor.name,
+            error_message: error.message,
+            enhancement_version: '2.0'
+          }
+        });
+      }
+    })();
+    
+    res.json({
+      jobId,
+      status: 'started' as const,
+      message: `Enhanced job ${jobId} started successfully`
+    });
+  } catch (error: any) {
+    console.error('Error creating enhanced scraping job:', error);
     return next(error);
   }
 });
