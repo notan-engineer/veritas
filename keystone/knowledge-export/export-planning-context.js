@@ -22,6 +22,7 @@ const PLANNING_FILES = [
   { path: 'keystone/procedures/local-testing.md', required: true, section: 'Development Procedures' },
   { path: 'keystone/procedures/plan-first-development.md', required: true, section: 'Development Procedures' },
   { path: 'keystone/procedures/branching-and-workflow.md', required: true, section: 'Development Procedures' },
+  { path: 'keystone/procedures/documentation.md', required: true, section: 'Development Procedures' },
   
   // Code Patterns (required examples)
   { path: 'services/ui/app/api/factoids/route.ts', required: true, section: 'Code Patterns', extract: true },
@@ -336,6 +337,57 @@ After this mandatory header, continue with:
 The final prompt should instruct Claude Code to create a complete project structure that follows the Keystone Framework template, not to start implementation. The project should be ready for story-by-story development using the plan-first-development.md procedure.
 
 **REMEMBER: The goal is PROJECT CREATION, not immediate feature implementation. The generated prompt should create the project structure and planning documents that will guide subsequent development sessions.**
+
+### Documentation Story Requirement:
+Every project MUST include a final documentation story. This is non-negotiable. The story should:
+- Be numbered as the last story in the project
+- Follow the standard story template
+- Reference the documentation procedure (keystone/procedures/documentation.md)
+- Be marked as blocking/required for project completion
+- Include clear acceptance criteria for documentation updates
+
+Example documentation story to include:
+\`\`\`markdown
+# User Story [X]: Project Documentation Update
+
+**Status**: 🆕 New  
+**Epic**: Project Completion  
+**Priority**: High (Blocking)  
+**Estimated Effort**: 2-3 hours
+
+## User Story
+As a developer, I want comprehensive documentation of all project changes so that the codebase remains maintainable and future developers understand the implementation.
+
+## Background
+This project has implemented significant changes that need to be documented to maintain code quality and knowledge transfer. Documentation is a critical part of project completion.
+
+## Acceptance Criteria
+- [ ] All code changes analyzed and mapped to documentation
+- [ ] Database changes documented in schema and migrations
+- [ ] API changes reflected in appropriate documentation
+- [ ] New features have dedicated documentation files
+- [ ] Architecture changes captured in ADRs if significant
+- [ ] Cross-references between documents updated
+- [ ] Business logic and glossary updated with new terms
+- [ ] Procedures updated if new patterns introduced
+- [ ] All documentation follows existing standards
+
+## Technical Approach
+1. Follow Documentation Procedure (keystone/procedures/documentation.md)
+2. Gather project information interactively
+3. Analyze all changes dynamically
+4. Create comprehensive documentation plan
+5. Execute updates systematically
+6. Verify completeness and cross-references
+
+## Definition of Done
+- [ ] Documentation procedure followed completely
+- [ ] All identified documentation updated
+- [ ] New documentation created where needed
+- [ ] Cross-references verified
+- [ ] Documentation reviewed and approved
+- [ ] No gaps in knowledge capture
+\`\`\`
 
 ### Key Principles to Embed in Every Plan:
 - **Simplicity First**: Always choose the simplest solution that works

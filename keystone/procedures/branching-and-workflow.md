@@ -80,6 +80,7 @@ git push origin feature/your-feature-name
 - [ ] Does it change architecture? → Update technical docs
 - [ ] New development pattern? → Update guidelines
 - [ ] API changes? → Update API documentation
+- [ ] Project completion? → Follow documentation procedure
 
 ## Testing Before Merge
 
@@ -107,6 +108,7 @@ npm run build    # Must pass
 ### Pre-Merge Checklist
 - [ ] All tests pass
 - [ ] Documentation updated
+- [ ] Documentation story assigned (for projects)
 - [ ] Code reviewed (if team environment)
 - [ ] No merge conflicts with main
 - [ ] Deployment considerations documented

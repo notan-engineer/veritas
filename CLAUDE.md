@@ -181,3 +181,24 @@ Both services use `DATABASE_URL` (provided by Railway). Additional service-speci
 - Use line-specific references when needed: @file.ts:20-40
 - Session Management: One Task = One Session
 - Tab Management: Keep 3-5 files maximum open at once
+
+## Documentation Workflow
+
+### Project Documentation Requirements
+- Every project includes an auto-generated documentation story as the final story
+- Documentation story is BLOCKING - must be completed before project closure
+- Follow `keystone/procedures/documentation.md` for all documentation updates
+- Use dynamic mapping approach for comprehensive coverage
+
+### Documentation Process
+1. **During Development**: Keep notes on changes made
+2. **Project Completion**: Documentation story becomes active
+3. **Interactive Process**: Follow the documentation procedure
+4. **Dynamic Analysis**: Let the procedure guide what needs updating
+5. **Verification**: Ensure all changes are captured
+
+### Key Points
+- Documentation is part of Definition of Done
+- No project merges without documentation updates
+- Procedure adapts to project scope dynamically
+- Maintains knowledge for future developers

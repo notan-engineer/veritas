@@ -40,8 +40,9 @@ As a developer, I want a well-structured API system so that I can build features
 
 1. **Job Management**
    - `POST /api/scraper/trigger` - Start new job
-   - `GET /api/scraper/jobs` - List jobs (paginated)
+   - `GET /api/scraper/jobs` - List jobs with enum status values
    - `GET /api/scraper/jobs/:id` - Job details
+   - `GET /api/scraper/jobs/:id/logs` - Job logs (properly returns data)
    - `POST /api/scraper/jobs/:id/cancel` - Cancel job
 
 2. **Content Management**
@@ -53,6 +54,7 @@ As a developer, I want a well-structured API system so that I can build features
    - `POST /api/scraper/sources` - Create source
    - `PUT /api/scraper/sources/:id` - Update source
    - `DELETE /api/scraper/sources/:id` - Delete source
+   - `POST /api/scraper/sources/:id/test` - Test RSS feed validity
 
 4. **Monitoring**
    - `GET /health` - Service health check

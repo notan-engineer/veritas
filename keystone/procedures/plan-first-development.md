@@ -22,6 +22,7 @@ For features requiring 3+ files or 30+ minutes of work.
 - [ ] Build passes
 - [ ] Tests pass
 - [ ] Documentation updated
+- [ ] Documentation story planned (for projects)
 
 **Approve plan before proceeding**
 ```
@@ -32,6 +33,7 @@ For features requiring 3+ files or 30+ minutes of work.
 - **Phase 1**: Foundation (core files, data structures)
 - **Phase 2**: Integration (connections, API endpoints)
 - **Phase 3**: Polish (UI/UX, error handling)
+- **Final Phase**: Documentation (follow documentation procedure)
 - Each phase = separate plan and session
 
 ### Phase Template

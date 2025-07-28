@@ -37,7 +37,7 @@ As a content administrator, I want the system to automatically collect and proce
 ### Scraping Workflow
 1. **Job Creation**
    - API receives trigger request
-   - Creates job with initial "pending" status
+   - Creates job with initial "new" status
    - Logs initial job parameters
 
 2. **RSS Processing**
@@ -57,6 +57,7 @@ As a content administrator, I want the system to automatically collect and proce
    - Language detection and categorization
    - Source attribution
    - Processing status tracking
+   - Transaction-based persistence for data integrity
 
 ### API Endpoints
 - **POST /api/scraper/trigger**: Start new scraping job
@@ -68,17 +69,28 @@ As a content administrator, I want the system to automatically collect and proce
 - **GET /api/scraper/metrics**: Dashboard metrics
 - **GET /health**: Service health check
 
+### Job Status Lifecycle
+Jobs progress through the following statuses:
+- **new**: Job created but not yet started
+- **in-progress**: Currently processing sources
+- **successful**: All sources completed successfully  
+- **partial**: Some sources failed, some succeeded
+- **failed**: All sources failed or critical error occurred
+
 ### Error Handling
 - Exponential backoff for failed requests
 - Comprehensive error logging
 - Graceful degradation
 - Job failure recovery
+- Isolated failures between sources
 
 ### Performance Optimizations
 - Concurrent crawling (max 3)
 - Request timeout limits (30s)
 - Memory usage monitoring
 - Resource cleanup
+- Support for large-scale scraping (100 sources × 1,000 articles)
+- Isolated source failures for reliability
 
 ## Configuration
 - Respects robots.txt (configurable)

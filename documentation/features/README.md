@@ -23,9 +23,19 @@ This directory contains comprehensive documentation for all features implemented
    - Content deduplication
 
 4. **[Scraper Dashboard](./04-scraper-dashboard.md)**
-   - Real-time job monitoring
+   - Real-time job monitoring with sortable tables
    - Performance metrics
    - System health tracking
+
+4a. **[Job Triggering](./04a-job-triggering.md)**
+   - Modal-based job configuration
+   - Multi-select source checklist
+   - Large-scale scraping support
+
+4b. **[Job Monitoring and Logs](./04b-job-monitoring.md)**
+   - Granular status tracking
+   - Expandable job logs
+   - Troubleshooting tools
 
 5. **[Source Management](./05-source-management.md)**
    - Add/edit news sources
@@ -65,12 +75,14 @@ This directory contains comprehensive documentation for all features implemented
 - News Feed with factoid display
 - Article detail pages
 - Content scraping with Crawlee
-- Scraper dashboard and monitoring
-- Source management CRUD
+- Scraper dashboard with sortable tables
+- Enhanced job monitoring with granular statuses
+- Modal-based job triggering
+- Source management with table UI
 - Content browsing and search
 - Dark mode toggle
 - RTL language support
-- Core API endpoints
+- Core API endpoints with source testing
 
 ### 🚧 In Progress
 - User preference storage

@@ -102,6 +102,9 @@ CREATE TABLE IF NOT EXISTS factoid_sources (
 -- SCRAPER SERVICE TABLES
 -- ===============================================
 
+-- Job status enum type (added 2025-07-26)
+CREATE TYPE job_status AS ENUM ('new', 'in-progress', 'successful', 'partial', 'failed');
+
 -- Scraped content archive table: Archive for old content
 CREATE TABLE IF NOT EXISTS scraped_content_archive (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -125,7 +128,7 @@ CREATE TABLE IF NOT EXISTS scraping_jobs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     triggered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     completed_at TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(50) DEFAULT 'pending',
+    status job_status DEFAULT 'new',
     sources_requested TEXT[] DEFAULT '{}',
     articles_per_source INTEGER DEFAULT 3,
     total_articles_scraped INTEGER DEFAULT 0,

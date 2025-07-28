@@ -1,7 +1,7 @@
 # Feature: Source Management
 
 ## Overview
-Administrative interface for managing news sources, including adding new sources, configuring scraping parameters, and monitoring source health.
+Modernized table-based administrative interface for managing news sources, including adding new sources, configuring scraping parameters, testing RSS feeds, and monitoring source health.
 
 ## User Story
 As a content administrator, I want to manage news sources and their configurations so that the scraper collects content from reliable, relevant sources.
@@ -46,17 +46,18 @@ As a content administrator, I want to manage news sources and their configuratio
 
 ### UI Components
 
-1. **Source Cards**
-   - Visual source representation
-   - Health status badges
-   - Quick actions (Edit/Delete)
-   - Expandable details
+1. **Sources Table**
+   - Sortable columns (Name, RSS URL, Creation Date)
+   - Inline action buttons (Edit/Delete/Test)
+   - Client-side sorting for performance
+   - Responsive design with horizontal scroll
 
 2. **Source Form Dialog**
-   - Modal-based editing
-   - Field validation
-   - RSS feed verification
-   - Loading states
+   - Modal-based editing with inline updates
+   - Enhanced field validation
+   - RSS feed testing capability
+   - Loading states with duplicate prevention
+   - Form remains open on validation errors
 
 3. **Metrics Display**
    - Grid layout for stats
@@ -64,11 +65,12 @@ As a content administrator, I want to manage news sources and their configuratio
    - Real-time updates
 
 ### Data Flow
-1. Load sources with health data
-2. Display in card grid
-3. Handle CRUD operations
+1. Load sources from API
+2. Display in sortable table
+3. Handle CRUD operations with validation
 4. Update UI optimistically
 5. Sync with backend
+6. Test RSS feeds on demand
 
 ### Validation Rules
 - Required: Name, Domain, RSS URL
@@ -97,7 +99,7 @@ interface NewsSource {
 - **POST /api/scraper/sources**: Create new source
 - **PUT /api/scraper/sources/:id**: Update source
 - **DELETE /api/scraper/sources/:id**: Delete source
-- **POST /api/scraper/sources/validate**: Validate RSS feed
+- **POST /api/scraper/sources/:id/test**: Test RSS feed validity
 
 ## User Workflows
 

@@ -113,10 +113,11 @@
 - `error`: Experiencing persistent failures
 
 **Scraping Job Status**
-- `pending`: Scheduled but not started
-- `running`: Currently executing
-- `completed`: Successfully finished
-- `failed`: Encountered errors
+- `new`: Job created but not yet started
+- `in-progress`: Currently processing sources
+- `successful`: All sources completed successfully
+- `partial`: Some sources failed, some succeeded
+- `failed`: All sources failed or critical error occurred
 
 ### Metrics and Monitoring
 
@@ -134,4 +135,24 @@
 - Network errors: Connection failures, timeouts
 - Parsing errors: Invalid RSS/HTML structure
 - Validation errors: Missing required fields
-- Rate limit errors: Too many requests 
+- Rate limit errors: Too many requests
+
+### UI Patterns
+
+**Sortable Tables**
+- Primary pattern for displaying lists of data (jobs, sources)
+- Client-side sorting for instant feedback
+- Visual indicators for sort direction
+- Responsive with horizontal scroll on mobile
+
+**Modal Dialogs**
+- Used for focused user actions (job configuration, source editing)
+- Blocks background interaction
+- Clear primary action button
+- Auto-closes on successful completion
+
+**Expandable Rows**
+- Used for showing detailed information (job logs)
+- Smooth animation on expand/collapse
+- Preserves table layout
+- Lazy loads content for performance 

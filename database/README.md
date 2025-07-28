@@ -28,7 +28,7 @@ When you need to understand the current database structure, always refer to this
 - **factoid_sources** - Links factoids to sources (many-to-many)
 
 ### Scraper Tables
-- **scraping_jobs** - Tracks scraping job execution
+- **scraping_jobs** - Tracks scraping job execution with granular status tracking
 - **scraping_logs** - Detailed logs per scraping job
 
 ## Usage
@@ -67,6 +67,14 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 ```
+
+## Migrations
+
+### Granular Job Status (2025-07-26)
+- Migration: `migrations/2025-07-26_granular-job-statuses.sql`
+- Converts job statuses from VARCHAR to enum type
+- Maps legacy statuses to new granular values
+- Preserves all historical data
 
 ## Important Notes
 
