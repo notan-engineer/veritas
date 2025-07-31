@@ -69,12 +69,18 @@ This directory contains comprehensive documentation for all features implemented
     - Inter-service communication
     - Error handling and validation
 
+11. **[Enhanced Logging System](./11-enhanced-logging.md)**
+    - JSONB-structured logging with correlation tracking
+    - Performance monitoring and analytics
+    - Advanced debugging and error analysis
+
 ## Feature Status
 
 ### ✅ Implemented
 - News Feed with factoid display
 - Article detail pages
 - Content scraping with Crawlee
+- Enhanced structured logging with JSONB analytics
 - Scraper dashboard with sortable tables
 - Enhanced job monitoring with granular statuses
 - Modal-based job triggering
@@ -83,6 +89,7 @@ This directory contains comprehensive documentation for all features implemented
 - Dark mode toggle
 - RTL language support
 - Core API endpoints with source testing
+- Performance monitoring and correlation tracking
 
 ### 🚧 In Progress
 - User preference storage

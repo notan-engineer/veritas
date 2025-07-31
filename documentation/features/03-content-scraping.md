@@ -15,24 +15,33 @@ As a content administrator, I want the system to automatically collect and proce
 - **API**: Express.js REST endpoints
 
 ### Core Components
-1. **MinimalRSSScraper Class** (`minimal-scraper.ts`)
+1. **EnhancedRSSScraper Class** (`enhanced-scraper.ts`)
    - RSS feed parsing with rss-parser
-   - Article content extraction
-   - Language detection
+   - Article content extraction with quality scoring
+   - Language detection and classification
    - Duplicate detection via content hashing
    - Concurrent crawling with resource limits
+   - Advanced structured logging with correlation tracking
 
-2. **API Server** (`api-server.ts`)
+2. **EnhancedLogger Class** (`enhanced-logger.ts`)
+   - JSONB-structured logging for comprehensive monitoring
+   - Performance monitoring with automated snapshots
+   - HTTP request/response tracking with timing
+   - Content quality scoring and validation
+   - Correlation IDs for request lifecycle tracking
+
+3. **API Server** (`api-server.ts`)
    - Express server on port 3001
    - RESTful endpoints for job management
    - CORS enabled for cross-service communication
-   - Health monitoring endpoints
+   - Health monitoring endpoints with structured log access
 
-3. **Database Layer** (`database.ts`)
-   - Connection pooling
+4. **Database Layer** (`database.ts`)
+   - Connection pooling with enhanced performance
    - Transaction-safe operations
-   - Structured logging to scraping_logs table
+   - JSONB structured logging to scraping_logs table
    - Progress tracking and job management
+   - Optimized indexes for log queries
 
 ### Scraping Workflow
 1. **Job Creation**
@@ -79,10 +88,12 @@ Jobs progress through the following statuses:
 
 ### Error Handling
 - Exponential backoff for failed requests
-- Comprehensive error logging
-- Graceful degradation
-- Job failure recovery
+- Comprehensive structured error logging with JSONB data
+- Graceful degradation with detailed monitoring
+- Job failure recovery with correlation tracking
 - Isolated failures between sources
+- Error categorization and pattern analysis
+- Performance impact tracking for failed requests
 
 ### Performance Optimizations
 - Concurrent crawling (max 3)
@@ -99,12 +110,16 @@ Jobs progress through the following statuses:
 - Timeout settings
 
 ## Monitoring
-- Real-time job progress
-- Success/failure metrics
-- Resource usage tracking
-- Error categorization
+- Real-time job progress with structured logging
+- Success/failure metrics with detailed analytics
+- Resource usage tracking with automated snapshots
+- Error categorization with JSONB-based analysis
+- Performance monitoring with request timing
+- Content quality scoring and validation
+- Correlation tracking across request lifecycle
 
 ## Related Features
+- [Enhanced Logging System](./11-enhanced-logging.md)
 - [Scraper Dashboard](./04-scraper-dashboard.md)
 - [Source Management](./05-source-management.md)
 - [Content Management](./06-content-management.md)

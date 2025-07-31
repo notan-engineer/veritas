@@ -4,27 +4,21 @@ import * as crypto from 'crypto';
 import { NewsSource, ScrapedArticle, JobStatus } from './types';
 import { logJobActivity, saveArticle, updateJobProgress, getSourceByName } from './database';
 import { extractArticleContent, detectLanguage, generateContentHash } from './utils';
+import { EnhancedLogger } from './enhanced-logger';
 
 // Enhanced RSS Scraper with improved failure tolerance
 export class EnhancedRSSScraper {
   private rssParser: Parser;
+  private logger: EnhancedLogger;
   
   constructor() {
     this.rssParser = new Parser();
+    this.logger = new EnhancedLogger();
   }
   
   async scrapeJob(jobId: string, sources: string[], articlesPerSource: number) {
-    await logJobActivity({
-      jobId,
-      level: 'info',
-      message: `Starting enhanced multi-source scrape for ${sources.length} sources`,
-      additionalData: {
-        source_count: sources.length,
-        articles_per_source: articlesPerSource,
-        total_expected: sources.length * articlesPerSource,
-        enhancement_version: '2.0'
-      }
-    });
+    const startTime = Date.now();
+    await this.logger.logJobStarted(jobId, sources, articlesPerSource, 'api');
     
     // Process sources with Promise.allSettled for fault tolerance
     const sourceResults = await Promise.allSettled(
@@ -34,6 +28,7 @@ export class EnhancedRSSScraper {
     // Aggregate all results
     const allArticles: any[] = [];
     const sourceOutcomes: Record<string, { success: boolean; count: number; error?: string }> = {};
+    let totalErrors = 0;
     
     sourceResults.forEach((result, index) => {
       const sourceName = sources[index];
@@ -46,16 +41,7 @@ export class EnhancedRSSScraper {
           count: result.value.articles.length
         };
         
-        logJobActivity({
-          jobId,
-          level: 'info',
-          message: `Source ${sourceName} completed successfully`,
-          additionalData: {
-            source: sourceName,
-            articles_scraped: result.value.articles.length,
-            total_articles_so_far: allArticles.length
-          }
-        });
+        // Logging handled in scrapeSourceEnhanced
       } else {
         sourceOutcomes[sourceName] = {
           success: false,
@@ -63,26 +49,38 @@ export class EnhancedRSSScraper {
           error: result.reason?.message || 'Unknown error'
         };
         
-        logJobActivity({
-          jobId,
-          level: 'error',
-          message: `Source ${sourceName} failed completely`,
-          additionalData: {
-            source: sourceName,
-            error_type: result.reason?.constructor?.name || 'Unknown',
-            error_message: result.reason?.message || 'Unknown error'
-          }
-        });
+        totalErrors++;
+        // Error logging handled in scrapeSourceEnhanced
       }
     });
     
     // Save all articles transactionally
     await this.saveArticlesTransactionally(jobId, allArticles, sourceOutcomes, articlesPerSource);
+    
+    // Log job completion
+    const duration = Date.now() - startTime;
+    await this.logger.logJobCompleted(
+      jobId,
+      allArticles.length,
+      sources.length * articlesPerSource,
+      duration,
+      totalErrors
+    );
   }
   
   private async scrapeSourceEnhanced(jobId: string, sourceName: string, articlesPerSource: number): Promise<{ articles: any[] }> {
+    const sourceStartTime = Date.now();
     const source = await getSourceByName(sourceName);
     const scrapedArticles: any[] = [];
+    
+    // Log source start
+    await this.logger.logSourceStarted(
+      jobId,
+      source.id,
+      sourceName,
+      source.rssUrl || '',
+      articlesPerSource
+    );
     
     if (!source.rssUrl) {
       await logJobActivity({
@@ -94,19 +92,6 @@ export class EnhancedRSSScraper {
       });
       throw new Error(`Source "${sourceName}" has no RSS URL configured`);
     }
-    
-    await logJobActivity({
-      jobId,
-      sourceId: source.id,
-      level: 'info',
-      message: `Starting enhanced scrape for source: ${sourceName}`,
-      additionalData: {
-        source_name: sourceName,
-        source_id: source.id,
-        rss_url: source.rssUrl,
-        target_articles: articlesPerSource
-      }
-    });
     
     // Fetch and parse RSS feed with retry logic
     let feed: any = undefined;
@@ -136,12 +121,16 @@ export class EnhancedRSSScraper {
         await logJobActivity({
           jobId,
           sourceId: source.id,
-          level: 'error',
-          message: `RSS fetch attempt ${rssAttempts} failed for ${sourceName}`,
+          level: 'warning',
+          message: `RSS fetch attempt ${rssAttempts}/${maxRssAttempts} failed for ${sourceName}: ${error instanceof Error ? error.message : String(error)} (retrying in ${Math.pow(2, rssAttempts)}s)`,
           additionalData: {
+            event_type: 'source',
+            event_name: 'rss_fetch_retry',
             attempt: rssAttempts,
             max_attempts: maxRssAttempts,
-            error_message: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
+            retry_delay_ms: Math.pow(2, rssAttempts) * 1000,
+            url: source.rssUrl
           }
         });
         
@@ -162,11 +151,13 @@ export class EnhancedRSSScraper {
       jobId,
       sourceId: source.id,
       level: 'info',
-      message: 'RSS feed parsed successfully',
+      message: `RSS feed parsed: ${feed.items.length} items found`,
       additionalData: {
+        event_type: 'source',
+        event_name: 'rss_parsed',
         feed_title: feed.title,
         total_items: feed.items.length,
-        items_to_process: Math.min(feed.items.length, articlesPerSource * 2) // Check more items
+        items_to_process: Math.min(feed.items.length, articlesPerSource * 2)
       }
     });
     
@@ -194,7 +185,8 @@ export class EnhancedRSSScraper {
       retryOnBlocked: true,
       
       requestHandler: async ({ request, $ }) => {
-        const { sourceId, sourceName, articleTitle } = request.userData;
+        const { sourceId, sourceName, articleTitle, correlationId } = request.userData;
+        const extractionStartTime = Date.now();
         
         try {
           // Add fallback extraction methods
@@ -211,21 +203,18 @@ export class EnhancedRSSScraper {
             article = {
               title: title.trim(),
               content: content.trim().substring(0, 10000), // Limit content length
-              author: $('[rel="author"]').text() || $('.author').text() || undefined,
-              date: undefined
+              author: $('[rel="author"]').text() || $('.author').text() || null,
+              date: null
             };
             
-            await logJobActivity({
+            await this.logger.logExtractionError(
               jobId,
               sourceId,
-              level: 'error',
-              message: 'Used fallback extraction method',
-              additionalData: {
-                url: request.url,
-                primary_error: primaryError instanceof Error ? primaryError.message : String(primaryError),
-                fallback_content_length: article.content.length
-              }
-            });
+              request.url,
+              primaryError instanceof Error ? primaryError : new Error(String(primaryError)),
+              'primary',
+              correlationId
+            );
           }
           
           // Validate extracted content
@@ -251,56 +240,52 @@ export class EnhancedRSSScraper {
             contentHash: generateContentHash(article.title, article.content),
           };
           
+          // Convert to ExtractedArticle format for logger
+          const extractedArticle = {
+            title: article.title,
+            content: article.content,
+            author: article.author,
+            publicationDate: article.date,
+            language
+          };
+          
           scrapedArticles.push(articleData);
           
-          await logJobActivity({
+          // Log successful extraction
+          const extractionTime = Date.now() - extractionStartTime;
+          await this.logger.logExtractionResult(
             jobId,
             sourceId,
-            level: 'info',
-            message: 'Article extracted successfully',
-            additionalData: {
-              url: request.url,
-              title: article.title,
-              language,
-              content_length: article.content.length,
-              source_articles_count: scrapedArticles.length
-            }
-          });
+            request.url,
+            extractedArticle,
+            extractionTime,
+            'primary',
+            correlationId
+          );
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          await logJobActivity({
+          await this.logger.logExtractionError(
             jobId,
             sourceId,
-            level: 'error',
-            message: `Failed to extract content from ${request.url}`,
-            additionalData: {
-              url: request.url,
-              error_type: error?.constructor?.name || 'Unknown',
-              error_message: errorMessage,
-              source_name: sourceName,
-              retry_count: request.retryCount
-            }
-          });
+            request.url,
+            error instanceof Error ? error : new Error(String(error)),
+            'primary',
+            correlationId
+          );
           throw error; // Re-throw to trigger retry
         }
       },
       
       failedRequestHandler: async ({ request, error }) => {
-        const { sourceId, sourceName } = request.userData;
-        await logJobActivity({
+        const { sourceId, sourceName, correlationId } = request.userData;
+        await this.logger.logHttpError(
           jobId,
           sourceId,
-          level: 'error',
-          message: `Failed to process ${request.url} after ${request.retryCount + 1} attempts`,
-          additionalData: {
-            url: request.url,
-            error_type: error instanceof Error ? error.constructor.name : 'Unknown',
-            error_message: error instanceof Error ? error.message : String(error),
-            status_code: (error as any).statusCode,
-            final_retry_count: request.retryCount,
-            source_name: sourceName
-          }
-        });
+          { url: request.url, method: 'GET', id: request.id },
+          error instanceof Error ? error : new Error(String(error)),
+          request.retryCount,
+          3, // maxRetries
+          correlationId
+        );
       }
     });
     
@@ -357,15 +342,19 @@ export class EnhancedRSSScraper {
       
       // Process the candidate items (target more than needed to account for failures)
       const targetCandidates = Math.min(candidateItems.length, articlesPerSource * 2);
-      const articleRequests = candidateItems.slice(0, targetCandidates).map(item => ({
-        url: item.link!,
-        userData: {
-          jobId,
-          sourceId: source.id,
-          sourceName: source.name,
-          articleTitle: item.title
-        }
-      }));
+      const articleRequests = candidateItems.slice(0, targetCandidates).map(item => {
+        const correlationId = this.logger.createCorrelationId();
+        return {
+          url: item.link!,
+          userData: {
+            jobId,
+            sourceId: source.id,
+            sourceName: source.name,
+            articleTitle: item.title,
+            correlationId
+          }
+        };
+      });
       
       if (articleRequests.length > 0) {
         await logJobActivity({
@@ -386,20 +375,16 @@ export class EnhancedRSSScraper {
       const successRate = Math.round((scrapedArticles.length / articlesPerSource) * 100);
       const actualSuccessRate = articleRequests.length > 0 ? Math.round((scrapedArticles.length / articleRequests.length) * 100) : 0;
       
-      await logJobActivity({
+      // Log source completion
+      const sourceDuration = Date.now() - sourceStartTime;
+      await this.logger.logSourceCompleted(
         jobId,
-        sourceId: source.id,
-        level: 'info',
-        message: `Enhanced source scraping completed: ${sourceName}`,
-        additionalData: {
-          source_name: sourceName,
-          articles_scraped: scrapedArticles.length,
-          target_articles: articlesPerSource,
-          requests_processed: articleRequests.length,
-          target_success_rate: successRate,
-          actual_success_rate: actualSuccessRate
-        }
-      });
+        source.id,
+        sourceName,
+        scrapedArticles.length,
+        articlesPerSource,
+        sourceDuration
+      );
       
       return { articles: scrapedArticles };
     } finally {
