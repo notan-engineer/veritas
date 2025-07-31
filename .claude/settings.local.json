@@ -46,7 +46,9 @@
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(move export-consultation-context.js export-requirements-refinement-context.js)"
+      "Bash(move export-consultation-context.js export-requirements-refinement-context.js)",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__read_multiple_files"
     ],
     "deny": []
   }

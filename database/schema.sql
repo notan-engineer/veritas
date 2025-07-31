@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS scraping_jobs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Scraping logs table: Detailed logs for each job
+-- Scraping logs table: Detailed logs for each job with structured JSONB logging
 CREATE TABLE IF NOT EXISTS scraping_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     job_id UUID NOT NULL REFERENCES scraping_jobs(id) ON DELETE CASCADE,
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS scraping_logs (
     log_level VARCHAR(20) NOT NULL,
     message TEXT NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-    additional_data JSONB,
+    additional_data JSONB, -- Enhanced structured logging data
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -187,6 +187,14 @@ CREATE INDEX IF NOT EXISTS idx_scraping_logs_job_id ON scraping_logs(job_id);
 CREATE INDEX IF NOT EXISTS idx_scraping_logs_timestamp ON scraping_logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_scraping_logs_level ON scraping_logs(log_level);
 CREATE INDEX IF NOT EXISTS idx_scraping_logs_source_id ON scraping_logs(source_id);
+
+-- Enhanced JSONB indexes for structured logging performance
+CREATE INDEX IF NOT EXISTS idx_logs_event_type ON scraping_logs((additional_data->>'event_type'));
+CREATE INDEX IF NOT EXISTS idx_logs_http_status ON scraping_logs((additional_data->'http'->>'status')) WHERE additional_data->>'event_type' = 'http';
+CREATE INDEX IF NOT EXISTS idx_logs_correlation ON scraping_logs((additional_data->>'correlation_id')) WHERE additional_data->>'correlation_id' IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_logs_additional_data_gin ON scraping_logs USING GIN (additional_data);
+CREATE INDEX IF NOT EXISTS idx_logs_event_name ON scraping_logs((additional_data->>'event_name'));
+CREATE INDEX IF NOT EXISTS idx_logs_perf_snapshots ON scraping_logs(job_id, timestamp) WHERE additional_data->>'event_type' = 'performance';
 
 -- ===============================================
 -- FUNCTIONS AND TRIGGERS
@@ -231,7 +239,7 @@ COMMENT ON TABLE factoids IS 'Core factoid content';
 COMMENT ON TABLE factoid_tags IS 'Factoid-tag relationships';
 COMMENT ON TABLE factoid_sources IS 'Factoid-source relationships';
 COMMENT ON TABLE scraping_jobs IS 'Job tracking and management for scraping operations';
-COMMENT ON TABLE scraping_logs IS 'Detailed logging per source for each scraping job';
+COMMENT ON TABLE scraping_logs IS 'Enhanced structured logging with JSONB data for comprehensive job monitoring and performance analysis';
 
 -- ===============================================
 -- DEFAULT DATA

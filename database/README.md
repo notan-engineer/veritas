@@ -29,7 +29,8 @@ When you need to understand the current database structure, always refer to this
 
 ### Scraper Tables
 - **scraping_jobs** - Tracks scraping job execution with granular status tracking
-- **scraping_logs** - Detailed logs per scraping job
+- **scraping_logs** - Enhanced structured logging with JSONB data, event types, and correlation tracking
+- **scraped_content_archive** - Archive for old content with compression
 
 ## Usage
 
@@ -75,6 +76,22 @@ const pool = new Pool({
 - Converts job statuses from VARCHAR to enum type
 - Maps legacy statuses to new granular values
 - Preserves all historical data
+
+### JSONB Logging Indexes (2025-01-31)
+- Migration: `migrations/add-jsonb-indexes.sql`
+- Adds specialized indexes for `scraping_logs.additional_data` JSONB field
+- Optimizes queries for event types, HTTP status, correlation IDs
+- Includes GIN index for complex JSONB queries
+- Improves performance for log analysis and monitoring dashboards
+
+### Enhanced Structured Logging (2025-01-31)
+- Implemented JSONB-first logging approach in `scraping_logs` table
+- Added EnhancedLogger class for comprehensive event tracking
+- Supports event types: lifecycle, source, http, extraction, performance
+- Features correlation tracking for related events
+- Includes performance monitoring with 30-second snapshots
+- Content quality scoring (0-100 scale) for extracted articles
+- All logging now uses structured JSONB format for advanced analytics
 
 ## Important Notes
 

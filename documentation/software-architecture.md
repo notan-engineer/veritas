@@ -73,7 +73,7 @@ factoid_sources  -- Many-to-many factoid-source relationships
 
 -- Scraper service tables
 scraping_jobs    -- Job tracking with enum status (new, in-progress, successful, partial, failed)
-scraping_logs    -- Detailed logging per source for each scraping job
+scraping_logs    -- Enhanced structured logging with JSONB data for comprehensive monitoring
 ```
 
 ### Key Features
@@ -205,7 +205,8 @@ The project uses three Railway services:
 ```
 services/scraper/
 ├── src/
-│   ├── scraper.ts              # Enhanced main scraper with job management
+│   ├── enhanced-scraper.ts     # Single scraper implementation with comprehensive features
+│   ├── enhanced-logger.ts      # Advanced JSONB logging with correlation tracking
 │   ├── job-manager.ts          # Job queue and execution management
 │   ├── content-classifier.ts   # Content classification and categorization
 │   ├── duplicate-detector.ts   # URL and content-based duplicate prevention
@@ -213,12 +214,17 @@ services/scraper/
 │   ├── resource-monitor.ts     # System resource monitoring
 │   ├── cleanup-manager.ts      # Content cleanup and archival
 │   ├── error-handler.ts        # Comprehensive error handling and recovery
-│   ├── database.ts             # Enhanced database operations
+│   ├── database.ts             # Enhanced database operations with JSONB support
+│   ├── log-queries.ts          # Structured log query utilities
+│   ├── test-logs.ts            # Log testing and validation utilities
+│   ├── clear-data.ts           # Data cleanup and maintenance scripts
 │   ├── types.ts                # Comprehensive TypeScript interfaces
-│   └── server.ts               # Express HTTP server with monitoring endpoints
+│   └── api-server.ts           # Express HTTP server with monitoring endpoints
 ├── package.json                # Crawlee, Playwright, Express dependencies
 └── tsconfig.json               # TypeScript configuration
 ```
+
+**Note**: The scraper service now uses a single, unified `EnhancedRSSScraper` implementation following ADR-003, which consolidated all scraping functionality into one comprehensive solution with advanced monitoring capabilities.
 
 ### Service Communication
 - **HTTP APIs**: Services communicate via REST endpoints
@@ -304,9 +310,17 @@ PORT=${{PORT}}              # Automatically set by Railway
 - **Scraper Service Health**: Comprehensive health checks with system metrics
 - **Database Connectivity**: Connection pool monitoring and performance tracking
 - **Error Tracking**: Real-time error statistics with categorization and recovery
-- **Resource Monitoring**: Memory, storage, and performance metrics
-- **Job Monitoring**: Scraping job success rates and execution tracking
+- **Resource Monitoring**: Memory, storage, and performance metrics with automated snapshots
+- **Job Monitoring**: Scraping job success rates and execution tracking with correlation IDs
 - **Source Health**: RSS feed validation and content source monitoring
+- **Enhanced Structured Logging**: JSONB-first logging architecture with:
+  - Event-driven logging (lifecycle, source, http, extraction, performance)
+  - Correlation tracking for related events across request lifecycle
+  - Performance monitoring with 30-second automated snapshots
+  - Content quality scoring (0-100 scale) for extracted articles
+  - Optimized GIN indexes for complex JSONB queries
+  - Comprehensive error categorization and pattern analysis
+- **Performance Analytics**: Detailed HTTP request/response timing with waterfall analysis
 
 ### Automated Systems
 - **Content Cleanup**: Automated archival and compression policies
