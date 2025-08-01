@@ -63,13 +63,16 @@ veritas/
 -- Content tables
 factoids                -- Core content (title, description, bullet_points, language, status)
 sources                 -- News sources (name, domain, rss_url, icons, scraping config)
-scraped_content         -- Raw content from sources with compression and metadata
+scraped_content         -- Raw content from sources with compression, metadata, and job linking
 scraped_content_archive -- Archive of old scraped content for storage management
 tags                    -- Simple categorization (name, slug, description)
 
 -- Relationship tables  
 factoid_tags     -- Many-to-many factoid-tag relationships
 factoid_sources  -- Many-to-many factoid-source relationships
+
+-- Job-Content relationships
+-- scraped_content.job_id -> scraping_jobs.id (foreign key for content traceability)
 
 -- Scraper service tables
 scraping_jobs    -- Job tracking with enum status (new, in-progress, successful, partial, failed)

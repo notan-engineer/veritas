@@ -66,6 +66,7 @@ As a content administrator, I want the system to automatically collect and proce
    - Language detection and categorization
    - Source attribution
    - Processing status tracking
+   - **Job linking**: Each scraped content record is linked to its originating scraping job via `job_id`
    - Transaction-based persistence for data integrity
 
 ### API Endpoints
@@ -117,6 +118,7 @@ Jobs progress through the following statuses:
 - Performance monitoring with request timing
 - Content quality scoring and validation
 - Correlation tracking across request lifecycle
+- **Content traceability**: All scraped content can be traced back to its originating job for audit and debugging
 
 ## Related Features
 - [Enhanced Logging System](./11-enhanced-logging.md)

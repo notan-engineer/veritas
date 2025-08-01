@@ -39,6 +39,7 @@ As a system administrator, I want to view detailed job statuses and logs so that
    - Articles scraped vs requested
    - Job duration calculation
    - Error count tracking
+   - **Content relationship tracking**: View which specific articles were scraped by each job
 
 ### Database Implementation
 
@@ -52,6 +53,12 @@ CREATE TYPE job_status AS ENUM ('new', 'in-progress', 'successful', 'partial', '
 - `in-progress` → `successful` (all sources complete)
 - `in-progress` → `partial` (some sources fail)
 - `in-progress` → `failed` (critical error or all fail)
+
+#### Job-Content Relationship
+- Each `scraped_content` record includes a `job_id` foreign key referencing `scraping_jobs(id)`
+- Enables tracking which content was scraped during which job execution
+- Supports `ON DELETE SET NULL` to preserve content if job records are cleaned up
+- Provides audit trail for content traceability and debugging
 
 ### API Integration
 
