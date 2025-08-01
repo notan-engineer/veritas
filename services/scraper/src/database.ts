@@ -110,7 +110,7 @@ export async function updateJobStatus(jobId: string, status: JobStatus): Promise
 }
 
 // Save article with duplicate check
-export async function saveArticle(article: Partial<ScrapedArticle>): Promise<void> {
+export async function saveArticle(article: Partial<ScrapedArticle>, jobId?: string): Promise<void> {
   const contentHash = article.contentHash || crypto.createHash('sha256')
     .update(`${article.title}:${article.content?.substring(0, 1000)}`)
     .digest('hex');
@@ -118,8 +118,8 @@ export async function saveArticle(article: Partial<ScrapedArticle>): Promise<voi
   await pool.query(`
     INSERT INTO scraped_content (
       source_id, source_url, title, content, author,
-      publication_date, content_hash, language, processing_status, created_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed', NOW())
+      publication_date, content_hash, language, processing_status, job_id, created_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed', $9, NOW())
     ON CONFLICT (source_url) DO NOTHING
   `, [
     article.sourceId,
@@ -129,7 +129,8 @@ export async function saveArticle(article: Partial<ScrapedArticle>): Promise<voi
     article.author || null,
     article.publicationDate ? new Date(article.publicationDate) : null,
     contentHash,
-    article.language || 'en'
+    article.language || 'en',
+    jobId || null
   ]);
 }
 

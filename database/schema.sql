@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS scraped_content (
     compressed_html BYTEA,
     compression_ratio NUMERIC(5,2),
     original_size BIGINT,
-    compressed_size BIGINT
+    compressed_size BIGINT,
+    job_id UUID REFERENCES scraping_jobs(id) ON DELETE SET NULL
 );
 
 -- Factoids table: Core content units
@@ -164,6 +165,7 @@ CREATE INDEX IF NOT EXISTS idx_scraped_content_processing_status ON scraped_cont
 CREATE INDEX IF NOT EXISTS idx_scraped_content_category ON scraped_content(category);
 CREATE INDEX IF NOT EXISTS idx_scraped_content_compressed ON scraped_content(compressed_content) WHERE compressed_content IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_scraped_content_compression_ratio ON scraped_content(compression_ratio) WHERE compression_ratio IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_scraped_content_job_id ON scraped_content(job_id);
 CREATE INDEX IF NOT EXISTS idx_tags_slug ON tags(slug);
 CREATE INDEX IF NOT EXISTS idx_factoids_status ON factoids(status);
 CREATE INDEX IF NOT EXISTS idx_factoids_created_at ON factoids(created_at DESC);

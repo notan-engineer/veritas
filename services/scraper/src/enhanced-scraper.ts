@@ -420,8 +420,8 @@ export class EnhancedRSSScraper {
         const result = await client.query(`
           INSERT INTO scraped_content (
             source_id, source_url, title, content, author,
-            publication_date, content_hash, language, processing_status, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed', NOW())
+            publication_date, content_hash, language, processing_status, job_id, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed', $9, NOW())
           RETURNING id
         `, [
           article.sourceId,
@@ -431,7 +431,8 @@ export class EnhancedRSSScraper {
           article.author || null,
           article.publicationDate ? new Date(article.publicationDate) : null,
           article.contentHash,
-          article.language || 'en'
+          article.language || 'en',
+          jobId
         ]);
         
         if (result.rows.length > 0) {

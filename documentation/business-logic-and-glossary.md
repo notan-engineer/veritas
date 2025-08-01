@@ -26,8 +26,9 @@
 **Scraped Content**
 - Raw article data collected from news sources
 - Stored temporarily before processing into factoids
-- Contains: title, content, URL, publication date, source reference
+- Contains: title, content, URL, publication date, source reference, job_id
 - Subject to deduplication based on content hash
+- Linked to originating scraping job for audit trail and traceability
 
 **Tag**
 - A category or topic classifier for factoids
@@ -76,6 +77,12 @@
 - Metrics tracking source reliability and performance
 - Includes: success rate, error count, last successful fetch
 - Used to identify and disable problematic sources
+
+**Job Traceability**
+- Ability to trace scraped content back to its originating scraping job
+- Implemented via job_id foreign key in scraped_content table
+- Enables audit trails, debugging, and content attribution
+- Supports troubleshooting by linking content issues to specific job execution
 
 ### Business Rules
 

@@ -32,7 +32,7 @@ As a developer, I want a well-structured API system so that I can build features
    - `GET /api/scraper/jobs` - List scraping jobs
    - `GET /api/scraper/jobs/[id]/logs` - Get job logs
    - `GET /api/scraper/metrics` - Dashboard metrics
-   - `GET /api/scraper/content` - List scraped articles
+   - `GET /api/scraper/content` - List scraped articles (includes job_id for traceability)
    - `GET /api/scraper/sources` - Manage sources
    - `GET /api/scraper/monitoring` - System health
 
@@ -46,8 +46,9 @@ As a developer, I want a well-structured API system so that I can build features
    - `POST /api/scraper/jobs/:id/cancel` - Cancel job
 
 2. **Content Management**
-   - `GET /api/scraper/content` - Browse articles
-   - `GET /api/scraper/content/:id` - Article details
+   - `GET /api/scraper/content` - Browse articles (includes job_id for traceability)
+   - `GET /api/scraper/content/:id` - Article details (includes originating job information)
+   - `GET /api/scraper/content?job_id=:id` - Filter articles by specific scraping job
 
 3. **Source Management**
    - `GET /api/scraper/sources` - List sources
