@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS tags (
 );
 
 -- Scraped content table: Raw content from sources
+-- Note: The job_id field links each piece of content to its originating scraping job,
+-- enabling accurate per-job and per-source article count tracking for dashboard metrics
 CREATE TABLE IF NOT EXISTS scraped_content (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     source_id UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
@@ -62,7 +64,7 @@ CREATE TABLE IF NOT EXISTS scraped_content (
     compression_ratio NUMERIC(5,2),
     original_size BIGINT,
     compressed_size BIGINT,
-    job_id UUID REFERENCES scraping_jobs(id) ON DELETE SET NULL
+    job_id UUID REFERENCES scraping_jobs(id) ON DELETE SET NULL  -- Links to originating scraping job, enables accurate per-job and per-source article counting for dashboard metrics
 );
 
 -- Factoids table: Core content units

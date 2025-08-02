@@ -134,7 +134,7 @@
 - Used to identify problematic sources
 
 **Content Volume**
-- Number of articles scraped per time period
+- Number of articles scraped per time period (database-based count from scraped_content table)
 - Number of factoids created per time period
 - Used for capacity planning
 

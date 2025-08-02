@@ -172,23 +172,14 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
     }
   }
 
-  const calculatePerSourceStats = (jobId: string, sourcesRequested: string[], articlesPerSource: number) => {
-    const logs = jobLogs[jobId] || []
+  const calculatePerSourceStats = (job: ScrapingJob) => {
     const sourceStats: Record<string, { scraped: number; requested: number }> = {}
     
     // Initialize all sources with their requested count
-    sourcesRequested.forEach(source => {
-      sourceStats[source] = { scraped: 0, requested: articlesPerSource }
-    })
-    
-    // Find completion logs for each source to get actual scraped count
-    logs.forEach(log => {
-      if (log.sourceName && log.message.includes('Source scraping completed') && log.additionalData) {
-        const sourceName = log.sourceName
-        const scrapedCount = log.additionalData.articles_scraped || 0
-        if (sourceStats[sourceName]) {
-          sourceStats[sourceName].scraped = scrapedCount
-        }
+    job.sourcesRequested.forEach(source => {
+      sourceStats[source] = { 
+        scraped: job.sourceArticleCounts?.[source] || 0, 
+        requested: job.articlesPerSource 
       }
     })
     
@@ -429,7 +420,7 @@ export function DashboardTab({ refreshTrigger }: DashboardTabProps) {
                               <div className="space-y-1">
                                 <div className="font-medium text-sm mb-2">Sources:</div>
                                 {(() => {
-                                  const sourceStats = calculatePerSourceStats(job.id, job.sourcesRequested, job.articlesPerSource)
+                                  const sourceStats = calculatePerSourceStats(job)
                                   return job.sourcesRequested.map((source, index) => {
                                     const stats = sourceStats[source]
                                     return (

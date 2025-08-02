@@ -163,7 +163,7 @@ interface Source {
 - `GET /api/scraper/content` - Content feed interface
 - `GET /api/scraper/sources` - Source management interface
 - `GET /api/scraper/monitoring` - Monitoring dashboard interface
-- `GET /api/scraper/metrics` - Health metrics for dashboard
+- `GET /api/scraper/metrics` - Health metrics for dashboard (database-based article counts)
 
 ## Frontend Architecture
 
@@ -314,7 +314,7 @@ PORT=${{PORT}}              # Automatically set by Railway
 - **Database Connectivity**: Connection pool monitoring and performance tracking
 - **Error Tracking**: Real-time error statistics with categorization and recovery
 - **Resource Monitoring**: Memory, storage, and performance metrics with automated snapshots
-- **Job Monitoring**: Scraping job success rates and execution tracking with correlation IDs
+- **Job Monitoring**: Scraping job success rates and execution tracking with correlation IDs; metrics use database-based article counts from scraped_content table for accuracy
 - **Source Health**: RSS feed validation and content source monitoring
 - **Enhanced Structured Logging**: JSONB-first logging architecture with:
   - Event-driven logging (lifecycle, source, http, extraction, performance)

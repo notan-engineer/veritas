@@ -168,23 +168,29 @@ export async function updateJobProgress(jobId: string, state: ProgressState): Pr
 export async function getJob(jobId: string): Promise<ScrapingJob | null> {
   const jobResult = await pool.query(`
     SELECT 
-      id,
-      status,
-      sources_requested as "sourcesRequested",
-      articles_per_source as "articlesPerSource",
-      total_articles_scraped as "totalArticlesScraped",
-      total_errors as "totalErrors",
-      triggered_at as "triggeredAt",
-      completed_at as "completedAt",
-      created_at as "createdAt",
-      updated_at as "updatedAt",
+      sj.id,
+      sj.status,
+      sj.sources_requested as "sourcesRequested",
+      sj.articles_per_source as "articlesPerSource",
+      COALESCE(sc.actual_scraped_count, 0)::integer as "totalArticlesScraped",
+      sj.total_errors as "totalErrors",
+      sj.triggered_at as "triggeredAt",
+      sj.completed_at as "completedAt",
+      sj.created_at as "createdAt",
+      sj.updated_at as "updatedAt",
       CASE 
-        WHEN completed_at IS NOT NULL 
-        THEN EXTRACT(EPOCH FROM (completed_at - triggered_at))
+        WHEN sj.completed_at IS NOT NULL 
+        THEN EXTRACT(EPOCH FROM (sj.completed_at - sj.triggered_at))
         ELSE NULL
       END as duration
-    FROM scraping_jobs 
-    WHERE id = $1
+    FROM scraping_jobs sj
+    LEFT JOIN (
+      SELECT job_id, COUNT(*) as actual_scraped_count
+      FROM scraped_content
+      WHERE job_id = $1
+      GROUP BY job_id
+    ) sc ON sj.id = sc.job_id
+    WHERE sj.id = $1
   `, [jobId]);
   
   if (jobResult.rows.length === 0) return null;
@@ -216,43 +222,84 @@ export async function getJobs(limit: number = 20, offset: number = 0, status?: J
   const params: any[] = [limit, offset];
   
   if (status) {
-    whereClause = 'WHERE status = $3';
+    whereClause = 'WHERE sj.status = $3';
     params.push(status);
   }
   
   const [jobs, count] = await Promise.all([
     pool.query(`
       SELECT 
-        id,
-        status,
-        sources_requested as "sourcesRequested",
-        articles_per_source as "articlesPerSource",
-        total_articles_scraped as "totalArticlesScraped",
-        total_errors as "totalErrors",
-        triggered_at as "triggeredAt",
-        completed_at as "completedAt",
-        created_at as "createdAt",
-        updated_at as "updatedAt",
+        sj.id,
+        sj.status,
+        sj.sources_requested as "sourcesRequested",
+        sj.articles_per_source as "articlesPerSource",
+        COALESCE(sc.actual_scraped_count, 0)::integer as "totalArticlesScraped",
+        sj.total_errors as "totalErrors",
+        sj.triggered_at as "triggeredAt",
+        sj.completed_at as "completedAt",
+        sj.created_at as "createdAt",
+        sj.updated_at as "updatedAt",
         CASE 
-          WHEN completed_at IS NOT NULL 
-          THEN EXTRACT(EPOCH FROM (completed_at - triggered_at))
+          WHEN sj.completed_at IS NOT NULL 
+          THEN EXTRACT(EPOCH FROM (sj.completed_at - sj.triggered_at))
           ELSE NULL
         END as duration
-      FROM scraping_jobs 
+      FROM scraping_jobs sj
+      LEFT JOIN (
+        SELECT job_id, COUNT(*) as actual_scraped_count
+        FROM scraped_content
+        GROUP BY job_id
+      ) sc ON sj.id = sc.job_id
       ${whereClause}
-      ORDER BY triggered_at DESC
+      ORDER BY sj.triggered_at DESC
       LIMIT $1 OFFSET $2
     `, params),
     
     pool.query(`
-      SELECT COUNT(*) as total FROM scraping_jobs ${whereClause}
+      SELECT COUNT(*) as total FROM scraping_jobs sj ${whereClause}
     `, status ? [status] : [])
   ]);
   
   const total = parseInt(count.rows[0].total);
   
+  // Get per-source article counts for all jobs
+  const jobIds = jobs.rows.map(job => job.id);
+  let sourceCountsResult: { rows: any[] } = { rows: [] };
+  
+  if (jobIds.length > 0) {
+    sourceCountsResult = await pool.query(`
+      SELECT 
+        sc.job_id,
+        s.name as source_name,
+        COUNT(*) as count
+      FROM scraped_content sc
+      JOIN sources s ON sc.source_id = s.id
+      WHERE sc.job_id = ANY($1::uuid[])
+      GROUP BY sc.job_id, s.name
+    `, [jobIds]);
+  }
+  
+  // Create a map of job_id -> source -> count
+  const sourceCountsMap: Record<string, Record<string, number>> = {};
+  
+  
+  sourceCountsResult.rows.forEach((row: any) => {
+    const jobId = row.job_id;
+    const sourceName = row.source_name;
+    if (!sourceCountsMap[jobId]) {
+      sourceCountsMap[jobId] = {};
+    }
+    sourceCountsMap[jobId][sourceName] = parseInt(row.count);
+  });
+  
+  // Add source counts to each job
+  const jobsWithSourceCounts = jobs.rows.map(job => ({
+    ...job,
+    sourceArticleCounts: sourceCountsMap[job.id] || {}
+  }));
+  
   return {
-    data: jobs.rows,
+    data: jobsWithSourceCounts,
     total,
     page: Math.floor(offset / limit) + 1,
     pageSize: limit,

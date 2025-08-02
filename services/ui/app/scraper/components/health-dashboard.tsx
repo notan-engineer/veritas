@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   Activity, 
   CheckCircle, 
@@ -46,6 +52,7 @@ interface JobHistory {
   totalArticlesScraped: number;
   totalErrors: number;
   duration?: number;
+  sourceArticleCounts?: Record<string, number>;
 }
 
 interface SourceHealth {
@@ -114,7 +121,7 @@ export function HealthDashboard() {
         setMetrics(enhancedMetrics);
         
         // Enhanced job history with real-time status updates
-        const enhancedJobHistory = jobsData.success ? jobsData.data : [
+        const enhancedJobHistory = jobsData.data ? jobsData.data : [
           {
             id: 'job-001',
             triggeredAt: new Date(Date.now() - 3600000).toISOString(),
@@ -522,12 +529,34 @@ export function HealthDashboard() {
                           </div>
                         </td>
                         <td className="py-3 px-2">
-                          <div className="text-sm">
-                            {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.join(', ') : 'No sources'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {job.articlesPerSource} per source
-                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="cursor-help">
+                                  <div className="text-sm">
+                                    {Array.isArray(job.sourcesRequested) ? job.sourcesRequested.join(', ') : 'No sources'}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {job.articlesPerSource} per source
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="space-y-1">
+                                  <div className="font-semibold">Articles per Source:</div>
+                                  {job.sourcesRequested.map(source => {
+                                    const scraped = job.sourceArticleCounts?.[source] || 0;
+                                    const expected = job.articlesPerSource;
+                                    return (
+                                      <div key={source} className="text-xs">
+                                        {source}: {scraped}/{expected}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </td>
                         <td className="py-3 px-2 text-center">
                           <div className="text-sm font-medium">

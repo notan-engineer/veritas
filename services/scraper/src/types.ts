@@ -12,6 +12,7 @@ export interface ScrapingJob {
   updatedAt: string;
   // Calculated fields (not in database)
   duration?: number;      // calculated from completedAt - triggeredAt
+  sourceArticleCounts?: Record<string, number>; // source name -> count
 }
 
 export type JobStatus = ScrapingJob['status'];

@@ -59,7 +59,7 @@ As a developer, I want a well-structured API system so that I can build features
 
 4. **Monitoring & Analytics**
    - `GET /health` - Service health check
-   - `GET /api/scraper/metrics` - Performance metrics
+   - `GET /api/scraper/metrics` - Performance metrics (includes database-based article counts)
    - `GET /api/monitoring/errors` - Error statistics
    - `GET /api/monitoring/performance` - System performance
    - `GET /api/monitoring/alerts` - System alerts

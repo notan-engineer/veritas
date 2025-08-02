@@ -20,7 +20,7 @@ As a system administrator, I want to monitor scraping operations and performance
 1. **Metrics Overview**
    - Jobs triggered count
    - Success rate percentage
-   - Total articles scraped
+   - Total articles scraped (database-based count from scraped_content table)
    - Average job duration
    - Active jobs indicator
    - Recent errors count
@@ -62,7 +62,7 @@ As a system administrator, I want to monitor scraping operations and performance
 - Status badges with color coding
 - Loading skeletons
 - Error alerts
-- Tooltip components for additional context
+- Tooltip components for additional context (including per-source article counts)
 - Table component with client-side sorting
 
 ### State Management
@@ -88,8 +88,8 @@ As a system administrator, I want to monitor scraping operations and performance
 5. Re-trigger if needed
 
 ## API Integration
-- **GET /api/scraper/metrics**: Dashboard metrics
-- **GET /api/scraper/jobs**: Job listing
+- **GET /api/scraper/metrics**: Dashboard metrics (with database-based article counts)
+- **GET /api/scraper/jobs**: Job listing (includes per-source article counts)
 - **GET /api/scraper/jobs/:id/logs**: Job logs
 - **GET /api/scraper/monitoring**: Health data
 - **POST /api/scraper/monitoring**: Recovery actions

@@ -36,10 +36,11 @@ As a system administrator, I want to view detailed job statuses and logs so that
 
 4. **Job Details Display**
    - Sources requested with count
-   - Articles scraped vs requested
+   - Articles scraped vs requested (database-based counts from scraped_content table)
    - Job duration calculation
    - Error count tracking
    - **Content relationship tracking**: View which specific articles were scraped by each job
+   - **Per-source article counts**: Tooltips show actual scraped articles per source
 
 ### Database Implementation
 
@@ -59,6 +60,13 @@ CREATE TYPE job_status AS ENUM ('new', 'in-progress', 'successful', 'partial', '
 - Enables tracking which content was scraped during which job execution
 - Supports `ON DELETE SET NULL` to preserve content if job records are cleaned up
 - Provides audit trail for content traceability and debugging
+
+#### Accurate Article Counting System
+- **Dashboard metrics** query `scraped_content` table directly for total article counts instead of job records
+- **Job listings** use LEFT JOIN with `scraped_content` to show actual scraped counts per job
+- **Per-source breakdown** aggregates counts by source name from database relationships
+- **Tooltip displays** show actual database counts, not estimated job progress counters
+- **Query optimization** uses aggregation and joins to efficiently calculate per-job and per-source metrics
 
 ### API Integration
 
