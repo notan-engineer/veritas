@@ -50,25 +50,31 @@ async function getDashboardMetrics(): Promise<DashboardMetrics> {
     return metricsCache.data;
   }
   
-  const result = await db.pool.query(`
-    SELECT 
-      COUNT(DISTINCT id) as jobs_triggered,
-      AVG(CASE WHEN status IN ('successful', 'partial') THEN 100 ELSE 0 END) as success_rate,
-      SUM(total_articles_scraped) as articles_scraped,
-      AVG(EXTRACT(EPOCH FROM (completed_at - triggered_at))) as avg_duration,
-      COUNT(CASE WHEN status = 'in-progress' THEN 1 END) as active_jobs,
-      COUNT(CASE WHEN status = 'failed' AND triggered_at > NOW() - INTERVAL '24 hours' THEN 1 END) as recent_errors
-    FROM scraping_jobs
-    WHERE triggered_at > NOW() - INTERVAL '7 days'
-  `);
+  // Get total articles from scraped_content table
+  const [jobsResult, articlesResult] = await Promise.all([
+    db.pool.query(`
+      SELECT 
+        COUNT(DISTINCT id) as jobs_triggered,
+        AVG(CASE WHEN status IN ('successful', 'partial') THEN 100 ELSE 0 END) as success_rate,
+        AVG(EXTRACT(EPOCH FROM (completed_at - triggered_at))) as avg_duration,
+        COUNT(CASE WHEN status = 'in-progress' THEN 1 END) as active_jobs,
+        COUNT(CASE WHEN status = 'failed' AND triggered_at > NOW() - INTERVAL '24 hours' THEN 1 END) as recent_errors
+      FROM scraping_jobs
+      WHERE triggered_at > NOW() - INTERVAL '7 days'
+    `),
+    db.pool.query(`
+      SELECT COUNT(*) as total_articles
+      FROM scraped_content
+    `)
+  ]);
   
   const metrics = {
-    jobsTriggered: parseInt(result.rows[0].jobs_triggered) || 0,
-    successRate: Math.round(parseFloat(result.rows[0].success_rate) || 0),
-    articlesScraped: parseInt(result.rows[0].articles_scraped) || 0,
-    averageJobDuration: Math.round(parseFloat(result.rows[0].avg_duration) || 0),
-    activeJobs: parseInt(result.rows[0].active_jobs) || 0,
-    recentErrors: parseInt(result.rows[0].recent_errors) || 0
+    jobsTriggered: parseInt(jobsResult.rows[0].jobs_triggered) || 0,
+    successRate: Math.round(parseFloat(jobsResult.rows[0].success_rate) || 0),
+    articlesScraped: parseInt(articlesResult.rows[0].total_articles) || 0,
+    averageJobDuration: Math.round(parseFloat(jobsResult.rows[0].avg_duration) || 0),
+    activeJobs: parseInt(jobsResult.rows[0].active_jobs) || 0,
+    recentErrors: parseInt(jobsResult.rows[0].recent_errors) || 0
   };
   
   metricsCache = { data: metrics, timestamp: Date.now() };

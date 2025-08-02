@@ -14,6 +14,7 @@ export interface ScrapingJob {
   duration?: number;      // calculated from completedAt - triggeredAt
   progress?: number;      // derived from logs
   currentSource?: string; // derived from latest log
+  sourceArticleCounts?: Record<string, number>; // source name -> count
 }
 
 export type JobStatus = ScrapingJob['status'];
