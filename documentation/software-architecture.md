@@ -208,8 +208,8 @@ The project uses three Railway services:
 ```
 services/scraper/
 ├── src/
-│   ├── enhanced-scraper.ts     # Single scraper implementation with comprehensive features
-│   ├── enhanced-logger.ts      # Advanced JSONB logging with correlation tracking
+│   ├── enhanced-scraper.ts     # Two-phase scraper with extraction/persistence separation
+│   ├── enhanced-logger.ts      # Advanced logging with phase-specific tracking
 │   ├── job-manager.ts          # Job queue and execution management
 │   ├── content-classifier.ts   # Content classification and categorization
 │   ├── duplicate-detector.ts   # URL and content-based duplicate prevention
@@ -220,14 +220,15 @@ services/scraper/
 │   ├── database.ts             # Enhanced database operations with JSONB support
 │   ├── log-queries.ts          # Structured log query utilities
 │   ├── test-logs.ts            # Log testing and validation utilities
+│   ├── test-enhanced-logging.ts # Test script for enhanced logging verification
 │   ├── clear-data.ts           # Data cleanup and maintenance scripts
-│   ├── types.ts                # Comprehensive TypeScript interfaces
-│   └── api-server.ts           # Express HTTP server with monitoring endpoints
+│   ├── types.ts                # Enhanced interfaces with source tracking types
+│   └── api-server.ts           # Express server with enhanced metrics endpoints
 ├── package.json                # Crawlee, Playwright, Express dependencies
 └── tsconfig.json               # TypeScript configuration
 ```
 
-**Note**: The scraper service now uses a single, unified `EnhancedRSSScraper` implementation following ADR-003, which consolidated all scraping functionality into one comprehensive solution with advanced monitoring capabilities.
+**Note**: The scraper service uses `EnhancedRSSScraper` with two-phase processing (extraction and persistence) following ADR-004, providing accurate visibility into each phase of the scraping process.
 
 ### Service Communication
 - **HTTP APIs**: Services communicate via REST endpoints
@@ -235,6 +236,7 @@ services/scraper/
 - **Environment Variables**: Services configured via Railway environment
 - **Health Monitoring**: Comprehensive health checks across all services
 - **Enhanced APIs**: Source testing, job logs retrieval, granular status tracking
+- **Two-Phase Metrics**: Extraction and persistence tracked separately
 
 **Reference**: See `documentation/railway-interface.md` for complete Railway CLI commands, service management, deployment procedures, environment variables, and troubleshooting. This file is git-ignored and contains sensitive project information.
 

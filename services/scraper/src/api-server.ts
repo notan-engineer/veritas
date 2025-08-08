@@ -50,8 +50,8 @@ async function getDashboardMetrics(): Promise<DashboardMetrics> {
     return metricsCache.data;
   }
   
-  // Get total articles from scraped_content table
-  const [jobsResult, articlesResult] = await Promise.all([
+  // Get comprehensive metrics
+  const [jobsResult, articlesResult, extractionMetrics] = await Promise.all([
     db.pool.query(`
       SELECT 
         COUNT(DISTINCT id) as jobs_triggered,
@@ -65,16 +65,32 @@ async function getDashboardMetrics(): Promise<DashboardMetrics> {
     db.pool.query(`
       SELECT COUNT(*) as total_articles
       FROM scraped_content
+    `),
+    // Get extraction vs persistence metrics from recent logs
+    db.pool.query(`
+      SELECT 
+        COUNT(CASE WHEN additional_data->>'event_name' = 'extraction_completed' THEN 1 END) as extraction_successes,
+        COUNT(CASE WHEN additional_data->>'event_name' = 'source_persistence_completed' AND (additional_data->'persistence_metrics'->>'saved')::int > 0 THEN 1 END) as persistence_successes,
+        COUNT(DISTINCT CASE WHEN additional_data->>'event_type' = 'extraction' THEN source_id END) as total_extraction_attempts
+      FROM scraping_logs
+      WHERE created_at > NOW() - INTERVAL '7 days'
     `)
   ]);
   
-  const metrics = {
+  const totalExtractions = parseInt(extractionMetrics.rows[0].extraction_successes) || 0;
+  const totalPersistence = parseInt(extractionMetrics.rows[0].persistence_successes) || 0;
+  const totalAttempts = parseInt(extractionMetrics.rows[0].total_extraction_attempts) || 1;
+  
+  const metrics: DashboardMetrics = {
     jobsTriggered: parseInt(jobsResult.rows[0].jobs_triggered) || 0,
     successRate: Math.round(parseFloat(jobsResult.rows[0].success_rate) || 0),
     articlesScraped: parseInt(articlesResult.rows[0].total_articles) || 0,
+    articlesSaved: parseInt(articlesResult.rows[0].total_articles) || 0, // For now, same as articlesScraped
     averageJobDuration: Math.round(parseFloat(jobsResult.rows[0].avg_duration) || 0),
     activeJobs: parseInt(jobsResult.rows[0].active_jobs) || 0,
-    recentErrors: parseInt(jobsResult.rows[0].recent_errors) || 0
+    recentErrors: parseInt(jobsResult.rows[0].recent_errors) || 0,
+    extractionSuccessRate: totalAttempts > 0 ? Math.round((totalExtractions / totalAttempts) * 100) : 0,
+    persistenceSuccessRate: totalExtractions > 0 ? Math.round((totalPersistence / totalExtractions) * 100) : 0
   };
   
   metricsCache = { data: metrics, timestamp: Date.now() };

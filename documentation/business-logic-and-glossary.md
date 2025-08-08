@@ -143,6 +143,37 @@
 - Parsing errors: Invalid RSS/HTML structure
 - Validation errors: Missing required fields
 - Rate limit errors: Too many requests
+- Extraction errors: Failed to extract content from web page
+- Persistence errors: Failed to save to database
+- Teardown errors: Crawler cleanup failures (non-fatal)
+
+### Scraping Process Terms
+
+**Extraction Phase**
+- The first phase of content scraping
+- Involves fetching web pages and parsing content
+- Success measured by articles extracted from HTML
+- Tracked separately from database persistence
+- Each source has individual extraction metrics
+
+**Persistence Phase**
+- The second phase of content scraping
+- Involves saving extracted content to database
+- Includes duplicate detection and validation
+- Success measured by articles actually saved
+- May have fewer articles than extraction due to duplicates
+
+**Source Result**
+- Comprehensive tracking data for a single source
+- Includes extraction metrics and article data
+- Used to measure source-specific performance
+- Contains RSS items found, candidates processed, successes
+
+**Enhanced Job Metrics**
+- Detailed breakdown of job performance
+- Separates extraction from persistence metrics
+- Shows per-source success/failure information
+- Includes actual vs. target success rates
 
 ### UI Patterns
 

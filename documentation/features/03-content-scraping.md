@@ -54,20 +54,25 @@ As a content administrator, I want the system to automatically collect and proce
    - Parses feed items
    - Queues articles for crawling
 
-3. **Content Extraction**
+3. **Content Extraction Phase**
    - Multiple extraction strategies:
      - Structured data (JSON-LD)
      - Common article selectors
      - Meta tag fallbacks
    - Content cleaning and normalization
+   - **Phase tracking**: Each source tracked separately through extraction
+   - **Enhanced logging**: Extraction success/failure logged per source
 
-4. **Storage**
+4. **Persistence Phase**
+   - **Two-phase approach**: Extraction and persistence are separate phases
    - Deduplication via content hash
    - Language detection and categorization
    - Source attribution
    - Processing status tracking
    - **Job linking**: Each scraped content record is linked to its originating scraping job via `job_id`
    - Transaction-based persistence for data integrity
+   - **Per-source tracking**: Each source's save results tracked individually
+   - **Accurate metrics**: Distinguishes between extracted vs. saved articles
 
 ### API Endpoints
 - **POST /api/scraper/trigger**: Start new scraping job
@@ -95,6 +100,8 @@ Jobs progress through the following statuses:
 - Isolated failures between sources
 - Error categorization and pattern analysis
 - Performance impact tracking for failed requests
+- **Crawler teardown protection**: Teardown errors logged but don't stop job
+- **Phase-specific error handling**: Extraction vs. persistence errors tracked separately
 
 ### Performance Optimizations
 - Concurrent crawling (max 3)
@@ -119,6 +126,27 @@ Jobs progress through the following statuses:
 - Content quality scoring and validation
 - Correlation tracking across request lifecycle
 - **Content traceability**: All scraped content can be traced back to its originating job for audit and debugging
+- **Enhanced metrics**: Separate tracking for extraction vs. persistence success rates
+- **Source-level visibility**: Individual source performance metrics available
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Articles Show as Extracted but Not Saved**
+   - Check persistence phase logs for database errors
+   - Look for duplicate content hash rejections
+   - Verify database connection during save phase
+
+2. **Crawler Teardown Errors**
+   - These are now non-fatal and logged separately
+   - Job continues even if teardown fails
+   - Check teardown_failure events in logs
+
+3. **Discrepancy Between Sources and Articles**
+   - Use enhanced logging to track each phase
+   - Check extraction_phase_completed vs. source_persistence_completed events
+   - Review per-source metrics in job completion logs
 
 ## Related Features
 - [Enhanced Logging System](./11-enhanced-logging.md)

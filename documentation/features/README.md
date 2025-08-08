@@ -74,6 +74,11 @@ This directory contains comprehensive documentation for all features implemented
     - Performance monitoring and analytics
     - Advanced debugging and error analysis
 
+12. **[Enhanced Logging - Phase Separation](./12-enhanced-logging.md)**
+    - Two-phase extraction and persistence tracking
+    - Accurate success/failure reporting
+    - Source-level performance metrics
+
 ## Feature Status
 
 ### ✅ Implemented
