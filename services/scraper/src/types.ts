@@ -145,6 +145,49 @@ export interface LogJobActivityParams {
   additionalData?: Record<string, any>;
 }
 
+// Enhanced source result tracking
+export interface SourceResult {
+  sourceName: string;
+  sourceId: string;
+  extractedArticles: any[]; // Articles extracted from web
+  extractionMetrics: {
+    rssItemsFound: number;
+    candidatesProcessed: number;
+    extractionAttempts: number;
+    extractionSuccesses: number;
+    extractionDuration: number;
+  };
+}
+
+// Per-source persistence result
+export interface SourcePersistenceResult {
+  sourceName: string;
+  sourceId: string;
+  savedCount: number;
+  duplicatesSkipped: number;
+  saveFailures: number;
+  articles: string[]; // Article IDs that were saved
+}
+
+// Enhanced job completion data
+export interface EnhancedJobMetrics {
+  sources: Record<string, {
+    extracted: number;
+    saved: number;
+    duplicates: number;
+    failures: number;
+    success: boolean;
+  }>;
+  totals: {
+    targetArticles: number;
+    candidatesProcessed: number;
+    extracted: number;
+    saved: number;
+    duplicates: number;
+    actualSuccessRate: number;
+  };
+}
+
 export interface ArticleFilters {
   page?: number;
   pageSize?: number;
@@ -174,8 +217,11 @@ export interface ArticleContent {
 export interface DashboardMetrics {
   jobsTriggered: number;
   successRate: number;
-  articlesScraped: number;
+  articlesScraped: number; // Will be renamed to articlesExtracted in future
+  articlesSaved: number; // New field - actual articles persisted to DB
   averageJobDuration: number;
   activeJobs: number;
   recentErrors: number;
+  extractionSuccessRate: number; // New field - extraction phase success
+  persistenceSuccessRate: number; // New field - persistence phase success
 } 

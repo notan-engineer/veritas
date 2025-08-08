@@ -1,5 +1,6 @@
 import { logJobActivity } from './database';
 import * as crypto from 'crypto';
+import { SourceResult, SourcePersistenceResult, EnhancedJobMetrics } from './types';
 
 interface HttpRequestData {
   url: string;
@@ -142,7 +143,8 @@ export class EnhancedLogger {
     });
   }
   
-  async logSourceCompleted(
+  // Renamed for clarity - logs extraction phase completion
+  async logSourceExtractionCompleted(
     jobId: string,
     sourceId: string,
     sourceName: string,
@@ -425,5 +427,125 @@ export class EnhancedLogger {
     const endUsage = process.cpuUsage(startUsage);
     const totalUsage = (endUsage.user + endUsage.system) / 1000; // microseconds to milliseconds
     return Math.min(Math.round(totalUsage), 100);
+  }
+  
+  // New methods for enhanced logging
+  
+  async logSourceExtraction(
+    jobId: string,
+    sourceId: string,
+    sourceName: string,
+    metrics: SourceResult['extractionMetrics']
+  ): Promise<void> {
+    await logJobActivity({
+      jobId,
+      sourceId,
+      level: 'info',
+      message: `Source extraction completed for ${sourceName}: ${metrics.extractionSuccesses}/${metrics.extractionAttempts} articles extracted`,
+      additionalData: {
+        event_type: 'extraction',
+        event_name: 'source_extraction_completed',
+        source_name: sourceName,
+        extraction_metrics: metrics
+      }
+    });
+  }
+  
+  async logSourcePersisted(
+    jobId: string,
+    sourceId: string,
+    sourceName: string,
+    persistence: SourcePersistenceResult
+  ): Promise<void> {
+    await logJobActivity({
+      jobId,
+      sourceId,
+      level: persistence.savedCount > 0 ? 'info' : 'warning',
+      message: `Source persistence completed for ${sourceName}: ${persistence.savedCount} saved, ${persistence.duplicatesSkipped} duplicates, ${persistence.saveFailures} failures`,
+      additionalData: {
+        event_type: 'persistence',
+        event_name: 'source_persistence_completed',
+        source_name: sourceName,
+        persistence_metrics: {
+          saved: persistence.savedCount,
+          duplicates: persistence.duplicatesSkipped,
+          failures: persistence.saveFailures,
+          success: persistence.savedCount > 0
+        }
+      }
+    });
+  }
+  
+  async logExtractionPhaseCompleted(
+    jobId: string,
+    successfulExtractions: SourceResult[],
+    extractionFailures: Record<string, string>
+  ): Promise<void> {
+    const totalExtracted = successfulExtractions.reduce((acc, sr) => acc + sr.extractedArticles.length, 0);
+    const totalSources = successfulExtractions.length + Object.keys(extractionFailures).length;
+    
+    await logJobActivity({
+      jobId,
+      level: 'info',
+      message: `Extraction phase completed: ${totalExtracted} articles extracted from ${successfulExtractions.length}/${totalSources} sources`,
+      additionalData: {
+        event_type: 'lifecycle',
+        event_name: 'extraction_phase_completed',
+        phase: 'extraction',
+        successful_sources: successfulExtractions.length,
+        failed_sources: Object.keys(extractionFailures).length,
+        total_extracted: totalExtracted,
+        extraction_failures: extractionFailures
+      }
+    });
+  }
+  
+  async logSourceExtractionFailed(
+    jobId: string,
+    sourceName: string,
+    error: any
+  ): Promise<void> {
+    await logJobActivity({
+      jobId,
+      level: 'error',
+      message: `Source extraction failed for ${sourceName}: ${error?.message || 'Unknown error'}`,
+      additionalData: {
+        event_type: 'extraction',
+        event_name: 'source_extraction_failed',
+        source_name: sourceName,
+        error: {
+          type: error?.constructor?.name || 'Unknown',
+          message: error?.message || String(error),
+          stack: error?.stack
+        }
+      }
+    });
+  }
+  
+  async logEnhancedJobCompleted(
+    jobId: string,
+    metrics: EnhancedJobMetrics,
+    durationMs: number
+  ): Promise<void> {
+    const successRate = metrics.totals.actualSuccessRate;
+    
+    await logJobActivity({
+      jobId,
+      level: 'info',
+      message: `Job completed: ${metrics.totals.saved}/${metrics.totals.targetArticles} articles saved in ${this.formatDuration(durationMs)} (${(successRate * 100).toFixed(0)}% success rate)`,
+      additionalData: {
+        event_type: 'lifecycle',
+        event_name: 'job_completed_enhanced',
+        duration_seconds: Math.round(durationMs / 1000),
+        enhanced_metrics: metrics,
+        extraction_rate: metrics.totals.candidatesProcessed > 0 
+          ? metrics.totals.extracted / metrics.totals.candidatesProcessed 
+          : 0,
+        persistence_rate: metrics.totals.extracted > 0 
+          ? metrics.totals.saved / metrics.totals.extracted 
+          : 0,
+        peak_memory_mb: process.memoryUsage().heapUsed / 1024 / 1024
+      }
+    });
   }
 }

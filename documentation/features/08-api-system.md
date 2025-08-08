@@ -59,7 +59,9 @@ As a developer, I want a well-structured API system so that I can build features
 
 4. **Monitoring & Analytics**
    - `GET /health` - Service health check
-   - `GET /api/scraper/metrics` - Performance metrics (includes database-based article counts)
+   - `GET /api/scraper/metrics` - Enhanced performance metrics
+     - Returns `DashboardMetrics` with extraction and persistence rates
+     - New fields: `articlesSaved`, `extractionSuccessRate`, `persistenceSuccessRate`
    - `GET /api/monitoring/errors` - Error statistics
    - `GET /api/monitoring/performance` - System performance
    - `GET /api/monitoring/alerts` - System alerts
@@ -113,6 +115,21 @@ interface PaginatedResponse<T> {
 }
 ```
 
+#### Dashboard Metrics Response
+```typescript
+interface DashboardMetrics {
+  jobsTriggered: number;
+  successRate: number;
+  articlesScraped: number;          // Total extracted articles
+  articlesSaved: number;            // Actually persisted to DB
+  averageJobDuration: number;
+  activeJobs: number;
+  recentErrors: number;
+  extractionSuccessRate: number;    // % of sources that extracted content
+  persistenceSuccessRate: number;   // % of extracted that were saved
+}
+```
+
 ### Error Handling
 - Consistent error format
 - Appropriate HTTP status codes
@@ -156,7 +173,7 @@ interface PaginatedResponse<T> {
    - Error scenarios
 
 ## Related Features
-- [Enhanced Logging System](./11-enhanced-logging.md)
-- [Content Scraping System](./03-content-scraping.md)
+- [Enhanced Logging System](./12-enhanced-logging.md)
+- [Content Scraping System](./04-content-scraping.md)
 - [News Feed](./01-news-feed.md)
-- [Scraper Dashboard](./04-scraper-dashboard.md) 
+- [Scraper Dashboard](./07-scraper-dashboard.md) 
