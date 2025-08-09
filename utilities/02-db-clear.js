@@ -3,16 +3,85 @@
 /**
  * Database Cleanup Utility
  * Clears all scraped content and job-related data from the database
- * Usage: node 02-db-clear.js [--confirm]
+ * Usage: 
+ *   node 02-db-clear.js [--confirm] [--production]
+ *   node 02-db-clear.js --confirm          # Clear local database
+ *   node 02-db-clear.js --confirm --production  # Clear production database
  */
 
 const { Pool } = require('pg');
+const { execSync } = require('child_process');
 require('dotenv').config({ path: '../services/scraper/.env' });
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+const isProduction = args.includes('--production') || args.includes('--prod');
+const isConfirmed = args.includes('--confirm');
+
+// Get database URL based on environment
+let connectionString;
+if (isProduction) {
+  try {
+    // Get production database URL from Railway
+    // Run from project root to ensure Railway link works
+    const path = require('path');
+    const projectRoot = path.resolve(__dirname, '..');
+    const output = execSync('railway variables --service db', { 
+      encoding: 'utf8',
+      cwd: projectRoot 
+    });
+    
+    // Handle multi-line URLs from Railway output
+    const lines = output.split('\n');
+    let url = '';
+    let foundDatabasePublicUrl = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      if (line.includes('DATABASE_PUBLIC_URL')) {
+        foundDatabasePublicUrl = true;
+        // Extract the part after the │ character, but before the last ║
+        const match = line.match(/│\s*([^║]+)/);
+        if (match) {
+          url = match[1].trim();
+        }
+      } else if (foundDatabasePublicUrl && line.includes('│') && !line.includes('─')) {
+        // This is a continuation of the DATABASE_PUBLIC_URL value
+        // Look for lines that start with ║ followed by spaces, then │
+        if (line.match(/^║\s*│/)) {
+          const match = line.match(/│\s*([^║]+)/);
+          if (match) {
+            url += match[1].trim();
+          }
+        } else {
+          // We've reached a new variable, stop collecting
+          break;
+        }
+      } else if (foundDatabasePublicUrl && line.includes('─')) {
+        // We've reached the separator line, stop collecting
+        break;
+      }
+    }
+    
+    connectionString = url;
+    
+    if (!connectionString || !connectionString.startsWith('postgresql://')) {
+      throw new Error('Could not get valid DATABASE_PUBLIC_URL from Railway');
+    }
+  } catch (error) {
+    console.error('❌ Failed to get production database URL from Railway');
+    console.error('Make sure you have Railway CLI installed and linked to the project:');
+    console.error('  railway link -p 32900e57-b721-494d-8e68-d15ac01e5c03');
+    console.error('\nError:', error.message);
+    process.exit(1);
+  }
+} else {
+  connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/veritas_local';
+}
+
 // Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/veritas_local'
-});
+const pool = new Pool({ connectionString });
 
 async function clearJobAndScrapedData() {
   const client = await pool.connect();
@@ -83,16 +152,30 @@ async function main() {
   console.log('  • All scraped content archive');
   console.log('  • All factoid-source relationships\n');
   
-  console.log('Database:', process.env.DATABASE_URL ? 'Using DATABASE_URL from .env' : 'Using local database');
+  // Show which database is being targeted
+  if (isProduction) {
+    console.log('🔴 TARGET: PRODUCTION DATABASE');
+    console.log('Database: Railway Production Database');
+    console.log('URL:', connectionString.replace(/:[^:@]+@/, ':****@')); // Hide password
+  } else {
+    console.log('🟢 TARGET: LOCAL DATABASE');
+    console.log('Database:', process.env.DATABASE_URL ? 'Using DATABASE_URL from .env' : 'Using default local database');
+  }
   console.log('\nThis action cannot be undone!\n');
   
-  if (process.argv[2] === '--confirm') {
+  if (isConfirmed) {
     await clearJobAndScrapedData();
     await pool.end();
     process.exit(0);
   } else {
     console.log('To confirm deletion, run:');
-    console.log('  node 02-db-clear.js --confirm\n');
+    if (isProduction) {
+      console.log('  node 02-db-clear.js --confirm --production\n');
+    } else {
+      console.log('  node 02-db-clear.js --confirm\n');
+      console.log('For production database, add --production flag:');
+      console.log('  node 02-db-clear.js --confirm --production\n');
+    }
     await pool.end();
     process.exit(1);
   }
