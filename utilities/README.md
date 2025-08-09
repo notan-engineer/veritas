@@ -7,7 +7,7 @@ A comprehensive suite of testing and debugging tools for the Veritas project. Al
 | File | Purpose | Usage |
 |------|---------|-------|
 | `01-db-setup.ps1` | Database setup & Railway import | `.\01-db-setup.ps1` |
-| `02-db-clear.js` | Clear all scraped data | `node 02-db-clear.js --confirm` |
+| `02-db-clear.js` | Clear all scraped data | `node 02-db-clear.js --confirm [--production]` |
 | `03-test-scraper.js` | End-to-end scraper testing | `node 03-test-scraper.js [source] [count]` |
 | `04-test-api.js` | Simple API test server | `node 04-test-api.js [port]` |
 | `05-test-db-mapping.js` | Test snake_case/camelCase mapping | `node 05-test-db-mapping.js` |
@@ -68,7 +68,7 @@ PowerShell script for database initialization and Railway data import.
 ---
 
 ### 02-db-clear.js - Database Cleanup
-Safely removes all scraped content and job data while preserving sources.
+Safely removes all scraped content and job data while preserving sources. Supports both local and production databases.
 
 **What it clears:**
 - All scraping jobs
@@ -84,12 +84,24 @@ Safely removes all scraped content and job data while preserving sources.
 
 **Usage:**
 ```bash
-# Preview what will be deleted
+# Preview what will be deleted (local)
 node 02-db-clear.js
 
-# Confirm deletion
+# Clear local database
 node 02-db-clear.js --confirm
+
+# Preview what will be deleted (production)
+node 02-db-clear.js --production
+
+# Clear production database
+node 02-db-clear.js --confirm --production
+# or
+node 02-db-clear.js --confirm --prod
 ```
+
+**Requirements for production:**
+- Railway CLI installed and authenticated
+- Project linked: `railway link -p 32900e57-b721-494d-8e68-d15ac01e5c03`
 
 ---
 
