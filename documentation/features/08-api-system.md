@@ -173,7 +173,7 @@ interface DashboardMetrics {
    - Error scenarios
 
 ## Related Features
-- [Enhanced Logging System](./12-enhanced-logging.md)
-- [Content Scraping System](./04-content-scraping.md)
+- [Enhanced Logging System](./11-enhanced-logging.md)
+- [Content Scraping System](./03-content-scraping.md)
 - [News Feed](./01-news-feed.md)
-- [Scraper Dashboard](./07-scraper-dashboard.md) 
+- [Scraper Dashboard](./04-scraper-dashboard.md) 

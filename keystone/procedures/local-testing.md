@@ -4,9 +4,9 @@
 Local testing using PostgreSQL copy of production data for safe development.
 
 ## Quick Start
-1. Run setup script: `local/testing/setup-local-db.ps1`
+1. Run setup script: `utilities/01-db-setup.ps1`
 2. Create `.env` in service directory (see template below)
-3. Test with: `node test-local-scraping.js`
+3. Test with: `node utilities/03-test-scraper.js`
 
 ## Environment Setup
 
@@ -25,19 +25,20 @@ PORT=3001
 - **NEVER commit .env files**
 - Use local DB for all testing
 - Clear test data between sessions
-- See `local/testing/LOCAL-TESTING-GUIDE.md` for full details
+- See `utilities/README.md` for complete utility documentation
 
 ## Testing Workflow
 
 ### 1. Setup Local Database
 ```powershell
 # Run PowerShell script to create local database copy
-.\local\testing\setup-local-db.ps1
+.\utilities\01-db-setup.ps1
 
 # This will:
 # - Create local PostgreSQL database
-# - Import production schema
-# - Set up test data
+# - Export and import Railway production data
+# - Verify data integrity
+# - Provide menu-driven options for different scenarios
 ```
 
 ### 2. Configure Environment
@@ -55,7 +56,11 @@ npm run dev
 
 # For scraper service
 cd services/scraper
-node test-local-scraping.js
+npm run dev
+
+# Then test with utilities
+cd ../../utilities
+node 03-test-scraper.js
 ```
 
 ### 4. Clean Up
@@ -82,11 +87,12 @@ DELETE FROM factoids WHERE status = 'draft';
 5. No risk to production
 
 ### Scraper Testing
-1. Set up local database
+1. Set up local database with `utilities/01-db-setup.ps1`
 2. Configure scraper .env file
-3. Run test-local-scraping.js
-4. Verify content insertion
-5. Check error handling
+3. Start scraper: `cd services/scraper && npm run dev`
+4. Run tests: `node utilities/03-test-scraper.js`
+5. Analyze logs: `node utilities/06-test-logs.js <job-id>`
+6. Verify with API: `node utilities/04-test-api.js`
 
 ### Database Changes
 1. Test migration on local DB first

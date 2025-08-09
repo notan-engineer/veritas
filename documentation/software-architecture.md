@@ -341,6 +341,17 @@ PORT=${{PORT}}              # Automatically set by Railway
 - **Job Management**: Visual job tracking and cancellation capabilities
 - **Source Testing**: RSS feed validation and source health checks
 
+### Testing Infrastructure
+Located in `utilities/` directory, providing comprehensive testing and debugging tools:
+- **Database Management**: `01-db-setup.ps1` for local DB setup with Railway data import
+- **Data Cleanup**: `02-db-clear.js` for clearing test data while preserving configuration
+- **End-to-End Testing**: `03-test-scraper.js` for complete scraping workflow validation
+- **API Testing**: `04-test-api.js` standalone test server for API endpoint verification
+- **Field Mapping**: `05-test-db-mapping.js` for snake_case/camelCase conversion testing
+- **Log Analysis**: `06-test-logs.js` for detailed job log analysis with metrics
+
+All utilities follow numbered naming convention and support both interactive and non-interactive modes.
+
 ### Build Validation
 - **UI Service**: TypeScript compiler, ESLint, and build verification
 - **Scraper Service**: TypeScript compiler and build verification

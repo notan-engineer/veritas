@@ -119,4 +119,45 @@ try {
 - [ ] Tests written before implementation
 - [ ] Tables used for data lists
 - [ ] Client-side sorting implemented
-- [ ] Modals for focused interactions 
+- [ ] Modals for focused interactions
+
+## 11. Testing & Utility Scripts
+
+### Utility Script Standards
+- **Location**: All utilities in `utilities/` directory
+- **Naming**: `XX-purpose.js` format (e.g., `01-db-setup.ps1`, `03-test-scraper.js`)
+- **Documentation**: Required header with usage instructions
+- **Dependencies**: Minimal, use standard Node.js packages
+- **Modes**: Support both interactive and non-interactive execution
+
+### Creating New Utilities
+```javascript
+#!/usr/bin/env node
+
+/**
+ * [Tool Name]
+ * [Brief description]
+ * Usage: node XX-purpose.js [args]
+ */
+
+// Standard imports
+const { Pool } = require('pg');
+require('dotenv').config({ path: '../services/scraper/.env' });
+
+// Tool implementation
+async function main() {
+  // Implementation
+}
+
+// Execute with error handling
+main().catch(error => {
+  console.error('Error:', error.message);
+  process.exit(1);
+});
+```
+
+### Consolidation Principles
+- Combine redundant functionality into single utilities
+- Prefer configuration options over multiple similar scripts
+- Use clear, descriptive names that indicate purpose
+- Maintain backwards compatibility when consolidating 

@@ -40,10 +40,13 @@ yarn-error.log*
 # NOTE: schema.sql is excluded as it contains only schema definitions, not data
 *.sql
 !database/schema.sql
+!database/migrations/*.sql
 *.dump
 *.backup
 *.pgdump
 veritas_prod_dump.sql
+utilities/*.sql
+utilities/.env*
 
 # Temporary files
 *.tmp

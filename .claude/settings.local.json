@@ -53,7 +53,8 @@
       "Bash(start cmd /c \"cd services/ui && npm run dev\")",
       "Bash(timeout 5 npm run dev)",
       "mcp__git__git_status",
-      "mcp__git__git_set_working_dir"
+      "mcp__git__git_set_working_dir",
+      "Bash(dir)"
     ],
     "deny": []
   }

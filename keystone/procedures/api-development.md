@@ -76,10 +76,13 @@ export async function POST(request: NextRequest) {
 
 ## Testing
 1. Test with browser/Postman: `http://localhost:3000/api/[endpoint]`
-2. Verify response format matches expectations
-3. Test error cases (404, 400, 500)
-4. Check TypeScript compilation: `npm run build`
-5. Verify database queries work correctly
+2. Use test API server for isolated testing: `node utilities/04-test-api.js`
+3. Test scraper integration: `node utilities/03-test-scraper.js`
+4. Verify response format matches expectations
+5. Test error cases (404, 400, 500)
+6. Check TypeScript compilation: `npm run build`
+7. Verify database queries work correctly
+8. Analyze logs for failures: `node utilities/06-test-logs.js <job-id>`
 
 ## Common Issues
 - **CORS errors**: Check Next.js CORS configuration

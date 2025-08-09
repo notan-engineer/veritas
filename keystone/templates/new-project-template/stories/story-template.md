@@ -37,6 +37,14 @@ Describe how to test this story is complete:
 2. [Expected result]
 3. [Validation criteria]
 
+### Testing Utilities
+Consider using existing utilities:
+- [ ] `utilities/01-db-setup.ps1` - Setup fresh test database
+- [ ] `utilities/03-test-scraper.js` - Test scraper functionality
+- [ ] `utilities/04-test-api.js` - Test API endpoints
+- [ ] `utilities/06-test-logs.js` - Analyze job logs for debugging
+- [ ] Create story-specific utility if needed (see `keystone/procedures/utility-creation.md`)
+
 ## Dependencies
 - Previous stories: [List any prerequisite stories]
 - External dependencies: [APIs, libraries, etc.]

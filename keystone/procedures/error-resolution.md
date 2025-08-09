@@ -106,4 +106,28 @@ Fix: Resolve immediate issue
 - [ ] Fix only the immediate issue
 - [ ] Test the fix works
 - [ ] Don't expand scope during debugging
-- [ ] Complete → New session 
+- [ ] Complete → New session
+
+## Testing & Debugging Tools
+
+### Utility Scripts for Error Diagnosis
+```bash
+# Analyze failed job logs
+node utilities/06-test-logs.js <job-id> --level=error
+
+# Test API endpoints directly
+node utilities/04-test-api.js
+curl http://localhost:3001/api/stats
+
+# Verify database field mappings
+node utilities/05-test-db-mapping.js
+
+# Test scraper end-to-end
+node utilities/03-test-scraper.js "BBC News" 1
+```
+
+### Common Debugging Workflows
+- **Scraper failures**: Use `06-test-logs.js` with `--timeline --metrics`
+- **API errors**: Start `04-test-api.js` for isolated testing
+- **Database issues**: Run `05-test-db-mapping.js` to verify mappings
+- **Clear test data**: Use `02-db-clear.js --confirm` for fresh start 

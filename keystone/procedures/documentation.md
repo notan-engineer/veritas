@@ -17,6 +17,7 @@ Based on project scope, may include:
 - [ ] Execute updates systematically
 - [ ] Verify cross-references and completeness
 - [ ] Create ADRs for significant decisions
+- [ ] Update changelog with project summary
 
 ## Interactive Information Gathering
 
@@ -97,6 +98,11 @@ The AI will present:
 **API Documentation**
 - `documentation/features/08-api-system.md` - Add endpoints: [list]
 - Update response examples for [changes]
+
+**Utility Scripts Documentation** (if new utilities created)
+- `utilities/README.md` - Add new utilities to quick reference table
+- `utilities/XX-purpose.js` - Ensure file header has usage docs
+- Update relevant procedures to reference new utilities
 
 **Architecture Documentation**
 - `documentation/software-architecture.md` - Update [components/services]
@@ -207,6 +213,55 @@ REQUEST: "Documentation updates complete. Please verify:
 1. Run any build commands to ensure no breaks
 2. Review the updated documentation
 3. Confirm all project changes are captured"
+
+### Phase 7: Changelog Update
+
+After all documentation is complete, update the project changelog:
+
+1. **Location**: `documentation/changelog.md`
+   - Add new entry at the top (reverse chronological order)
+   - Get current date using `date` command in terminal
+
+2. **Changelog Entry Structure**
+   
+   The changelog should contain only entries, no structural documentation. Each entry follows this format:
+   
+   ```markdown
+   ### [Date from `date` command] - [Change Title]
+   **Summary**: [1-2 sentence overview accessible to non-technical users]
+   
+   **Key Features**:
+   - [Feature 1]
+   - [Feature 2]  
+   - [Feature 3]
+   
+   **Technical Details**:
+   - [Brief technical context]
+   - [Architecture changes if any]
+   - [Performance improvements if any]
+   
+   **Related**:
+   - Commits: [commit hashes from git log]
+   - PRs: [PR numbers if applicable]
+   - Issues: [Issue numbers if applicable]
+   ```
+
+3. **Content Guidelines**
+   - **Date**: Use system `date` command for accuracy (e.g., "August 9, 2025")
+   - **Title**: Pull from project/feature name
+   - **Summary**: Write in non-technical language
+   - **Features**: List user-facing changes
+   - **Technical**: Brief context for developers
+   - **Related**: Actual commits/PRs from project
+
+4. **Verification Checklist**
+   - [ ] Date obtained via `date` command
+   - [ ] Entry is readable by non-technical users
+   - [ ] All major changes are represented
+   - [ ] Metadata is accurate
+   - [ ] Entry added at top (newest first)
+
+REQUEST: "Changelog updated with project summary. This completes the documentation procedure."
 
 ## Common Patterns
 
