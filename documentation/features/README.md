@@ -70,14 +70,10 @@ This directory contains comprehensive documentation for all features implemented
     - Error handling and validation
 
 11. **[Enhanced Logging System](./11-enhanced-logging.md)**
-    - JSONB-structured logging with correlation tracking
-    - Performance monitoring and analytics
-    - Advanced debugging and error analysis
-
-12. **[Enhanced Logging - Phase Separation](./12-enhanced-logging.md)**
     - Two-phase extraction and persistence tracking
-    - Accurate success/failure reporting
-    - Source-level performance metrics
+    - JSONB-structured logging with correlation tracking
+    - Performance monitoring and quality scoring
+    - Advanced debugging with correlation IDs
 
 ## Feature Status
 

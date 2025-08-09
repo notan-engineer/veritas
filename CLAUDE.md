@@ -16,7 +16,7 @@ A mandatory development methodology for all work in this project. Keystone provi
   - `documentation/decisions/` for past ADRs (Architecture Decision Records)
 - **Creating new projects** → Use `keystone/templates/new-project-template/`
 - **Planning features** → Create in `projects/` with user stories
-- **Local development** → Use `local/` for testing (git-ignored)
+- **Local development & utilities** → Use `utilities/` for testing scripts and tools
 - **Understanding features** → See `documentation/features/` for specifications
 
 ## Commands
@@ -59,6 +59,24 @@ npm run clean             # Clean build artifacts
 # Run migrations from database directory
 cd database
 # Apply migrations manually as needed
+```
+
+### Testing & Utility Scripts
+```bash
+# All utilities in utilities/ directory
+cd utilities
+
+# Database setup and import
+.\01-db-setup.ps1        # Setup local DB with Railway data
+
+# Testing utilities
+node 02-db-clear.js       # Clear scraped data (use --confirm)
+node 03-test-scraper.js   # End-to-end scraper test
+node 04-test-api.js       # Start test API server
+node 05-test-db-mapping.js # Test snake_case/camelCase mapping
+node 06-test-logs.js <id> # Analyze job logs
+
+# See utilities/README.md for detailed usage
 ```
 
 ## High-Level Architecture

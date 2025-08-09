@@ -32,7 +32,14 @@ COMMIT;
 
 ### 2. Execute Migration
 ```bash
-# Test on development first
+# Test on local database first
+psql veritas_local -f migration.sql
+
+# Use utilities for setup and testing
+utilities/01-db-setup.ps1  # Setup/refresh local DB
+utilities/05-test-db-mapping.js  # Verify field mappings
+
+# Then apply to production
 psql "postgresql://postgres:PASSWORD@mainline.proxy.rlwy.net:PORT/railway" -f migration.sql
 ```
 
@@ -76,11 +83,13 @@ export async function getAllFactoids() {
 ```
 
 ## Testing Checklist
-- [ ] Migration runs without errors
+- [ ] Migration runs without errors on local DB
 - [ ] Rollback script works if needed
 - [ ] TypeScript interfaces updated
-- [ ] API endpoints return correct data
+- [ ] Field mappings verified with `utilities/05-test-db-mapping.js`
+- [ ] API endpoints tested with `utilities/04-test-api.js`
 - [ ] No breaking changes to existing code
+- [ ] Clear test data with `utilities/02-db-clear.js` between tests
 
 ## Enum Types
 - Use PostgreSQL enums for fixed value sets

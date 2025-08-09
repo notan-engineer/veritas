@@ -86,6 +86,27 @@ Use special comments for future AI understanding:
 ## 8. External Collaboration Support
 When users need to work with external LLMs or get help outside this environment:
 - Suggest using knowledge export scripts in `keystone/knowledge-export/`
-- For requirements refinement: `export-consultation-context.js`
+- For requirements refinement: `export-requirements-refinement-context.js`
 - For implementation planning: `export-planning-context.js`
+- For general context: `export-general-context.js`
 - Never include full project dumps in responses
+
+## 9. Utility Script Creation
+When creating testing tools or utilities:
+- **Location**: Always place in `utilities/` directory
+- **Naming**: Use `XX-purpose.js` format (numbered by typical use order)
+- **Consolidation**: Check for existing utilities before creating new ones
+- **Documentation**: Include usage instructions in file header
+- **README**: Update `utilities/README.md` with new tools
+
+### When to Create New Utilities
+- Repetitive testing tasks that could be automated
+- Complex debugging workflows needing simplification
+- Data manipulation or analysis tools
+- Integration testing between services
+
+### When to Use Existing Utilities
+- Database setup: Use `01-db-setup.ps1`
+- Data cleanup: Use `02-db-clear.js`
+- API testing: Use `04-test-api.js`
+- Log analysis: Use `06-test-logs.js`
