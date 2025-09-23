@@ -85,7 +85,11 @@
       "Bash(git stash:*)",
       "Bash(git branch:*)",
       "Bash(git reset:*)",
-      "mcp__git__git_log"
+      "mcp__git__git_log",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "mcp__git__git_add",
+      "mcp__git__git_commit"
     ],
     "deny": []
   },

@@ -220,8 +220,8 @@ services/scraper/
 │   ├── database.ts             # Enhanced database operations with JSONB support
 │   ├── log-queries.ts          # Structured log query utilities
 │   ├── types.ts                # Enhanced interfaces with source tracking types
-│   ├── utils.ts                # Enhanced extraction with paragraph preservation
-│   ├── extraction-recorder.ts  # Real-time extraction tracking for debugging
+│   ├── utils.ts                # Multi-element extraction with fallback cascade
+│   ├── extraction-recorder.ts  # Multi-element aggregation and debugging
 │   └── api-server.ts           # Express server with enhanced metrics endpoints
 ├── package.json                # Crawlee, Playwright, Express dependencies
 └── tsconfig.json               # TypeScript configuration
