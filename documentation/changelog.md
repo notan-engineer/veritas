@@ -1,5 +1,26 @@
 # Changelog
 
+### September 23, 2025 - Crawlee Storage Fix for Production
+**Summary**: Fixed critical scraper failure in production by configuring Crawlee to use in-memory storage in containerized environments, resolving file system errors in Railway deployment.
+
+**Key Features**:
+- Automatic storage mode detection based on environment
+- In-memory storage for production (containerized environments)
+- File system storage preserved for local development
+- Zero configuration required after deployment
+
+**Technical Details**:
+- Identified root cause: Crawlee's file system storage incompatible with ephemeral containers
+- Implemented environment-aware configuration using NODE_ENV variable
+- Added early configuration in api-server.ts before Crawlee imports
+- Created test utility to verify storage modes in both environments
+- Documented decision in ADR-004
+
+**Related**:
+- Commits: b15b6bf
+- Issues: Production scraper returning 0 articles vs 90 locally
+- ADR: ADR-004-crawlee-storage-strategy.md
+
 ### September 23, 2025 - Content Extraction Enhancement & Project Cleanup
 **Summary**: Major improvements to content extraction quality with multi-strategy approach, paragraph preservation, and safe structural filtering for promotional content. Includes comprehensive project cleanup and new debugging utilities.
 
