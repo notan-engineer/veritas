@@ -91,6 +91,7 @@ export interface ErrorResponse {
 export interface TriggerScrapingRequest {
   sources: string[];      // Source names from database
   maxArticles: number;    // Articles per source
+  enableTracking?: boolean; // Enable extraction tracking for debugging
 }
 
 export interface TriggerScrapingResponse {

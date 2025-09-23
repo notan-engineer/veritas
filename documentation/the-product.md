@@ -77,10 +77,13 @@ Each factoid contains:
 
 ### Content Aggregation System
 - **Automated Collection**: RSS feed monitoring and article scraping
-- **Multi-Source Integration**: CNN, Fox News, and custom RSS feeds
+- **Multi-Source Integration**: BBC, CNN, Fox News, Guardian, NY Times, WSJ, and custom RSS feeds
+- **Advanced Extraction**: Multi-strategy extraction with paragraph preservation
 - **Real-time Processing**: Automated extraction and classification
 - **Duplicate Detection**: Content hash-based deduplication
+- **Structural Filtering**: Removes promotional content while preserving articles
 - **Content Archival**: Automated cleanup and compression
+- **Extraction Tracking**: Optional real-time debugging for quality assurance
 
 ### Source Management
 - **Dynamic Configuration**: Add, edit, and remove content sources

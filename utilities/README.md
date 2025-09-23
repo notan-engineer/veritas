@@ -12,6 +12,17 @@ A comprehensive suite of testing and debugging tools for the Veritas project. Al
 | `04-test-api.js` | Simple API test server | `node 04-test-api.js [port]` |
 | `05-test-db-mapping.js` | Test snake_case/camelCase mapping | `node 05-test-db-mapping.js` |
 | `06-test-logs.js` | Analyze job logs | `node 06-test-logs.js <jobId> [options]` |
+| `07-extraction-analyzer.js` | Scraper extraction debugging with HTML export | `node 07-extraction-analyzer.js [source] [output.html]` |
+| `08-analyze-all-sources.js` | Batch analyze all sources | `node 08-analyze-all-sources.js` |
+| `09-e2e-extraction-test.js` | E2E extraction quality test | `node 09-e2e-extraction-test.js` |
+| `10-test-spacing.js` | Validate paragraph spacing | `node 10-test-spacing.js` |
+| `11-validate-extraction.js` | Validate content preservation | `node 11-validate-extraction.js` |
+
+**Note:** For advanced debugging scenarios, consider using **Playwright MCP** through Claude Code for:
+- Visual site structure analysis
+- JavaScript-heavy content debugging  
+- Dynamic content extraction testing
+- Cross-browser compatibility verification
 
 ## 🚀 Getting Started
 
@@ -213,6 +224,144 @@ node 06-test-logs.js abc-123 --timeline --metrics
 - `--timeline`: Show job lifecycle events
 - `--metrics`: Show performance metrics
 
+---
+
+### 07-extraction-analyzer.js - Extraction Debug Report Generator
+Quick and simple tool that performs real scraping and exports a comprehensive HTML report for debugging extraction issues.
+
+**Features:**
+- Performs actual article scraping via RSS feeds
+- Generates self-contained HTML report (no external dependencies)
+- Side-by-side view of raw HTML source and extracted content
+- Shows which extraction method succeeded (JSON-LD, Selectors, Fallback)
+- Displays all selector matches and misses
+- Visual article preview using clean formatting
+- Exports everything to a single HTML file for easy sharing
+
+**Usage:**
+```bash
+# Interactive mode - select source from menu
+node 07-extraction-analyzer.js
+
+# Analyze specific source
+node 07-extraction-analyzer.js "BBC News"
+
+# Custom output file
+node 07-extraction-analyzer.js "BBC News" debug-report.html
+```
+
+**What it does:**
+1. Fetches RSS feed from selected source
+2. Scrapes first 3 articles from the feed
+3. Captures raw HTML and extraction results for each
+4. Generates a comprehensive HTML report with:
+   - Side-by-side source HTML and extracted content
+   - Extraction method details (JSON-LD, Selectors, Fallback)
+   - Selector analysis showing all matches/misses
+   - Clean article preview with formatting
+   - Navigation between multiple articles
+
+**Output:**
+- Self-contained HTML file (no external dependencies)
+- Opens directly in any browser
+- Includes all styling and interactivity
+- Easy to share for debugging collaboration
+
+**Best for:**
+- Debugging extraction failures
+- Understanding which selectors are working
+- Identifying site structure changes
+- Fine-tuning extraction strategies
+- Sharing debug information with team
+
+---
+
+### 08-analyze-all-sources.js - Batch Source Analysis
+Runs extraction analyzer on all configured news sources for comprehensive testing.
+
+**Features:**
+- Analyzes all sources automatically
+- Generates individual reports per source
+- Provides summary of successes/failures
+- Useful for regression testing after changes
+
+**Usage:**
+```bash
+# Analyze all sources (3 articles each)
+node 08-analyze-all-sources.js
+```
+
+**Output:**
+- Multiple HTML reports in `utility-output/`
+- Summary statistics for all sources
+- Identifies sources with issues
+
+---
+
+### 09-e2e-extraction-test.js - End-to-End Extraction Test
+Comprehensive E2E testing to validate extraction quality across all sources.
+
+**Features:**
+- Tests content extraction completeness
+- Validates paragraph spacing preservation
+- Checks content quality metrics
+- Identifies potential extraction issues
+
+**Usage:**
+```bash
+# Run E2E tests on all sources
+node 09-e2e-extraction-test.js
+```
+
+**Output:**
+- Console output with detailed metrics per source
+- Quality checks (content length, paragraph count)
+- Warnings for potential issues
+
+---
+
+### 10-test-spacing.js - Paragraph Spacing Validator
+Validates that paragraph spacing (triple newlines) is working correctly across sources.
+
+**Features:**
+- Tests paragraph separation logic
+- Validates spacing preservation
+- Checks for spacing consistency
+- Quick validation after code changes
+
+**Usage:**
+```bash
+# Test paragraph spacing across all sources
+node 10-test-spacing.js
+```
+
+**Output:**
+- Spacing analysis per source
+- Success/failure indicators
+- Sample paragraph output with visual spacing
+
+---
+
+### 11-validate-extraction.js - Content Preservation Validator
+Ensures content filtering doesn't accidentally remove legitimate article content.
+
+**Features:**
+- Validates filtering safety
+- Checks for false positives
+- Tests across multiple sources
+- Ensures content preservation
+
+**Usage:**
+```bash
+# Validate extraction doesn't lose content
+node 11-validate-extraction.js
+```
+
+**Output:**
+- Safety analysis per source
+- Risk assessment for filtering
+- Confirmation of content preservation
+
 ## 🔧 Common Workflows
 
 ### Complete Local Testing Setup
@@ -225,11 +374,69 @@ cd services/scraper
 npm run dev
 
 # 3. Run scraper test
-cd ../../testing
+cd ../../utilities
 node 03-test-scraper.js
 
 # 4. Analyze results
 node 06-test-logs.js <job-id-from-test>
+```
+
+### Extraction Quality Testing Workflow
+```bash
+# Test extraction on all sources
+node 08-analyze-all-sources.js
+
+# Run comprehensive E2E test
+node 09-e2e-extraction-test.js
+
+# Validate paragraph spacing
+node 10-test-spacing.js
+
+# Ensure no content is lost
+node 11-validate-extraction.js
+
+# Generate detailed report for specific source
+node 07-extraction-analyzer.js "Fox News"
+```
+
+### Quick Validation After Code Changes
+```bash
+# After modifying extraction logic:
+cd services/scraper
+npm run rebuild
+
+# Test extraction quality
+cd ../../utilities
+node 10-test-spacing.js
+node 11-validate-extraction.js
+
+# If issues found, debug specific source
+node 07-extraction-analyzer.js "BBC News" debug.html
+```
+
+### Comprehensive Testing Before Deploy
+```bash
+# 1. Clear and rebuild
+cd services/scraper
+npm run rebuild
+
+# 2. Run all extraction tests
+cd ../../utilities
+node 09-e2e-extraction-test.js
+
+# 3. Generate analysis reports
+node 08-analyze-all-sources.js
+
+# 4. Review generated HTML reports in utility-output/
+```
+
+### Database Cleanup Workflow
+```bash
+# Clear all scraped content (preserves sources)
+node 02-db-clear.js --confirm
+
+# For production (requires confirmation)
+node 02-db-clear.js --production --confirm
 ```
 
 ### Debug Failed Scraping Job
@@ -242,6 +449,28 @@ node 06-test-logs.js <job-id> --timeline
 
 # 3. View performance metrics
 node 06-test-logs.js <job-id> --metrics
+
+# 4. Generate extraction debug report
+node 07-extraction-analyzer.js "Source Name"
+# Open generated HTML file in browser
+```
+
+### Debug Content Extraction Issues
+```bash
+# 1. Interactive mode - select source from menu
+node 07-extraction-analyzer.js
+
+# 2. Analyze specific source directly
+node 07-extraction-analyzer.js "BBC News"
+
+# 3. Custom output file
+node 07-extraction-analyzer.js "BBC News" bbc-debug.html
+
+# 4. Open generated HTML report:
+#    - Side-by-side source HTML and extracted content
+#    - Extraction method details (JSON-LD, Selectors, Fallback)
+#    - Selector analysis showing what matched
+#    - Visual highlighting of extracted sections
 ```
 
 ### Reset and Start Fresh

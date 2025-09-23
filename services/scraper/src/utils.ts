@@ -1,9 +1,16 @@
 import { CheerioAPI } from 'cheerio';
 import * as crypto from 'crypto';
 import { ArticleContent } from './types';
+import { ExtractionRecorder, ExtractionTrace } from './extraction-recorder';
 
-// Content extraction with multiple strategies
-export function extractArticleContent($: CheerioAPI, url: string): ArticleContent {
+// Extended type for extraction with optional traces
+export interface ArticleContentWithTraces extends ArticleContent {
+  traces?: ExtractionTrace[];
+}
+
+// Content extraction with multiple strategies and optional tracking
+export function extractArticleContent($: CheerioAPI, url: string, enableTracking: boolean = false): ArticleContentWithTraces {
+  const recorder = new ExtractionRecorder(enableTracking);
   const strategies = [
     // 1. Structured data (JSON-LD)
     () => {
@@ -13,6 +20,10 @@ export function extractArticleContent($: CheerioAPI, url: string): ArticleConten
         try {
           const data = JSON.parse(script.text());
           if (data['@type'] === 'NewsArticle' || data['@type'] === 'Article') {
+            // Record JSON-LD extraction if tracking is enabled
+            if (recorder.isEnabled()) {
+              recorder.recordJsonLd(`script[type="application/ld+json"]:eq(${i})`, 'json-ld', data);
+            }
             return {
               title: data.headline || '',
               content: data.articleBody || '',
@@ -29,45 +40,72 @@ export function extractArticleContent($: CheerioAPI, url: string): ArticleConten
     
     // 2. Common article selectors
     () => {
-      const title = $('h1').first().text().trim() || 
-                   $('meta[property="og:title"]').attr('content') || 
+      // Try title selectors in order
+      const title = recorder.text($, 'h1', 'title') ||
+                   recorder.attr($, 'meta[property="og:title"]', 'content', 'title') ||
                    '';
-      
-      const content = $('article').text().trim() || 
-                     $('.article-content').text().trim() || 
-                     $('.story-body').text().trim() || 
-                     $('.entry-content').text().trim() ||
-                     $('.post-content').text().trim() ||
-                     $('main').text().trim() ||
-                     '';
-      
-      const author = $('.author').text().trim() || 
-                    $('.by-author').text().trim() ||
-                    $('.article-author').text().trim() ||
-                    $('meta[name="author"]').attr('content') || 
+
+      // Try content selectors with improved extraction
+      let content = '';
+      const contentSelectors = [
+        // More specific selectors first
+        '[itemprop="articleBody"]',
+        'article [class*="body"]:not([class*="meta"])',
+        'article [class*="content"]:not([class*="header"])',
+        'main [class*="story-body"]',
+        '.article-text',
+        '.story-content',
+        // BBC specific - Try multiple BBC selectors
+        '[data-component="text-block"]',
+        '[data-testid="article-body"]',
+        'div[class*="Text-sc"]', // BBC's styled components pattern
+        'article div[class*="Paragraph"]',
+        // NYTimes specific
+        'section[name="articleBody"]',
+        // Guardian specific
+        '.content__article-body',
+        // General fallbacks
+        'article', '.article-content', '.story-body',
+        '.entry-content', '.post-content', 'main'
+      ];
+
+      for (const selector of contentSelectors) {
+        const extracted = recorder.extractContent($, selector, 'content');
+        if (extracted && extracted.length > 100) {
+          content = extracted;
+          break;
+        }
+      }
+
+      // Try author selectors
+      const author = recorder.text($, '.author', 'author') ||
+                    recorder.text($, '.by-author', 'author') ||
+                    recorder.text($, '.article-author', 'author') ||
+                    recorder.attr($, 'meta[name="author"]', 'content', 'author') ||
                     null;
-      
-      const date = $('time').attr('datetime') || 
-                  $('.date').text().trim() ||
-                  $('.published').text().trim() ||
-                  $('meta[property="article:published_time"]').attr('content') || 
+
+      // Try date selectors
+      const date = recorder.attr($, 'time', 'datetime', 'date') ||
+                  recorder.text($, '.date', 'date') ||
+                  recorder.text($, '.published', 'date') ||
+                  recorder.attr($, 'meta[property="article:published_time"]', 'content', 'date') ||
                   null;
-      
+
       return { title, content, author, date };
     },
     
     // 3. Fallback to meta tags
     () => ({
-      title: $('meta[property="og:title"]').attr('content') || 
-             $('meta[name="twitter:title"]').attr('content') ||
-             $('title').text().trim() || 
+      title: recorder.attr($, 'meta[property="og:title"]', 'content', 'title') ||
+             recorder.attr($, 'meta[name="twitter:title"]', 'content', 'title') ||
+             recorder.text($, 'title', 'title') ||
              '',
-      content: $('meta[property="og:description"]').attr('content') || 
-              $('meta[name="description"]').attr('content') ||
-              $('meta[name="twitter:description"]').attr('content') ||
+      content: recorder.attr($, 'meta[property="og:description"]', 'content', 'content') ||
+              recorder.attr($, 'meta[name="description"]', 'content', 'content') ||
+              recorder.attr($, 'meta[name="twitter:description"]', 'content', 'content') ||
               '',
-      author: $('meta[name="author"]').attr('content') || null,
-      date: $('meta[property="article:published_time"]').attr('content') || null
+      author: recorder.attr($, 'meta[name="author"]', 'content', 'author') || null,
+      date: recorder.attr($, 'meta[property="article:published_time"]', 'content', 'date') || null
     })
   ];
   
@@ -75,30 +113,53 @@ export function extractArticleContent($: CheerioAPI, url: string): ArticleConten
     try {
       const result = strategy();
       if (result && result.content && result.content.length > 100) {
-        // Clean up the content
-        result.content = result.content
-          .replace(/\s+/g, ' ')
-          .replace(/\n{3,}/g, '\n\n')
-          .trim();
+        // Preserve paragraph structure while cleaning
+        const isHtml = result.content.includes('<') || result.content.includes('&');
+
+        if (isHtml) {
+          // Load content as HTML and extract structured text
+          const $temp = $.load(result.content);
+          result.content = preserveContentStructure($temp.html() || result.content, $);
+        } else if (!result.content.includes('\n\n')) {
+          // If no paragraph breaks exist, try to add them intelligently
+          result.content = preserveContentStructure(result.content, $);
+        } else {
+          // Already has paragraph structure, just clean
+          result.content = result.content
+            .replace(/\r\n/g, '\n')
+            .replace(/\n{4,}/g, '\n\n\n')  // Max 3 newlines (one empty line)
+            .trim();
+        }
+
+        // Add traces if tracking is enabled
+        if (enableTracking) {
+          return { ...result, traces: recorder.getTraces() };
+        }
         return result;
       }
     } catch (e) {
       // Try next strategy
     }
   }
-  
+
   // Last resort - get raw text
   const bodyText = $('body').text()
     .replace(/\s+/g, ' ')
     .trim()
     .substring(0, 5000);
-  
-  return {
-    title: $('title').text().trim() || 'Untitled',
+
+  const fallbackResult = {
+    title: recorder.text($, 'title', 'title') || 'Untitled',
     content: bodyText || 'No content extracted',
     author: null,
     date: null
   };
+
+  // Add traces if tracking is enabled
+  if (enableTracking) {
+    return { ...fallbackResult, traces: recorder.getTraces() };
+  }
+  return fallbackResult;
 }
 
 // Language detection
@@ -175,6 +236,96 @@ export function generateContentHash(title: string, content: string): string {
   const combined = `${normalizedTitle}:${contentSample}`;
   
   return crypto.createHash('sha256').update(combined).digest('hex');
+}
+
+/**
+ * Preserves paragraph structure while cleaning content
+ * Maintains readability without aggressive whitespace collapse
+ */
+function preserveContentStructure(html: string, $: CheerioAPI): string {
+  // If already plain text, detect natural breaks
+  if (!html.includes('<')) {
+    return html
+      .replace(/\r\n/g, '\n')           // Normalize line endings
+      .replace(/\n{4,}/g, '\n\n\n')     // Max 3 newlines (one empty line)
+      .replace(/([.!?])\s+([A-Z])/g, '$1\n\n\n$2')  // Detect sentence->paragraph boundaries with empty line
+      .trim();
+  }
+
+  // Load HTML content for processing
+  const $content = $.load(`<div id="wrapper">${html}</div>`);
+
+  // First, remove non-content elements
+  $content('#wrapper').find(`
+    nav, .navigation, .nav-menu,
+    .social-share, .share-buttons, .sharing,
+    .newsletter-signup, .newsletter, .subscribe,
+    .advertisement, .ad-container, .ads,
+    .related-articles, .recommended, .more-on,
+    aside:not(.article-aside), footer,
+    .comments, .comment-section,
+    [class*="promo"], [class*="banner"],
+    .caption, .video-caption, figcaption,
+    .featured-video, .video-container,
+    .video-player, .video-wrap,
+    [class*="caption"], figure
+  `).remove();
+
+  // Convert block elements to text with proper spacing
+  const paragraphs: string[] = [];
+
+  // Process paragraph tags first
+  $content('#wrapper p').each((i, elem) => {
+    const $elem = $content(elem);
+    const text = $elem.text().trim();
+
+    // Check if entire paragraph is a link AND in ALL CAPS
+    // This is a structural pattern that indicates related article links
+    const link = $elem.find('a').first();
+    if (link.length > 0) {
+      const linkText = link.text().trim();
+      // If the link contains all the paragraph text AND it's ALL CAPS, skip it
+      if (linkText === text && text === text.toUpperCase() && text.length > 20) {
+        return; // Skip this paragraph - it's a related article link
+      }
+    }
+
+    if (text.length > 30 && !isBoilerplate(text)) {
+      paragraphs.push(text);
+    }
+  });
+
+  // If no paragraphs found, try div-based content
+  if (paragraphs.length === 0) {
+    $content('#wrapper > div, #wrapper article > div').each((i, elem) => {
+      const text = $content(elem).text().trim();
+      if (text.length > 50 && !isBoilerplate(text)) {
+        // Split on natural breaks
+        const parts = text.split(/(?<=[.!?])\s+(?=[A-Z])/);
+        paragraphs.push(...parts.filter(p => p.length > 30));
+      }
+    });
+  }
+
+  return paragraphs.join('\n\n\n').trim();
+}
+
+/**
+ * Detects common boilerplate text patterns
+ * Note: Only using structural patterns, not content-based filtering
+ * to avoid accidentally removing legitimate article content
+ */
+function isBoilerplate(text: string): boolean {
+  // Only filter based on clear structural patterns that are unlikely
+  // to appear in legitimate article content
+  const patterns = [
+    /^\d+\s+(minute|hour|day)s?\s+ago$/i,        // Timestamp patterns
+    /^(image source|getty images)/i,              // Image attribution
+    /^©\s*\d{4}/i,                               // Copyright notices
+    /^\[.*\]$/                                    // Square bracket annotations
+  ];
+
+  return patterns.some(pattern => pattern.test(text));
 }
 
 // Format duration for display

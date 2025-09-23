@@ -15,6 +15,12 @@
 - Complex tasks: 5-7 files maximum
 - 8+ files = Break into smaller tasks
 
+### MCP-Enhanced Context Management
+- **Leverage memory MCP** for retaining context across sessions
+- **Use filesystem MCP** for scoped file access within project boundaries
+- **Apply sequential-thinking MCP** for complex multi-step reasoning tasks
+- **Employ git MCP** for sophisticated version control operations
+
 ## 2. Session Boundaries
 **One Task = One Session**
 

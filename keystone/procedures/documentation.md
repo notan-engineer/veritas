@@ -18,6 +18,7 @@ Based on project scope, may include:
 - [ ] Verify cross-references and completeness
 - [ ] Create ADRs for significant decisions
 - [ ] Update changelog with project summary
+- [ ] Update code file descriptions in architecture docs when logic changes
 
 ## Interactive Information Gathering
 
@@ -76,9 +77,10 @@ Are there additional changes not detected above?"
 3. **Architecture Impact Analysis**
    ```
    For architectural changes:
-   - Determine if ADR is needed
+   - Determine if ADR is needed (see criteria below)
    - Map to architecture documentation
    - Identify affected procedures
+   - Update file descriptions in software-architecture.md
    ```
 
 #### Documentation Plan Generation
@@ -291,6 +293,48 @@ REQUEST: "Changelog updated with project summary. This completes the documentati
 4. Document breaking changes
 5. Update response formats
 ```
+
+## ADR Creation Criteria
+
+### When to Create an ADR
+Create an Architecture Decision Record when:
+
+1. **Fundamental Strategy Changes**
+   - Core algorithm or approach modifications
+   - Data flow restructuring
+   - Processing paradigm shifts (e.g., single to multi-element)
+
+2. **Cross-Service Impact**
+   - Changes affecting multiple services
+   - New service communication patterns
+   - Shared resource modifications
+
+3. **Performance Trade-offs**
+   - Choosing slower but more reliable approaches
+   - Memory vs speed optimizations
+   - Caching strategy changes
+
+4. **Technology Choices**
+   - New dependencies or frameworks
+   - Database schema philosophy changes
+   - Build or deployment tool changes
+
+5. **Error Handling Philosophy**
+   - Fallback strategy implementations
+   - Recovery mechanism changes
+   - Resilience pattern adoption
+
+### When NOT to Create an ADR
+- Bug fixes that don't change approach
+- Performance optimizations within same paradigm
+- Adding new sources/endpoints following existing patterns
+- UI styling changes
+- Documentation updates
+
+### ADR File Naming
+`documentation/decisions/ADR-XXX-descriptive-title.md`
+- XXX = next sequential number
+- descriptive-title = kebab-case summary
 
 ## Troubleshooting
 

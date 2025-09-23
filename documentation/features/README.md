@@ -75,6 +75,12 @@ This directory contains comprehensive documentation for all features implemented
     - Performance monitoring and quality scoring
     - Advanced debugging with correlation IDs
 
+12. **[Advanced Content Extraction System](./12-content-extraction.md)**
+    - Multi-strategy extraction (JSON-LD, selectors, meta tags)
+    - Paragraph preservation with proper spacing
+    - Structural filtering for promotional content
+    - Real-time extraction tracking for debugging
+
 ## Feature Status
 
 ### ✅ Implemented
@@ -91,6 +97,9 @@ This directory contains comprehensive documentation for all features implemented
 - RTL language support
 - Core API endpoints with source testing
 - Performance monitoring and correlation tracking
+- Advanced content extraction with paragraph preservation
+- Structural filtering for promotional content
+- Real-time extraction tracking system
 
 ### 🚧 In Progress
 - User preference storage

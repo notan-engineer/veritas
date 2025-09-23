@@ -16,13 +16,13 @@ export class EnhancedRSSScraper {
     this.logger = new EnhancedLogger();
   }
   
-  async scrapeJob(jobId: string, sources: string[], articlesPerSource: number) {
+  async scrapeJob(jobId: string, sources: string[], articlesPerSource: number, enableTracking: boolean = false) {
     const startTime = Date.now();
     await this.logger.logJobStarted(jobId, sources, articlesPerSource, 'api');
     
     // Process sources with Promise.allSettled for fault tolerance
     const sourceResults = await Promise.allSettled(
-      sources.map(sourceName => this.scrapeSourceEnhanced(jobId, sourceName, articlesPerSource))
+      sources.map(sourceName => this.scrapeSourceEnhanced(jobId, sourceName, articlesPerSource, enableTracking))
     );
     
     // Process extraction results
@@ -52,7 +52,7 @@ export class EnhancedRSSScraper {
     await this.logFinalJobMetrics(jobId, successfulExtractions, persistenceResults, extractionFailures, articlesPerSource, startTime);
   }
   
-  private async scrapeSourceEnhanced(jobId: string, sourceName: string, articlesPerSource: number): Promise<SourceResult> {
+  private async scrapeSourceEnhanced(jobId: string, sourceName: string, articlesPerSource: number, enableTracking: boolean = false): Promise<SourceResult> {
     const sourceStartTime = Date.now();
     const source = await getSourceByName(sourceName);
     const scrapedArticles: any[] = [];
@@ -178,12 +178,54 @@ export class EnhancedRSSScraper {
           
           // Primary extraction method
           try {
-            article = extractArticleContent($, request.url);
+            article = extractArticleContent($, request.url, enableTracking);
           } catch (primaryError) {
-            // Fallback: Basic extraction
+            // Enhanced fallback: Try multiple strategies
+            const fallbackStrategies = [
+              // Strategy 1: Aggregate multiple text blocks (BBC pattern)
+              () => {
+                const textBlocks = $('[data-component="text-block"], [data-testid*="paragraph"], div[class*="Text-sc"]');
+                if (textBlocks.length > 0) {
+                  const texts: string[] = [];
+                  textBlocks.each((i, el) => {
+                    const text = $(el).text().trim();
+                    if (text.length > 50) texts.push(text);
+                  });
+                  return texts.join('\n\n');
+                }
+                return '';
+              },
+              // Strategy 2: Article tag with paragraph extraction
+              () => {
+                const articleEl = $('article');
+                if (articleEl.length > 0) {
+                  const paragraphs: string[] = [];
+                  articleEl.find('p').each((i, el) => {
+                    const text = $(el).text().trim();
+                    if (text.length > 30) paragraphs.push(text);
+                  });
+                  return paragraphs.join('\n\n') || articleEl.text().trim();
+                }
+                return '';
+              },
+              // Strategy 3: Main content area
+              () => $('main').text().trim(),
+              // Strategy 4: Body text (last resort)
+              () => $('body').text().trim()
+            ];
+
+            let content = '';
+            for (const strategy of fallbackStrategies) {
+              try {
+                content = strategy();
+                if (content && content.length > 200) break; // Found good content
+              } catch (e) {
+                // Try next strategy
+              }
+            }
+
             const title = $('title').text() || $('h1').first().text() || articleTitle || 'Untitled';
-            const content = $('article').text() || $('.content').text() || $('main').text() || $('body').text() || '';
-            
+
             article = {
               title: title.trim(),
               content: content.trim().substring(0, 10000), // Limit content length
@@ -222,6 +264,8 @@ export class EnhancedRSSScraper {
             sourceId,
             language,
             contentHash: generateContentHash(article.title, article.content),
+            // Store extraction traces if tracking is enabled
+            ...(article.traces ? { extractionTraces: article.traces } : {})
           };
           
           // Convert to ExtractedArticle format for logger
