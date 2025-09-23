@@ -1,4 +1,4 @@
-import { CheerioCrawler } from 'crawlee';
+import { CheerioCrawler, Configuration } from 'crawlee';
 import Parser from 'rss-parser';
 import * as crypto from 'crypto';
 import { NewsSource, ScrapedArticle, JobStatus, SourceResult, SourcePersistenceResult, EnhancedJobMetrics } from './types';
@@ -10,8 +10,14 @@ import { EnhancedLogger } from './enhanced-logger';
 export class EnhancedRSSScraper {
   private rssParser: Parser;
   private logger: EnhancedLogger;
-  
+
   constructor() {
+    // Configure Crawlee to use in-memory storage in production
+    // This prevents file system issues in containerized environments
+    if (process.env.NODE_ENV === 'production') {
+      Configuration.set('persistStorage', false);
+    }
+
     this.rssParser = new Parser();
     this.logger = new EnhancedLogger();
   }
@@ -144,20 +150,9 @@ export class EnhancedRSSScraper {
         items_to_process: Math.min(feed.items.length, articlesPerSource * 2)
       }
     });
-    
-    // Ensure storage directory exists
-    const path = await import('path');
-    const fs = await import('fs/promises');
-    const storageDir = path.join(process.cwd(), 'storage');
-    
-    try {
-      await fs.mkdir(path.join(storageDir, 'request_queues', 'default'), { recursive: true });
-      await fs.mkdir(path.join(storageDir, 'key_value_stores', 'default'), { recursive: true });
-    } catch (error) {
-      // Directory might already exist, continue
-    }
-    
+
     // Enhanced crawler configuration
+    // Note: Storage is handled in-memory in production (see constructor)
     const crawler = new CheerioCrawler({
       // ENHANCED SETTINGS:
       maxRequestsPerCrawl: articlesPerSource * 3, // Allow 3x requests for retries
