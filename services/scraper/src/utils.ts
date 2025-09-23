@@ -55,8 +55,11 @@ export function extractArticleContent($: CheerioAPI, url: string, enableTracking
         'main [class*="story-body"]',
         '.article-text',
         '.story-content',
-        // BBC specific
+        // BBC specific - Try multiple BBC selectors
         '[data-component="text-block"]',
+        '[data-testid="article-body"]',
+        'div[class*="Text-sc"]', // BBC's styled components pattern
+        'article div[class*="Paragraph"]',
         // NYTimes specific
         'section[name="articleBody"]',
         // Guardian specific

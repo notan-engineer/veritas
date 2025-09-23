@@ -180,10 +180,52 @@ export class EnhancedRSSScraper {
           try {
             article = extractArticleContent($, request.url, enableTracking);
           } catch (primaryError) {
-            // Fallback: Basic extraction
+            // Enhanced fallback: Try multiple strategies
+            const fallbackStrategies = [
+              // Strategy 1: Aggregate multiple text blocks (BBC pattern)
+              () => {
+                const textBlocks = $('[data-component="text-block"], [data-testid*="paragraph"], div[class*="Text-sc"]');
+                if (textBlocks.length > 0) {
+                  const texts: string[] = [];
+                  textBlocks.each((i, el) => {
+                    const text = $(el).text().trim();
+                    if (text.length > 50) texts.push(text);
+                  });
+                  return texts.join('\n\n');
+                }
+                return '';
+              },
+              // Strategy 2: Article tag with paragraph extraction
+              () => {
+                const articleEl = $('article');
+                if (articleEl.length > 0) {
+                  const paragraphs: string[] = [];
+                  articleEl.find('p').each((i, el) => {
+                    const text = $(el).text().trim();
+                    if (text.length > 30) paragraphs.push(text);
+                  });
+                  return paragraphs.join('\n\n') || articleEl.text().trim();
+                }
+                return '';
+              },
+              // Strategy 3: Main content area
+              () => $('main').text().trim(),
+              // Strategy 4: Body text (last resort)
+              () => $('body').text().trim()
+            ];
+
+            let content = '';
+            for (const strategy of fallbackStrategies) {
+              try {
+                content = strategy();
+                if (content && content.length > 200) break; // Found good content
+              } catch (e) {
+                // Try next strategy
+              }
+            }
+
             const title = $('title').text() || $('h1').first().text() || articleTitle || 'Untitled';
-            const content = $('article').text() || $('.content').text() || $('main').text() || $('body').text() || '';
-            
+
             article = {
               title: title.trim(),
               content: content.trim().substring(0, 10000), // Limit content length

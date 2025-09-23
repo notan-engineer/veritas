@@ -24,15 +24,19 @@ export class ExtractionRecorder {
 
   // Extract content with paragraph preservation
   extractContent($: CheerioAPI, selector: string, field: string): string {
-    const element = $(selector);
-    if (element.length === 0) return this.record(field, selector, 'content', '');
+    const elements = $(selector);
+    if (elements.length === 0) return this.record(field, selector, 'content', '');
 
     // Extract paragraphs to preserve structure
     const paragraphs: string[] = [];
     const seenTexts = new Set<string>(); // Track duplicates
 
-    // First try to get all <p> tags within the element, excluding captions
-    element.find('p').each((i, el) => {
+    // Handle multiple matching elements (e.g., multiple BBC text blocks)
+    elements.each((index, element) => {
+      const $element = $(element);
+
+      // First try to get all <p> tags within the element, excluding captions
+      $element.find('p').each((i, el) => {
       const $el = $(el);
       const parent = $el.parent();
 
@@ -66,9 +70,19 @@ export class ExtractionRecorder {
       }
     });
 
-    // If no paragraphs found, fall back to text
+      // If no paragraphs found in this element, try getting its direct text
+      if (paragraphs.length === 0) {
+        const directText = $element.text().trim();
+        if (directText.length > 100 && !seenTexts.has(directText)) {
+          seenTexts.add(directText);
+          paragraphs.push(directText);
+        }
+      }
+    });
+
+    // If still no paragraphs found, fall back to all text
     if (paragraphs.length === 0) {
-      const text = element.text().trim();
+      const text = elements.text().trim();
       return this.record(field, selector, 'content', text);
     }
 
