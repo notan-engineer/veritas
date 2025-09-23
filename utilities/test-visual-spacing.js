@@ -51,8 +51,9 @@ async function testVisualSpacing() {
       }
       if (line) console.log(line);
 
-      console.log(); // Empty line after paragraph
-      console.log(); // Extra empty line for visual separation
+      if (i < 4) {
+        console.log(); // Single empty line between paragraphs
+      }
     });
 
     console.log('─'.repeat(70));
