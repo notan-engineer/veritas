@@ -219,10 +219,9 @@ services/scraper/
 │   ├── error-handler.ts        # Comprehensive error handling and recovery
 │   ├── database.ts             # Enhanced database operations with JSONB support
 │   ├── log-queries.ts          # Structured log query utilities
-│   ├── test-logs.ts            # Log testing and validation utilities
-│   ├── test-enhanced-logging.ts # Test script for enhanced logging verification
-│   ├── clear-data.ts           # Data cleanup and maintenance scripts
 │   ├── types.ts                # Enhanced interfaces with source tracking types
+│   ├── utils.ts                # Enhanced extraction with paragraph preservation
+│   ├── extraction-recorder.ts  # Real-time extraction tracking for debugging
 │   └── api-server.ts           # Express server with enhanced metrics endpoints
 ├── package.json                # Crawlee, Playwright, Express dependencies
 └── tsconfig.json               # TypeScript configuration
@@ -326,6 +325,13 @@ PORT=${{PORT}}              # Automatically set by Railway
   - Optimized GIN indexes for complex JSONB queries
   - Comprehensive error categorization and pattern analysis
 - **Performance Analytics**: Detailed HTTP request/response timing with waterfall analysis
+- **Content Extraction Quality**:
+  - Multi-strategy extraction (JSON-LD, selectors, meta tags)
+  - Paragraph preservation with triple newlines
+  - Structural filtering for promotional content (ALL CAPS + links)
+  - Real-time extraction tracking with optional debugging
+  - Content deduplication via SHA-256 hashing
+  - Language detection for RTL support
 
 ### Automated Systems
 - **Content Cleanup**: Automated archival and compression policies
@@ -344,13 +350,18 @@ PORT=${{PORT}}              # Automatically set by Railway
 ### Testing Infrastructure
 Located in `utilities/` directory, providing comprehensive testing and debugging tools:
 - **Database Management**: `01-db-setup.ps1` for local DB setup with Railway data import
-- **Data Cleanup**: `02-db-clear.js` for clearing test data while preserving configuration
+- **Data Cleanup**: `02-db-clear.js` for clearing test data while preserving configuration (supports production)
 - **End-to-End Testing**: `03-test-scraper.js` for complete scraping workflow validation
 - **API Testing**: `04-test-api.js` standalone test server for API endpoint verification
 - **Field Mapping**: `05-test-db-mapping.js` for snake_case/camelCase conversion testing
 - **Log Analysis**: `06-test-logs.js` for detailed job log analysis with metrics
+- **Extraction Debugging**: `07-extraction-analyzer.js` for visual side-by-side HTML analysis
+- **Batch Analysis**: `08-analyze-all-sources.js` for comprehensive source testing
+- **E2E Quality**: `09-e2e-extraction-test.js` for extraction quality validation
+- **Spacing Validation**: `10-test-spacing.js` for paragraph preservation testing
+- **Content Safety**: `11-validate-extraction.js` for filtering safety checks
 
-All utilities follow numbered naming convention and support both interactive and non-interactive modes.
+All utilities follow numbered naming convention and support both interactive and non-interactive modes. Extraction utilities generate HTML reports for visual debugging.
 
 ### Build Validation
 - **UI Service**: TypeScript compiler, ESLint, and build verification

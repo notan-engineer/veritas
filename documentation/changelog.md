@@ -1,5 +1,31 @@
 # Changelog
 
+### September 23, 2025 - Content Extraction Enhancement & Project Cleanup
+**Summary**: Major improvements to content extraction quality with multi-strategy approach, paragraph preservation, and safe structural filtering for promotional content. Includes comprehensive project cleanup and new debugging utilities.
+
+**Key Features**:
+- Advanced multi-strategy content extraction (JSON-LD, selectors, meta tags)
+- Paragraph structure preservation with triple newline separation
+- Structural filtering for promotional content (ALL CAPS + links only)
+- Real-time extraction tracking for debugging
+- Five new testing utilities for extraction validation
+- Project structure cleanup with test file removal
+
+**Technical Details**:
+- Implemented three-tier extraction strategy prioritizing structured data
+- Added safe structural filtering that avoids text matching
+- Enhanced `preserveContentStructure` function in utils.ts
+- Created `ExtractionRecorder` class for optional debugging
+- Removed 12 temporary test files and updated .gitignore
+- Achieved 85-95% extraction success rates across major sources
+
+**Related**:
+- Commits: e8684ac, 1cb0c9d, af3f9d9, 5cd2865
+- PRs: N/A (uncommitted changes)
+- Issues: N/A
+
+---
+
 ### August 9, 2025 - Testing Utilities and Documentation Consolidation
 **Summary**: Introduced comprehensive testing utilities suite for local development and consolidated documentation for improved maintainability.
 

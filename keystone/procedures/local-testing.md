@@ -7,6 +7,8 @@ Local testing using PostgreSQL copy of production data for safe development.
 1. Run setup script: `utilities/01-db-setup.ps1`
 2. Create `.env` in service directory (see template below)
 3. Test with: `node utilities/03-test-scraper.js`
+4. Debug extraction: `node utilities/07-extraction-analyzer.js`
+5. For advanced debugging, see: `keystone/procedures/scraper-debugging.md`
 
 ## Environment Setup
 
@@ -64,10 +66,17 @@ node 03-test-scraper.js
 ```
 
 ### 4. Clean Up
-```sql
--- Remove test data after testing
-DELETE FROM scraped_content WHERE created_at > NOW() - INTERVAL '1 day';
-DELETE FROM factoids WHERE status = 'draft';
+```bash
+# Use the dedicated cleanup utility
+node utilities/02-db-clear.js --confirm
+
+# Or for selective cleanup:
+# - Preview what will be deleted
+node utilities/02-db-clear.js
+
+# SQL alternative for specific cleanup:
+# DELETE FROM scraped_content WHERE created_at > NOW() - INTERVAL '1 day';
+# DELETE FROM factoids WHERE status = 'draft';
 ```
 
 ## Security Checklist
@@ -91,8 +100,13 @@ DELETE FROM factoids WHERE status = 'draft';
 2. Configure scraper .env file
 3. Start scraper: `cd services/scraper && npm run dev`
 4. Run tests: `node utilities/03-test-scraper.js`
-5. Analyze logs: `node utilities/06-test-logs.js <job-id>`
-6. Verify with API: `node utilities/04-test-api.js`
+5. Debug extraction: `node utilities/07-extraction-analyzer.js`
+6. Test all sources: `node utilities/08-analyze-all-sources.js`
+7. Validate quality: `node utilities/09-e2e-extraction-test.js`
+8. Check spacing: `node utilities/10-test-spacing.js`
+9. Verify filtering: `node utilities/11-validate-extraction.js`
+10. Analyze logs: `node utilities/06-test-logs.js <job-id>`
+11. Verify with API: `node utilities/04-test-api.js`
 
 ### Database Changes
 1. Test migration on local DB first

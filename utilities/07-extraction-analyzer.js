@@ -430,13 +430,8 @@ function generateHTMLExport(analyses) {
         }
 
         .article-content p {
-            margin-bottom: 1.2em;
-        }
-
-        .article-content br {
-            display: block;
-            margin: 0.5em 0;
-            content: "";
+            margin-bottom: 1em;  /* One line of space between paragraphs */
+            margin-top: 0;
         }
 
         .extraction-info {
@@ -710,7 +705,7 @@ function generateHTMLExport(analyses) {
     return content
       .split('\n\n\n')
       .map(para => `<p>${escapeHtml(para.trim())}</p>`)
-      .join('<br>'); // Add visual break between paragraphs
+      .join(''); // Paragraphs already have margin
   }
 
   function formatHtmlAsTree(html, usedPaths, treeIndex, extractedContent, traces) {

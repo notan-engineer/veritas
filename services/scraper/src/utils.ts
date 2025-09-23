@@ -273,7 +273,20 @@ function preserveContentStructure(html: string, $: CheerioAPI): string {
 
   // Process paragraph tags first
   $content('#wrapper p').each((i, elem) => {
-    const text = $content(elem).text().trim();
+    const $elem = $content(elem);
+    const text = $elem.text().trim();
+
+    // Check if entire paragraph is a link AND in ALL CAPS
+    // This is a structural pattern that indicates related article links
+    const link = $elem.find('a').first();
+    if (link.length > 0) {
+      const linkText = link.text().trim();
+      // If the link contains all the paragraph text AND it's ALL CAPS, skip it
+      if (linkText === text && text === text.toUpperCase() && text.length > 20) {
+        return; // Skip this paragraph - it's a related article link
+      }
+    }
+
     if (text.length > 30 && !isBoilerplate(text)) {
       paragraphs.push(text);
     }
@@ -296,19 +309,17 @@ function preserveContentStructure(html: string, $: CheerioAPI): string {
 
 /**
  * Detects common boilerplate text patterns
+ * Note: Only using structural patterns, not content-based filtering
+ * to avoid accidentally removing legitimate article content
  */
 function isBoilerplate(text: string): boolean {
+  // Only filter based on clear structural patterns that are unlikely
+  // to appear in legitimate article content
   const patterns = [
-    /^(share|save|comment|subscribe|follow|newsletter)/i,
-    /^(advertisement|sponsored|promoted)/i,
-    /^\d+\s+(minute|hour|day)s?\s+ago$/i,
-    /^(read more|related|you may like|more from)/i,
-    /^(image caption|image source|getty images)/i,
-    /^(cookie policy|privacy policy|terms)/i,
-    /^(video|photo|image|figure)\s*\d*\s*:/i,  // Video/Photo captions often start with "Video:"
-    /^watch:/i,                                   // Fox News uses "Watch:" for video content
-    /^\[.*\]$/,                                  // Square bracket annotations
-    /^©\s*\d{4}/i                                // Copyright notices
+    /^\d+\s+(minute|hour|day)s?\s+ago$/i,        // Timestamp patterns
+    /^(image source|getty images)/i,              // Image attribution
+    /^©\s*\d{4}/i,                               // Copyright notices
+    /^\[.*\]$/                                    // Square bracket annotations
   ];
 
   return patterns.some(pattern => pattern.test(text));

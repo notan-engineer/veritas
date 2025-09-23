@@ -50,6 +50,15 @@ export class ExtractionRecorder {
 
       const text = $el.text().trim();
 
+      // Skip if entire paragraph is a link AND in ALL CAPS (related article pattern)
+      const link = $el.find('a').first();
+      if (link.length > 0) {
+        const linkText = link.text().trim();
+        if (linkText === text && text === text.toUpperCase() && text.length > 20) {
+          return; // Skip this paragraph - it's a related article link
+        }
+      }
+
       // Skip short text and duplicates
       if (text.length > 30 && !seenTexts.has(text)) {
         seenTexts.add(text);

@@ -13,7 +13,10 @@ A comprehensive suite of testing and debugging tools for the Veritas project. Al
 | `05-test-db-mapping.js` | Test snake_case/camelCase mapping | `node 05-test-db-mapping.js` |
 | `06-test-logs.js` | Analyze job logs | `node 06-test-logs.js <jobId> [options]` |
 | `07-extraction-analyzer.js` | Scraper extraction debugging with HTML export | `node 07-extraction-analyzer.js [source] [output.html]` |
-| `test-extraction-tracking.js` | Test extraction tracking functionality | `node test-extraction-tracking.js` |
+| `08-analyze-all-sources.js` | Batch analyze all sources | `node 08-analyze-all-sources.js` |
+| `09-e2e-extraction-test.js` | E2E extraction quality test | `node 09-e2e-extraction-test.js` |
+| `10-test-spacing.js` | Validate paragraph spacing | `node 10-test-spacing.js` |
+| `11-validate-extraction.js` | Validate content preservation | `node 11-validate-extraction.js` |
 
 **Note:** For advanced debugging scenarios, consider using **Playwright MCP** through Claude Code for:
 - Visual site structure analysis
@@ -273,44 +276,91 @@ node 07-extraction-analyzer.js "BBC News" debug-report.html
 
 ---
 
-### test-extraction-tracking.js - Extraction Tracking Test Suite
-Validates that the real-time extraction tracking feature is working correctly.
+### 08-analyze-all-sources.js - Batch Source Analysis
+Runs extraction analyzer on all configured news sources for comprehensive testing.
 
 **Features:**
-- Tests extraction with and without tracking enabled
-- Verifies content consistency between modes
-- Validates trace recording accuracy
-- Groups and displays traces by field
-- Tests both direct extraction and scraper API
+- Analyzes all sources automatically
+- Generates individual reports per source
+- Provides summary of successes/failures
+- Useful for regression testing after changes
 
 **Usage:**
 ```bash
-# Run all tests
-node test-extraction-tracking.js
+# Analyze all sources (3 articles each)
+node 08-analyze-all-sources.js
 ```
 
-**What it tests:**
-1. **Direct extraction:** Tests the extractArticleContent function directly
-   - Without tracking: Ensures no traces are recorded
-   - With tracking: Verifies traces are captured correctly
-   - Content consistency: Confirms identical extraction results
+**Output:**
+- Multiple HTML reports in `utility-output/`
+- Summary statistics for all sources
+- Identifies sources with issues
 
-2. **Scraper API (optional):** If scraper service is running
-   - Triggers a job with enableTracking: true
-   - Verifies job completion
-   - Confirms tracking parameter is handled correctly
+---
+
+### 09-e2e-extraction-test.js - End-to-End Extraction Test
+Comprehensive E2E testing to validate extraction quality across all sources.
+
+**Features:**
+- Tests content extraction completeness
+- Validates paragraph spacing preservation
+- Checks content quality metrics
+- Identifies potential extraction issues
+
+**Usage:**
+```bash
+# Run E2E tests on all sources
+node 09-e2e-extraction-test.js
+```
 
 **Output:**
-- Color-coded terminal output
-- Detailed trace information grouped by field
-- Pass/fail status for each test
-- Summary of extraction tracking health
+- Console output with detailed metrics per source
+- Quality checks (content length, paragraph count)
+- Warnings for potential issues
 
-**Best for:**
-- Verifying extraction tracking implementation
-- Testing tracking consistency
-- Debugging trace recording issues
-- Validating extraction recorder functionality
+---
+
+### 10-test-spacing.js - Paragraph Spacing Validator
+Validates that paragraph spacing (triple newlines) is working correctly across sources.
+
+**Features:**
+- Tests paragraph separation logic
+- Validates spacing preservation
+- Checks for spacing consistency
+- Quick validation after code changes
+
+**Usage:**
+```bash
+# Test paragraph spacing across all sources
+node 10-test-spacing.js
+```
+
+**Output:**
+- Spacing analysis per source
+- Success/failure indicators
+- Sample paragraph output with visual spacing
+
+---
+
+### 11-validate-extraction.js - Content Preservation Validator
+Ensures content filtering doesn't accidentally remove legitimate article content.
+
+**Features:**
+- Validates filtering safety
+- Checks for false positives
+- Tests across multiple sources
+- Ensures content preservation
+
+**Usage:**
+```bash
+# Validate extraction doesn't lose content
+node 11-validate-extraction.js
+```
+
+**Output:**
+- Safety analysis per source
+- Risk assessment for filtering
+- Confirmation of content preservation
 
 ## 🔧 Common Workflows
 
@@ -324,11 +374,69 @@ cd services/scraper
 npm run dev
 
 # 3. Run scraper test
-cd ../../testing
+cd ../../utilities
 node 03-test-scraper.js
 
 # 4. Analyze results
 node 06-test-logs.js <job-id-from-test>
+```
+
+### Extraction Quality Testing Workflow
+```bash
+# Test extraction on all sources
+node 08-analyze-all-sources.js
+
+# Run comprehensive E2E test
+node 09-e2e-extraction-test.js
+
+# Validate paragraph spacing
+node 10-test-spacing.js
+
+# Ensure no content is lost
+node 11-validate-extraction.js
+
+# Generate detailed report for specific source
+node 07-extraction-analyzer.js "Fox News"
+```
+
+### Quick Validation After Code Changes
+```bash
+# After modifying extraction logic:
+cd services/scraper
+npm run rebuild
+
+# Test extraction quality
+cd ../../utilities
+node 10-test-spacing.js
+node 11-validate-extraction.js
+
+# If issues found, debug specific source
+node 07-extraction-analyzer.js "BBC News" debug.html
+```
+
+### Comprehensive Testing Before Deploy
+```bash
+# 1. Clear and rebuild
+cd services/scraper
+npm run rebuild
+
+# 2. Run all extraction tests
+cd ../../utilities
+node 09-e2e-extraction-test.js
+
+# 3. Generate analysis reports
+node 08-analyze-all-sources.js
+
+# 4. Review generated HTML reports in utility-output/
+```
+
+### Database Cleanup Workflow
+```bash
+# Clear all scraped content (preserves sources)
+node 02-db-clear.js --confirm
+
+# For production (requires confirmation)
+node 02-db-clear.js --production --confirm
 ```
 
 ### Debug Failed Scraping Job

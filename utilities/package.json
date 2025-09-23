@@ -1,0 +1,20 @@
+{
+  "name": "utilities",
+  "version": "1.0.0",
+  "description": "A comprehensive suite of testing and debugging tools for the Veritas project. All utilities are standalone and can be run directly from the testing directory.",
+  "main": "02-db-clear.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "pg": "^8.12.0",
+    "rss-parser": "^3.13.0"
+  }
+}
