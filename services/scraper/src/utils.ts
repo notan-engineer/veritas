@@ -1,9 +1,16 @@
 import { CheerioAPI } from 'cheerio';
 import * as crypto from 'crypto';
 import { ArticleContent } from './types';
+import { ExtractionRecorder, ExtractionTrace } from './extraction-recorder';
 
-// Content extraction with multiple strategies
-export function extractArticleContent($: CheerioAPI, url: string): ArticleContent {
+// Extended type for extraction with optional traces
+export interface ArticleContentWithTraces extends ArticleContent {
+  traces?: ExtractionTrace[];
+}
+
+// Content extraction with multiple strategies and optional tracking
+export function extractArticleContent($: CheerioAPI, url: string, enableTracking: boolean = false): ArticleContentWithTraces {
+  const recorder = new ExtractionRecorder(enableTracking);
   const strategies = [
     // 1. Structured data (JSON-LD)
     () => {
@@ -13,6 +20,10 @@ export function extractArticleContent($: CheerioAPI, url: string): ArticleConten
         try {
           const data = JSON.parse(script.text());
           if (data['@type'] === 'NewsArticle' || data['@type'] === 'Article') {
+            // Record JSON-LD extraction if tracking is enabled
+            if (recorder.isEnabled()) {
+              recorder.recordJsonLd(`script[type="application/ld+json"]:eq(${i})`, 'json-ld', data);
+            }
             return {
               title: data.headline || '',
               content: data.articleBody || '',
@@ -29,45 +40,55 @@ export function extractArticleContent($: CheerioAPI, url: string): ArticleConten
     
     // 2. Common article selectors
     () => {
-      const title = $('h1').first().text().trim() || 
-                   $('meta[property="og:title"]').attr('content') || 
+      // Try title selectors in order
+      const title = recorder.text($, 'h1', 'title') ||
+                   recorder.attr($, 'meta[property="og:title"]', 'content', 'title') ||
                    '';
-      
-      const content = $('article').text().trim() || 
-                     $('.article-content').text().trim() || 
-                     $('.story-body').text().trim() || 
-                     $('.entry-content').text().trim() ||
-                     $('.post-content').text().trim() ||
-                     $('main').text().trim() ||
-                     '';
-      
-      const author = $('.author').text().trim() || 
-                    $('.by-author').text().trim() ||
-                    $('.article-author').text().trim() ||
-                    $('meta[name="author"]').attr('content') || 
+
+      // Try content selectors and find the best one
+      let content = '';
+      const contentSelectors = [
+        'article', '.article-content', '.story-body',
+        '.entry-content', '.post-content', 'main'
+      ];
+
+      for (const selector of contentSelectors) {
+        const extracted = recorder.text($, selector, 'content');
+        if (extracted && extracted.length > 100) {
+          content = extracted;
+          break;
+        }
+      }
+
+      // Try author selectors
+      const author = recorder.text($, '.author', 'author') ||
+                    recorder.text($, '.by-author', 'author') ||
+                    recorder.text($, '.article-author', 'author') ||
+                    recorder.attr($, 'meta[name="author"]', 'content', 'author') ||
                     null;
-      
-      const date = $('time').attr('datetime') || 
-                  $('.date').text().trim() ||
-                  $('.published').text().trim() ||
-                  $('meta[property="article:published_time"]').attr('content') || 
+
+      // Try date selectors
+      const date = recorder.attr($, 'time', 'datetime', 'date') ||
+                  recorder.text($, '.date', 'date') ||
+                  recorder.text($, '.published', 'date') ||
+                  recorder.attr($, 'meta[property="article:published_time"]', 'content', 'date') ||
                   null;
-      
+
       return { title, content, author, date };
     },
     
     // 3. Fallback to meta tags
     () => ({
-      title: $('meta[property="og:title"]').attr('content') || 
-             $('meta[name="twitter:title"]').attr('content') ||
-             $('title').text().trim() || 
+      title: recorder.attr($, 'meta[property="og:title"]', 'content', 'title') ||
+             recorder.attr($, 'meta[name="twitter:title"]', 'content', 'title') ||
+             recorder.text($, 'title', 'title') ||
              '',
-      content: $('meta[property="og:description"]').attr('content') || 
-              $('meta[name="description"]').attr('content') ||
-              $('meta[name="twitter:description"]').attr('content') ||
+      content: recorder.attr($, 'meta[property="og:description"]', 'content', 'content') ||
+              recorder.attr($, 'meta[name="description"]', 'content', 'content') ||
+              recorder.attr($, 'meta[name="twitter:description"]', 'content', 'content') ||
               '',
-      author: $('meta[name="author"]').attr('content') || null,
-      date: $('meta[property="article:published_time"]').attr('content') || null
+      author: recorder.attr($, 'meta[name="author"]', 'content', 'author') || null,
+      date: recorder.attr($, 'meta[property="article:published_time"]', 'content', 'date') || null
     })
   ];
   
@@ -80,25 +101,36 @@ export function extractArticleContent($: CheerioAPI, url: string): ArticleConten
           .replace(/\s+/g, ' ')
           .replace(/\n{3,}/g, '\n\n')
           .trim();
+
+        // Add traces if tracking is enabled
+        if (enableTracking) {
+          return { ...result, traces: recorder.getTraces() };
+        }
         return result;
       }
     } catch (e) {
       // Try next strategy
     }
   }
-  
+
   // Last resort - get raw text
   const bodyText = $('body').text()
     .replace(/\s+/g, ' ')
     .trim()
     .substring(0, 5000);
-  
-  return {
-    title: $('title').text().trim() || 'Untitled',
+
+  const fallbackResult = {
+    title: recorder.text($, 'title', 'title') || 'Untitled',
     content: bodyText || 'No content extracted',
     author: null,
     date: null
   };
+
+  // Add traces if tracking is enabled
+  if (enableTracking) {
+    return { ...fallbackResult, traces: recorder.getTraces() };
+  }
+  return fallbackResult;
 }
 
 // Language detection

@@ -12,6 +12,14 @@ A comprehensive suite of testing and debugging tools for the Veritas project. Al
 | `04-test-api.js` | Simple API test server | `node 04-test-api.js [port]` |
 | `05-test-db-mapping.js` | Test snake_case/camelCase mapping | `node 05-test-db-mapping.js` |
 | `06-test-logs.js` | Analyze job logs | `node 06-test-logs.js <jobId> [options]` |
+| `07-extraction-analyzer.js` | Scraper extraction debugging with HTML export | `node 07-extraction-analyzer.js [source] [output.html]` |
+| `test-extraction-tracking.js` | Test extraction tracking functionality | `node test-extraction-tracking.js` |
+
+**Note:** For advanced debugging scenarios, consider using **Playwright MCP** through Claude Code for:
+- Visual site structure analysis
+- JavaScript-heavy content debugging  
+- Dynamic content extraction testing
+- Cross-browser compatibility verification
 
 ## 🚀 Getting Started
 
@@ -213,6 +221,97 @@ node 06-test-logs.js abc-123 --timeline --metrics
 - `--timeline`: Show job lifecycle events
 - `--metrics`: Show performance metrics
 
+---
+
+### 07-extraction-analyzer.js - Extraction Debug Report Generator
+Quick and simple tool that performs real scraping and exports a comprehensive HTML report for debugging extraction issues.
+
+**Features:**
+- Performs actual article scraping via RSS feeds
+- Generates self-contained HTML report (no external dependencies)
+- Side-by-side view of raw HTML source and extracted content
+- Shows which extraction method succeeded (JSON-LD, Selectors, Fallback)
+- Displays all selector matches and misses
+- Visual article preview using clean formatting
+- Exports everything to a single HTML file for easy sharing
+
+**Usage:**
+```bash
+# Interactive mode - select source from menu
+node 07-extraction-analyzer.js
+
+# Analyze specific source
+node 07-extraction-analyzer.js "BBC News"
+
+# Custom output file
+node 07-extraction-analyzer.js "BBC News" debug-report.html
+```
+
+**What it does:**
+1. Fetches RSS feed from selected source
+2. Scrapes first 3 articles from the feed
+3. Captures raw HTML and extraction results for each
+4. Generates a comprehensive HTML report with:
+   - Side-by-side source HTML and extracted content
+   - Extraction method details (JSON-LD, Selectors, Fallback)
+   - Selector analysis showing all matches/misses
+   - Clean article preview with formatting
+   - Navigation between multiple articles
+
+**Output:**
+- Self-contained HTML file (no external dependencies)
+- Opens directly in any browser
+- Includes all styling and interactivity
+- Easy to share for debugging collaboration
+
+**Best for:**
+- Debugging extraction failures
+- Understanding which selectors are working
+- Identifying site structure changes
+- Fine-tuning extraction strategies
+- Sharing debug information with team
+
+---
+
+### test-extraction-tracking.js - Extraction Tracking Test Suite
+Validates that the real-time extraction tracking feature is working correctly.
+
+**Features:**
+- Tests extraction with and without tracking enabled
+- Verifies content consistency between modes
+- Validates trace recording accuracy
+- Groups and displays traces by field
+- Tests both direct extraction and scraper API
+
+**Usage:**
+```bash
+# Run all tests
+node test-extraction-tracking.js
+```
+
+**What it tests:**
+1. **Direct extraction:** Tests the extractArticleContent function directly
+   - Without tracking: Ensures no traces are recorded
+   - With tracking: Verifies traces are captured correctly
+   - Content consistency: Confirms identical extraction results
+
+2. **Scraper API (optional):** If scraper service is running
+   - Triggers a job with enableTracking: true
+   - Verifies job completion
+   - Confirms tracking parameter is handled correctly
+
+**Output:**
+- Color-coded terminal output
+- Detailed trace information grouped by field
+- Pass/fail status for each test
+- Summary of extraction tracking health
+
+**Best for:**
+- Verifying extraction tracking implementation
+- Testing tracking consistency
+- Debugging trace recording issues
+- Validating extraction recorder functionality
+
 ## 🔧 Common Workflows
 
 ### Complete Local Testing Setup
@@ -242,6 +341,28 @@ node 06-test-logs.js <job-id> --timeline
 
 # 3. View performance metrics
 node 06-test-logs.js <job-id> --metrics
+
+# 4. Generate extraction debug report
+node 07-extraction-analyzer.js "Source Name"
+# Open generated HTML file in browser
+```
+
+### Debug Content Extraction Issues
+```bash
+# 1. Interactive mode - select source from menu
+node 07-extraction-analyzer.js
+
+# 2. Analyze specific source directly
+node 07-extraction-analyzer.js "BBC News"
+
+# 3. Custom output file
+node 07-extraction-analyzer.js "BBC News" bbc-debug.html
+
+# 4. Open generated HTML report:
+#    - Side-by-side source HTML and extracted content
+#    - Extraction method details (JSON-LD, Selectors, Fallback)
+#    - Selector analysis showing what matched
+#    - Visual highlighting of extracted sections
 ```
 
 ### Reset and Start Fresh

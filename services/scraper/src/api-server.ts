@@ -102,7 +102,7 @@ async function getDashboardMetrics(): Promise<DashboardMetrics> {
 // POST /api/scraper/trigger - Trigger new scraping job
 app.post('/api/scraper/trigger', async (req: Request<{}, {}, TriggerScrapingRequest>, res: Response<TriggerScrapingResponse | ErrorResponse>, next: NextFunction) => {
   try {
-    const { sources, maxArticles } = req.body;
+    const { sources, maxArticles, enableTracking = false } = req.body;
     
     if (!sources || !Array.isArray(sources) || sources.length === 0) {
       return res.status(400).json({
@@ -129,7 +129,7 @@ app.post('/api/scraper/trigger', async (req: Request<{}, {}, TriggerScrapingRequ
     (async () => {
       try {
         await db.updateJobStatus(jobId, 'in-progress');
-        await scraper.scrapeJob(jobId, sources, maxArticles);
+        await scraper.scrapeJob(jobId, sources, maxArticles, enableTracking);
         
         // Status is already set correctly by the scrapeJob transaction
         // No need to override it here
