@@ -111,6 +111,26 @@ export function ContentTab() {
     return languages[lang] || lang.toUpperCase()
   }
 
+  const formatArticleContent = (content: string) => {
+    // Split by triple newlines (the separator used by the scraper)
+    const paragraphs = content.split(/\n{3,}/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0)
+
+    // If no triple newlines found, try double newlines
+    if (paragraphs.length === 1) {
+      const doubleSplit = content.split(/\n{2,}/)
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+
+      if (doubleSplit.length > 1) {
+        return doubleSplit
+      }
+    }
+
+    return paragraphs
+  }
+
   return (
     <div className="space-y-4">
       {/* Filter Controls */}
@@ -214,10 +234,20 @@ export function ContentTab() {
               </CardHeader>
               
               <CardContent>
-                <p className={`text-sm ${expandedArticles.has(article.id) ? '' : 'line-clamp-3'}`}>
-                  {article.content}
-                </p>
-                
+                {expandedArticles.has(article.id) ? (
+                  <div className="text-sm space-y-3">
+                    {formatArticleContent(article.content || '').map((paragraph, index) => (
+                      <p key={index} className="leading-relaxed">
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm line-clamp-3">
+                    {article.content || ''}
+                  </p>
+                )}
+
                 {expandedArticles.has(article.id) && (
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex items-center justify-between">

@@ -2,6 +2,15 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
+// Configure Crawlee BEFORE any other imports that might use it
+import { Configuration } from 'crawlee';
+if (process.env.NODE_ENV === 'production') {
+  Configuration.set('persistStorage', false);
+  console.log('[Scraper] Running in production mode - using in-memory storage for Crawlee');
+} else {
+  console.log('[Scraper] Running in development mode - using file system storage for Crawlee');
+}
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { EnhancedRSSScraper } from './enhanced-scraper';

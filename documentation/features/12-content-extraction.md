@@ -21,7 +21,8 @@ The `extractArticleContent` function implements a three-tier extraction strategy
 
 2. **Selector-Based Extraction**
    - Secondary strategy using CSS selectors
-   - Site-specific selectors (BBC, NYTimes, Guardian, etc.)
+   - Site-specific selectors with prioritization strategy
+   - Fox News specific: `.article-body` prioritized early in selector list
    - Common article selectors (article-body, story-content)
    - Iterates through selectors until sufficient content found
 
@@ -143,7 +144,7 @@ Current performance across sources:
 - **BBC News**: ~95% success rate
 - **CNN**: ~90% success rate
 - **The Guardian**: ~95% success rate
-- **Fox News**: ~85% success rate (with filtering)
+- **Fox News**: ~90% success rate (improved with .article-body prioritization)
 - **NY Times**: Limited (403 errors)
 - **WSJ**: Limited (authentication required)
 
@@ -183,6 +184,16 @@ Located in `utilities/`:
    - Ensures filtering doesn't remove legitimate content
    - Validates safety of structural filtering
    - Cross-source validation
+
+6. **test-fox-extraction.js**
+   - Specific Fox News extraction testing
+   - Tests `.article-body` and fallback selectors
+   - Reports extraction success and content length
+
+7. **check-recent-jobs.js**
+   - Monitor recent scraping job status
+   - Analyze extraction success/failure patterns
+   - Debug job-level extraction issues
 
 ### Performance Characteristics
 
@@ -283,6 +294,7 @@ extractArticleContent(
 ## Related ADRs
 - [ADR-005: Multi-Strategy Content Extraction](../decisions/ADR-005-content-extraction-strategy.md)
 - [ADR-006: Real-Time Extraction Tracking System](../decisions/ADR-006-real-time-extraction-tracking.md)
+- [ADR-008: Fox News Selector Prioritization Strategy](../decisions/ADR-008-fox-news-selector-prioritization.md)
 - [ADR-004: Scraper Logging Separation](../decisions/ADR-004-scraper-logging-separation.md)
 
 ## Implementation Files

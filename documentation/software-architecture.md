@@ -208,7 +208,7 @@ The project uses three Railway services:
 ```
 services/scraper/
 ├── src/
-│   ├── enhanced-scraper.ts     # Two-phase scraper with extraction/persistence separation
+│   ├── enhanced-scraper.ts     # Two-phase scraper with extraction/persistence separation and improved error handling
 │   ├── enhanced-logger.ts      # Advanced logging with phase-specific tracking
 │   ├── job-manager.ts          # Job queue and execution management
 │   ├── content-classifier.ts   # Content classification and categorization
@@ -227,7 +227,12 @@ services/scraper/
 └── tsconfig.json               # TypeScript configuration
 ```
 
-**Note**: The scraper service uses `EnhancedRSSScraper` with two-phase processing (extraction and persistence) following ADR-004, providing accurate visibility into each phase of the scraping process.
+**Note**: The scraper service uses `EnhancedRSSScraper` with two-phase processing (extraction and persistence), providing accurate visibility into each phase of the scraping process. Enhanced with proper crawler teardown error handling to prevent cleanup failures.
+
+**Storage Strategy** (ADR-004):
+- **Production**: Uses in-memory storage for Crawlee to avoid file system issues in containerized environments
+- **Development**: Uses file system storage for debugging and inspection capabilities
+- Configuration is automatic based on `NODE_ENV` environment variable
 
 ### Service Communication
 - **HTTP APIs**: Services communicate via REST endpoints

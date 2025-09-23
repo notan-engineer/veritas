@@ -17,6 +17,9 @@ A comprehensive suite of testing and debugging tools for the Veritas project. Al
 | `09-e2e-extraction-test.js` | E2E extraction quality test | `node 09-e2e-extraction-test.js` |
 | `10-test-spacing.js` | Validate paragraph spacing | `node 10-test-spacing.js` |
 | `11-validate-extraction.js` | Validate content preservation | `node 11-validate-extraction.js` |
+| `test-crawlee-storage.js` | Test Crawlee storage configuration | `node test-crawlee-storage.js` |
+| `test-fox-extraction.js` | Fox News extraction testing | `node test-fox-extraction.js` |
+| `check-recent-jobs.js` | Job monitoring and debugging | `node check-recent-jobs.js` |
 
 **Note:** For advanced debugging scenarios, consider using **Playwright MCP** through Claude Code for:
 - Visual site structure analysis
@@ -428,6 +431,41 @@ node 09-e2e-extraction-test.js
 node 08-analyze-all-sources.js
 
 # 4. Review generated HTML reports in utility-output/
+```
+
+### Test Crawlee Storage Configuration
+```bash
+# Verify Crawlee storage modes for both environments
+node test-crawlee-storage.js
+
+# Output shows:
+# - Development mode: file system storage
+# - Production mode: in-memory storage
+# This ensures proper configuration per ADR-004
+```
+
+### Test Fox News Extraction Specifically
+```bash
+# Debug Fox News content extraction
+node test-fox-extraction.js
+
+# This tests specific Fox News selectors:
+# - .article-body (prioritized for Fox News)
+# - .article-wrap .article-body
+# - Other fallback selectors
+# Reports extraction success and content length
+```
+
+### Monitor Recent Scraping Jobs
+```bash
+# Check status of recent scraping jobs
+node check-recent-jobs.js
+
+# Shows:
+# - Last 5 jobs with status and metrics
+# - Detailed analysis of last 3 jobs
+# - Error messages and extraction stats
+# - Content saved in last hour
 ```
 
 ### Database Cleanup Workflow

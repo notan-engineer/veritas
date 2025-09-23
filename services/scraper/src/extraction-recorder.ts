@@ -41,14 +41,11 @@ export class ExtractionRecorder {
       const parent = $el.parent();
 
       // Skip if this paragraph is inside a caption or figure
-      if (parent.hasClass('caption') ||
-          parent.hasClass('video-caption') ||
-          parent.is('figcaption') ||
-          parent.closest('figure').length > 0 ||
-          parent.closest('.featured-video').length > 0 ||
-          parent.closest('.video-container').length > 0 ||
+      // Be less aggressive - only skip obvious captions
+      if (parent.is('figcaption') ||
           $el.hasClass('caption') ||
-          $el.hasClass('video-caption')) {
+          $el.hasClass('video-caption') ||
+          $el.attr('class')?.includes('caption')) {
         return; // Skip this paragraph
       }
 
