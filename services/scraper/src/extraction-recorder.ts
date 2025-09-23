@@ -22,6 +22,52 @@ export class ExtractionRecorder {
     return this.record(field, selector, 'text', value);
   }
 
+  // Extract content with paragraph preservation
+  extractContent($: CheerioAPI, selector: string, field: string): string {
+    const element = $(selector);
+    if (element.length === 0) return this.record(field, selector, 'content', '');
+
+    // Extract paragraphs to preserve structure
+    const paragraphs: string[] = [];
+    const seenTexts = new Set<string>(); // Track duplicates
+
+    // First try to get all <p> tags within the element, excluding captions
+    element.find('p').each((i, el) => {
+      const $el = $(el);
+      const parent = $el.parent();
+
+      // Skip if this paragraph is inside a caption or figure
+      if (parent.hasClass('caption') ||
+          parent.hasClass('video-caption') ||
+          parent.is('figcaption') ||
+          parent.closest('figure').length > 0 ||
+          parent.closest('.featured-video').length > 0 ||
+          parent.closest('.video-container').length > 0 ||
+          $el.hasClass('caption') ||
+          $el.hasClass('video-caption')) {
+        return; // Skip this paragraph
+      }
+
+      const text = $el.text().trim();
+
+      // Skip short text and duplicates
+      if (text.length > 30 && !seenTexts.has(text)) {
+        seenTexts.add(text);
+        paragraphs.push(text);
+      }
+    });
+
+    // If no paragraphs found, fall back to text
+    if (paragraphs.length === 0) {
+      const text = element.text().trim();
+      return this.record(field, selector, 'content', text);
+    }
+
+    // Join paragraphs with triple newlines (empty line between)
+    const value = paragraphs.join('\n\n\n');
+    return this.record(field, selector, 'content', value);
+  }
+
   // Wrap attribute extraction
   attr($: CheerioAPI, selector: string, attribute: string, field: string): string {
     const element = $(selector);

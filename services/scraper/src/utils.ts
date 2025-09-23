@@ -45,15 +45,29 @@ export function extractArticleContent($: CheerioAPI, url: string, enableTracking
                    recorder.attr($, 'meta[property="og:title"]', 'content', 'title') ||
                    '';
 
-      // Try content selectors and find the best one
+      // Try content selectors with improved extraction
       let content = '';
       const contentSelectors = [
+        // More specific selectors first
+        '[itemprop="articleBody"]',
+        'article [class*="body"]:not([class*="meta"])',
+        'article [class*="content"]:not([class*="header"])',
+        'main [class*="story-body"]',
+        '.article-text',
+        '.story-content',
+        // BBC specific
+        '[data-component="text-block"]',
+        // NYTimes specific
+        'section[name="articleBody"]',
+        // Guardian specific
+        '.content__article-body',
+        // General fallbacks
         'article', '.article-content', '.story-body',
         '.entry-content', '.post-content', 'main'
       ];
 
       for (const selector of contentSelectors) {
-        const extracted = recorder.text($, selector, 'content');
+        const extracted = recorder.extractContent($, selector, 'content');
         if (extracted && extracted.length > 100) {
           content = extracted;
           break;
@@ -96,11 +110,23 @@ export function extractArticleContent($: CheerioAPI, url: string, enableTracking
     try {
       const result = strategy();
       if (result && result.content && result.content.length > 100) {
-        // Clean up the content
-        result.content = result.content
-          .replace(/\s+/g, ' ')
-          .replace(/\n{3,}/g, '\n\n')
-          .trim();
+        // Preserve paragraph structure while cleaning
+        const isHtml = result.content.includes('<') || result.content.includes('&');
+
+        if (isHtml) {
+          // Load content as HTML and extract structured text
+          const $temp = $.load(result.content);
+          result.content = preserveContentStructure($temp.html() || result.content, $);
+        } else if (!result.content.includes('\n\n')) {
+          // If no paragraph breaks exist, try to add them intelligently
+          result.content = preserveContentStructure(result.content, $);
+        } else {
+          // Already has paragraph structure, just clean
+          result.content = result.content
+            .replace(/\r\n/g, '\n')
+            .replace(/\n{4,}/g, '\n\n\n')  // Max 3 newlines (one empty line)
+            .trim();
+        }
 
         // Add traces if tracking is enabled
         if (enableTracking) {
@@ -207,6 +233,85 @@ export function generateContentHash(title: string, content: string): string {
   const combined = `${normalizedTitle}:${contentSample}`;
   
   return crypto.createHash('sha256').update(combined).digest('hex');
+}
+
+/**
+ * Preserves paragraph structure while cleaning content
+ * Maintains readability without aggressive whitespace collapse
+ */
+function preserveContentStructure(html: string, $: CheerioAPI): string {
+  // If already plain text, detect natural breaks
+  if (!html.includes('<')) {
+    return html
+      .replace(/\r\n/g, '\n')           // Normalize line endings
+      .replace(/\n{4,}/g, '\n\n\n')     // Max 3 newlines (one empty line)
+      .replace(/([.!?])\s+([A-Z])/g, '$1\n\n\n$2')  // Detect sentence->paragraph boundaries with empty line
+      .trim();
+  }
+
+  // Load HTML content for processing
+  const $content = $.load(`<div id="wrapper">${html}</div>`);
+
+  // First, remove non-content elements
+  $content('#wrapper').find(`
+    nav, .navigation, .nav-menu,
+    .social-share, .share-buttons, .sharing,
+    .newsletter-signup, .newsletter, .subscribe,
+    .advertisement, .ad-container, .ads,
+    .related-articles, .recommended, .more-on,
+    aside:not(.article-aside), footer,
+    .comments, .comment-section,
+    [class*="promo"], [class*="banner"],
+    .caption, .video-caption, figcaption,
+    .featured-video, .video-container,
+    .video-player, .video-wrap,
+    [class*="caption"], figure
+  `).remove();
+
+  // Convert block elements to text with proper spacing
+  const paragraphs: string[] = [];
+
+  // Process paragraph tags first
+  $content('#wrapper p').each((i, elem) => {
+    const text = $content(elem).text().trim();
+    if (text.length > 30 && !isBoilerplate(text)) {
+      paragraphs.push(text);
+    }
+  });
+
+  // If no paragraphs found, try div-based content
+  if (paragraphs.length === 0) {
+    $content('#wrapper > div, #wrapper article > div').each((i, elem) => {
+      const text = $content(elem).text().trim();
+      if (text.length > 50 && !isBoilerplate(text)) {
+        // Split on natural breaks
+        const parts = text.split(/(?<=[.!?])\s+(?=[A-Z])/);
+        paragraphs.push(...parts.filter(p => p.length > 30));
+      }
+    });
+  }
+
+  return paragraphs.join('\n\n\n').trim();
+}
+
+/**
+ * Detects common boilerplate text patterns
+ */
+function isBoilerplate(text: string): boolean {
+  const patterns = [
+    /^(share|save|comment|subscribe|follow|newsletter)/i,
+    /^(advertisement|sponsored|promoted)/i,
+    /^\d+\s+(minute|hour|day)s?\s+ago$/i,
+    /^(read more|related|you may like|more from)/i,
+    /^(image caption|image source|getty images)/i,
+    /^(cookie policy|privacy policy|terms)/i,
+    /^(video|photo|image|figure)\s*\d*\s*:/i,  // Video/Photo captions often start with "Video:"
+    /^watch:/i,                                   // Fox News uses "Watch:" for video content
+    /^\[.*\]$/,                                  // Square bracket annotations
+    /^©\s*\d{4}/i                                // Copyright notices
+  ];
+
+  return patterns.some(pattern => pattern.test(text));
 }
 
 // Format duration for display
