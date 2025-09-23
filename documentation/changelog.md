@@ -1,5 +1,21 @@
 # Changelog
 
+### September 23, 2025 - UI Content Display Enhancement
+**Summary**: Improved article readability in the Scraper Management Content tab with proper paragraph formatting.
+
+**Key Features**:
+- Paragraphs now display with clear separation when articles are expanded
+- Automatic detection of paragraph breaks (triple or double newlines)
+- Enhanced typography with relaxed line spacing
+
+**Technical Details**:
+- Added formatArticleContent function in content-tab.tsx
+- Preserves collapsed preview with line-clamp-3
+- No backend changes required
+
+**Related**:
+- Commits: 654081d
+
 ### September 23, 2025 - Crawlee Storage Fix for Production
 **Summary**: Fixed critical scraper failure in production by configuring Crawlee to use in-memory storage in containerized environments, resolving file system errors in Railway deployment.
 
