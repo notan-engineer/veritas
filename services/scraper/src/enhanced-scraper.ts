@@ -62,6 +62,7 @@ export class EnhancedRSSScraper {
     const sourceStartTime = Date.now();
     const source = await getSourceByName(sourceName);
     const scrapedArticles: any[] = [];
+    let crawler: any = null; // Declare crawler at method scope for finally block access
     
     // Log source start
     await this.logger.logSourceStarted(
@@ -153,7 +154,7 @@ export class EnhancedRSSScraper {
 
     // Enhanced crawler configuration
     // Note: Storage is handled in-memory in production (see constructor)
-    const crawler = new CheerioCrawler({
+    crawler = new CheerioCrawler({
       // ENHANCED SETTINGS:
       maxRequestsPerCrawl: articlesPerSource * 3, // Allow 3x requests for retries
       maxConcurrency: 4, // Increased concurrency
