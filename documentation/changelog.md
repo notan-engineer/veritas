@@ -1,5 +1,28 @@
 # Changelog
 
+### September 23, 2025 - Scraper Extraction Fixes and Debugging Enhancements
+**Summary**: Fixed critical scraper extraction issues that were causing 0 article extraction despite content being available. Enhanced debugging capabilities with new monitoring tools and improved error handling for more reliable content collection.
+
+**Key Features**:
+- Fixed crawler teardown errors that prevented proper cleanup after scraping jobs
+- Improved Fox News content extraction with prioritized `.article-body` selector
+- Added real-time job monitoring utility for debugging scraper issues
+- Enhanced error handling to prevent scraper crashes from cleanup failures
+- Created Fox News specific testing utility for extraction validation
+
+**Technical Details**:
+- Resolved variable scope issue causing "Cannot read properties of undefined (reading teardown)" errors
+- Moved `.article-body` selector to priority position for Fox News extraction reliability
+- Relaxed overly aggressive paragraph filtering that was removing legitimate content
+- Added comprehensive debug logging to enhanced-scraper.ts for troubleshooting
+- Created utilities for source-specific testing and job monitoring
+
+**Related**:
+- Commits: 33c08f5 (crawler teardown fix)
+- ADRs: ADR-008 (Fox News selector prioritization strategy)
+- Utilities: test-fox-extraction.js, check-recent-jobs.js
+- Issues: Fixed scraper returning 0 articles despite Playwright extracting 8,954 characters
+
 ### September 23, 2025 - UI Content Display Enhancement
 **Summary**: Improved article readability in the Scraper Management Content tab with proper paragraph formatting.
 

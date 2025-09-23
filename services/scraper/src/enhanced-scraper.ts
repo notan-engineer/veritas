@@ -174,6 +174,16 @@ export class EnhancedRSSScraper {
           
           // Primary extraction method
           try {
+            // DEBUG: Log what we're working with
+            const bodyLength = $('body').html()?.length || 0;
+            const hasArticleBody = $('.article-body').length > 0;
+            const paragraphCount = $('.article-body p').length;
+
+            console.log(`[DEBUG] URL: ${request.url}`);
+            console.log(`[DEBUG] Body HTML length: ${bodyLength}`);
+            console.log(`[DEBUG] Has .article-body: ${hasArticleBody}`);
+            console.log(`[DEBUG] Paragraphs in .article-body: ${paragraphCount}`);
+
             article = extractArticleContent($, request.url, enableTracking);
           } catch (primaryError) {
             // Enhanced fallback: Try multiple strategies

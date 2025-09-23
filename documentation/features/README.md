@@ -81,6 +81,12 @@ This directory contains comprehensive documentation for all features implemented
     - Structural filtering for promotional content
     - Real-time extraction tracking for debugging
 
+13. **[Scraper Debugging and Monitoring](./14-scraper-debugging.md)**
+    - Real-time job monitoring and status tracking
+    - Source-specific extraction testing
+    - Enhanced error handling and cleanup protection
+    - Comprehensive debugging utilities
+
 ## Feature Status
 
 ### ✅ Implemented
@@ -100,6 +106,7 @@ This directory contains comprehensive documentation for all features implemented
 - Advanced content extraction with paragraph preservation
 - Structural filtering for promotional content
 - Real-time extraction tracking system
+- Scraper debugging and monitoring utilities
 
 ### 🚧 In Progress
 - User preference storage

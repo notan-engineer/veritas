@@ -89,7 +89,10 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "mcp__git__git_add",
-      "mcp__git__git_commit"
+      "mcp__git__git_commit",
+      "Bash(git push:*)",
+      "Bash(git restore:*)",
+      "mcp__git__git_diff"
     ],
     "deny": []
   },

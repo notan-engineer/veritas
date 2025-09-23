@@ -50,6 +50,11 @@ export function extractArticleContent($: CheerioAPI, url: string, enableTracking
       const contentSelectors = [
         // More specific selectors first
         '[itemprop="articleBody"]',
+        // Fox News specific - MUST be early in the list
+        '.article-body',  // Put this first for Fox News
+        '.article-wrap .article-body',
+        '.article-content',
+        // Other article selectors
         'article [class*="body"]:not([class*="meta"])',
         'article [class*="content"]:not([class*="header"])',
         'main [class*="story-body"]',
@@ -65,7 +70,7 @@ export function extractArticleContent($: CheerioAPI, url: string, enableTracking
         // Guardian specific
         '.content__article-body',
         // General fallbacks
-        'article', '.article-content', '.story-body',
+        'article', '.story-body',
         '.entry-content', '.post-content', 'main'
       ];
 
