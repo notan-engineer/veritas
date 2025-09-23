@@ -77,3 +77,21 @@ railway-interface.md
 
 # Local development directory
 local/
+
+# Utility output files
+utilities/utility-output/*.html
+utilities/extraction-debug-*.html
+utilities/enhanced-debug.html
+!utilities/utility-output/.gitkeep
+
+# Test coverage
+coverage/
+*.coverage
+
+# Local temporary files
+local/temp*
+local/tmp*
+
+# IDE files
+*.swp
+*.swo

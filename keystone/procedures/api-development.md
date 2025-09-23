@@ -12,6 +12,7 @@ Client: @services/ui/lib/data-service.ts (for integration)
 - [ ] Request specific API route file
 - [ ] Add database client if needed
 - [ ] Test endpoint functionality
+- [ ] For scraper API issues, reference `keystone/procedures/scraper-debugging.md`
 - [ ] Complete → Start new session
 
 ## Common Patterns

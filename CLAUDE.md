@@ -19,6 +19,74 @@ A mandatory development methodology for all work in this project. Keystone provi
 - **Local development & utilities** → Use `utilities/` for testing scripts and tools
 - **Understanding features** → See `documentation/features/` for specifications
 
+## MCP (Model Context Protocol) Integration
+**Available MCP Servers for Enhanced Development:**
+- **memory** - Persistent knowledge graph for context retention across sessions
+- **filesystem** - Secure file operations scoped to Veritas project directory
+- **git** - Advanced git operations and repository management
+- **sequential-thinking** - Enhanced reasoning and complex problem solving
+- **fetch** - Web content fetching for scraper development and testing
+- **playwright** - Browser automation for scraper debugging and site analysis
+
+**MCP Usage Guidelines:**
+- Leverage **memory** for maintaining context across development sessions
+- Use **filesystem** for safe, scoped file operations within project
+- Apply **git** for sophisticated version control workflows
+- Utilize **sequential-thinking** for complex architectural decisions
+- Employ **fetch** for testing and enhancing scraper functionality
+- Use **playwright** for scraper debugging, site structure analysis, and visual validation
+
+**Windows Configuration Requirements:**
+- All MCP servers configured with `cmd /c npx` wrapper for Windows compatibility
+- Automatic PowerShell→CMD fallback for NPM package installation issues
+- Project path uses Windows format: `C:\\Users\\USER\\Veritas\\veritas`
+
+## Environment & Platform Awareness
+
+### Windows Development Environment
+**Platform Specifics:**
+- **Operating System**: Windows with PowerShell as default shell
+- **IDE Integration**: Claude Code running within Cursor IDE
+- **Shell Compatibility**: PowerShell has syntax conflicts with some NPM commands (especially `@` symbols)
+
+**Critical Windows Considerations:**
+- **MCP Server Configuration**: All MCP servers MUST use `cmd /c` wrapper for Windows compatibility
+- **PowerShell Limitations**:
+  - NPM package names with `@` symbols (e.g., `@modelcontextprotocol/server-memory`) cause PowerShell parsing errors
+  - Use CMD instead of PowerShell for NPM/NPX operations when automated tools fail
+  - Always specify shell type when requesting commands: "I'm using PowerShell on Windows"
+
+**Cursor IDE Integration:**
+- Claude Code is launched from within Cursor IDE environment
+- File operations may interact with Cursor's file watching and indexing
+- Terminal commands execute within Cursor's integrated terminal context
+
+### Troubleshooting Guidelines
+
+**When NPM/MCP Commands Fail:**
+1. **Immediate Escalation**: If PowerShell commands fail 2-3 times, switch to manual approach
+2. **Shell Switching**: Try same commands in CMD instead of PowerShell
+3. **Manual Configuration**: Request direct `.claude.json` editing instructions
+4. **Environment Declaration**: Always specify "Windows + PowerShell" or "Windows + CMD" in requests
+
+**Common Error Patterns:**
+- **PowerShell Splatting Errors**: `@` symbols in NPM packages cause "splatting operator" errors
+- **Path Format Issues**: Windows backslash vs forward slash path formatting
+- **MCP Server Startup**: Windows requires `cmd /c npx` wrapper instead of direct `npx` calls
+
+**Best Practices for Requests:**
+```
+❌ Bad: "Install the MCP servers"
+✅ Good: "Install MCP servers on Windows. I'm using PowerShell. If automated
+        commands fail, provide manual .claude.json editing instructions."
+```
+
+**Fallback Strategy:**
+1. Try automated approach first
+2. If fails, immediately request manual/CMD alternative
+3. Always verify with `claude mcp list` after changes
+4. Specify exact error messages when seeking help
+
 ## Commands
 
 ### UI Service (Main Next.js Application)
@@ -75,6 +143,13 @@ node 03-test-scraper.js   # End-to-end scraper test
 node 04-test-api.js       # Start test API server
 node 05-test-db-mapping.js # Test snake_case/camelCase mapping
 node 06-test-logs.js <id> # Analyze job logs
+node 07-debug-extraction.js # Debug content extraction issues
+
+# Advanced debugging: Use Playwright MCP through Claude Code for:
+# - Visual site structure analysis
+# - JavaScript-heavy content debugging  
+# - Dynamic content extraction testing
+# - Cross-browser compatibility verification
 
 # See utilities/README.md for detailed usage
 ```

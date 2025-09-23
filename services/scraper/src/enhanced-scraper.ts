@@ -16,13 +16,13 @@ export class EnhancedRSSScraper {
     this.logger = new EnhancedLogger();
   }
   
-  async scrapeJob(jobId: string, sources: string[], articlesPerSource: number) {
+  async scrapeJob(jobId: string, sources: string[], articlesPerSource: number, enableTracking: boolean = false) {
     const startTime = Date.now();
     await this.logger.logJobStarted(jobId, sources, articlesPerSource, 'api');
     
     // Process sources with Promise.allSettled for fault tolerance
     const sourceResults = await Promise.allSettled(
-      sources.map(sourceName => this.scrapeSourceEnhanced(jobId, sourceName, articlesPerSource))
+      sources.map(sourceName => this.scrapeSourceEnhanced(jobId, sourceName, articlesPerSource, enableTracking))
     );
     
     // Process extraction results
@@ -52,7 +52,7 @@ export class EnhancedRSSScraper {
     await this.logFinalJobMetrics(jobId, successfulExtractions, persistenceResults, extractionFailures, articlesPerSource, startTime);
   }
   
-  private async scrapeSourceEnhanced(jobId: string, sourceName: string, articlesPerSource: number): Promise<SourceResult> {
+  private async scrapeSourceEnhanced(jobId: string, sourceName: string, articlesPerSource: number, enableTracking: boolean = false): Promise<SourceResult> {
     const sourceStartTime = Date.now();
     const source = await getSourceByName(sourceName);
     const scrapedArticles: any[] = [];
@@ -178,7 +178,7 @@ export class EnhancedRSSScraper {
           
           // Primary extraction method
           try {
-            article = extractArticleContent($, request.url);
+            article = extractArticleContent($, request.url, enableTracking);
           } catch (primaryError) {
             // Fallback: Basic extraction
             const title = $('title').text() || $('h1').first().text() || articleTitle || 'Untitled';
@@ -222,6 +222,8 @@ export class EnhancedRSSScraper {
             sourceId,
             language,
             contentHash: generateContentHash(article.title, article.content),
+            // Store extraction traces if tracking is enabled
+            ...(article.traces ? { extractionTraces: article.traces } : {})
           };
           
           // Convert to ExtractedArticle format for logger
