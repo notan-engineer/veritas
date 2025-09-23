@@ -7,22 +7,33 @@
 - Advanced multi-strategy content extraction (JSON-LD, selectors, meta tags)
 - Paragraph structure preservation with triple newline separation
 - Structural filtering for promotional content (ALL CAPS + links only)
-- Real-time extraction tracking for debugging
-- Five new testing utilities for extraction validation
+- Real-time extraction tracking for debugging with ExtractionRecorder
+- Five new extraction testing utilities (07-11) for validation and debugging
 - Project structure cleanup with test file removal
+- Enhanced local development with git operation shortcuts
 
 **Technical Details**:
 - Implemented three-tier extraction strategy prioritizing structured data
 - Added safe structural filtering that avoids text matching
 - Enhanced `preserveContentStructure` function in utils.ts
-- Created `ExtractionRecorder` class for optional debugging
+- Created `ExtractionRecorder` class for zero-overhead optional debugging
+- Implemented `enableTracking` parameter in scraper API
 - Removed 12 temporary test files and updated .gitignore
 - Achieved 85-95% extraction success rates across major sources
 
+**New Utilities**:
+- `07-extraction-analyzer.js` - HTML report generation for debugging extractions
+- `08-analyze-all-sources.js` - Batch analysis across all configured sources
+- `09-e2e-extraction-test.js` - End-to-end extraction validation
+- `10-test-spacing.js` - Paragraph spacing verification
+- `11-validate-extraction.js` - Content safety validation
+
 **Related**:
-- Commits: e8684ac, 1cb0c9d, af3f9d9, 5cd2865
-- PRs: N/A (uncommitted changes)
-- Issues: N/A
+- Commits: 6713fca, 49b1069, fadcc72 (local changes)
+- ADR-005: Multi-Strategy Content Extraction
+- ADR-006: Real-Time Extraction Tracking System
+- Feature: [Content Extraction System](./features/12-content-extraction.md)
+- Projects: Real-time extraction tracking (completed)
 
 ---
 

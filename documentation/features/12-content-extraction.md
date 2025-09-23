@@ -282,6 +282,7 @@ extractArticleContent(
 
 ## Related ADRs
 - [ADR-005: Multi-Strategy Content Extraction](../decisions/ADR-005-content-extraction-strategy.md)
+- [ADR-006: Real-Time Extraction Tracking System](../decisions/ADR-006-real-time-extraction-tracking.md)
 - [ADR-004: Scraper Logging Separation](../decisions/ADR-004-scraper-logging-separation.md)
 
 ## Implementation Files
