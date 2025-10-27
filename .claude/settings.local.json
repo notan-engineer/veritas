@@ -92,7 +92,12 @@
       "mcp__git__git_commit",
       "Bash(git push:*)",
       "Bash(git restore:*)",
-      "mcp__git__git_diff"
+      "mcp__git__git_diff",
+      "Bash(where railway:*)",
+      "Bash(npm:*)",
+      "Bash(git config:*)",
+      "Bash(test:*)",
+      "Bash(bash:*)"
     ],
     "deny": []
   },
