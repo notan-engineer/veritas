@@ -95,3 +95,4 @@ local/tmp*
 # IDE files
 *.swp
 *.swo
+claude-migration-bundle/
