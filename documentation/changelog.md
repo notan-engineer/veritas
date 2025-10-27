@@ -1,5 +1,83 @@
 # Changelog
 
+### October 27, 2025 (PM) - Build Configuration & Database Schema Fixes
+**Summary**: Fixed critical build errors on fresh Mac setup and resolved database schema circular dependency issue that required multiple schema application passes. Improved developer onboarding with environment variable templates.
+
+**Key Fixes**:
+- Database schema now applies correctly in single pass (fixed circular dependency)
+- Build configuration cleaned of deprecated Next.js options
+- Environment variable templates created for both services
+- Local database password documentation clarified
+
+**Technical Details**:
+- **Database Schema** (`database/schema.sql`):
+  - Moved `scraping_jobs` table creation before `scraped_content` to resolve foreign key dependency
+  - Added clear dependency ordering documentation in schema header
+  - Verified single-pass application on fresh database
+- **Build Configuration** (`services/ui/next.config.ts`):
+  - Removed deprecated `eslint` configuration (no longer supported in Next.js 15.3+)
+  - Cleaned up configuration warnings
+- **Environment Templates**:
+  - Created `services/scraper/.env.example` with correct local PostgreSQL credentials
+  - Created `services/ui/.env.example` with scraper service URL options
+  - Both files tracked in git for developer reference
+- **Dependency Management**:
+  - Fixed TypeScript version conflict (5.8.3 for Next.js peer dependency compatibility)
+  - Verified all dependencies installed correctly on fresh Mac setup
+
+**Developer Impact**:
+- Fresh database setups now work on first schema application
+- New developers have `.env.example` templates to copy from
+- Build process runs cleanly without deprecation warnings
+- Correct local PostgreSQL password documented (`localdbpass` not `db0212`)
+
+**Files Changed**: 4 files modified, 2 new templates created
+**Testing**: Verified on fresh PostgreSQL database and clean Node.js environment
+
+---
+
+### October 27, 2025 (AM) - Mac Migration & Claude Code Automation Compatibility
+**Summary**: Completed comprehensive migration from Windows to Mac development environment and established automation-first infrastructure to ensure all utility scripts are compatible with Claude Code's non-interactive execution model. This foundational update enables seamless AI-assisted development workflows.
+
+**Key Features**:
+- Cross-platform development support for both Mac/Linux and Windows environments
+- Automated database setup with zero-prompt execution for Claude Code compatibility
+- Comprehensive Keystone framework documentation for automation best practices
+- Ready-to-use script template for creating automation-compatible utilities
+- Enhanced credential management using `.pgpass` and `.env` files
+
+**Technical Details**:
+- Created `utilities/01-db-setup.sh` (Mac/Linux bash equivalent) with dual-mode support (interactive + automated)
+- Implemented credential file approach eliminating all password prompts and interactive sessions
+- Added comprehensive automation guide: `keystone/claude-code-compatibility.md`
+- Updated 6 Keystone framework files with mandatory automation requirements
+- Fixed cross-platform date commands in 3 knowledge export scripts
+- Created automation script template: `keystone/templates/automation-script-template.sh`
+- Security improvement: Removed hardcoded password from `utilities/check-recent-jobs.js`
+- Updated all documentation from Windows-centric to cross-platform approach
+
+**Automation Architecture**:
+- **Dual-Mode Pattern**: All utilities support both interactive (human-friendly) and automated (CLI arguments) modes
+- **Credential Files**: PostgreSQL `.pgpass` eliminates password prompts; `.env` stores Railway credentials
+- **Direct Connections**: Replaced `railway connect` interactive sessions with direct `DATABASE_URL` usage
+- **Claude Code Compatible**: All utilities tested in non-interactive subprocess environment
+
+**Documentation Updates**:
+- `CLAUDE.md` - Converted from Windows-only to cross-platform development guide
+- `keystone/claude-code-compatibility.md` - NEW comprehensive automation reference
+- `keystone/agentic-principles.md` - Added Claude Code shell limitations awareness
+- `keystone/development-principles.md` - Added mandatory automation requirements
+- `keystone/procedures/utility-creation.md` - Embedded automation compatibility checklist
+- `keystone/procedures/local-testing.md` - Added automated/interactive mode documentation
+- `keystone/procedures/database-work.md` - Cross-platform script references
+- `utilities/README.md` - Updated with cross-platform usage examples
+
+**Related**:
+- Files Changed: 15 modified, 4 new files created
+- Keystone Impact: 7 framework files updated
+- Utilities: New bash script, updated README, fixed security issue
+- Platform Support: Mac (primary), Windows (maintained), Linux (supported)
+
 ### September 23, 2025 - Scraper Extraction Fixes and Debugging Enhancements
 **Summary**: Fixed critical scraper extraction issues that were causing 0 article extraction despite content being available. Enhanced debugging capabilities with new monitoring tools and improved error handling for more reliable content collection.
 
@@ -114,7 +192,7 @@
 - Enhanced CLAUDE.md with comprehensive utility commands
 
 **New Utilities**:
-- `01-db-setup.ps1` - Automated database setup with Railway import
+- `01-db-setup.sh` / `01-db-setup.ps1` - Automated database setup with Railway import (cross-platform)
 - `02-db-clear.js` - Safe data cleanup utility
 - `03-test-scraper.js` - End-to-end scraper testing
 - `04-test-api.js` - Standalone API test server

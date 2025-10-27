@@ -102,15 +102,23 @@ async function validateFiles(files) {
  * @returns {Object} Metadata object
  */
 async function generateMetadata() {
-  const now = execSync('powershell -Command "Get-Date -Format \'dd-MM-yy HH:mm:ss\'"').toString().trim();
+  const isWindows = process.platform === 'win32';
+
+  // Get current date/time
+  const now = isWindows
+    ? execSync('powershell -Command "Get-Date -Format \'dd-MM-yy HH:mm:ss\'"').toString().trim()
+    : execSync('date +"%d-%m-%y %H:%M:%S"').toString().trim();
+
   const gitCommit = execSync('git rev-parse HEAD').toString().trim().substring(0, 7);
-  
+
   // Calculate expiry date (7 days from now)
   const expiryDate = new Date();
   expiryDate.setDate(expiryDate.getDate() + 7);
-  const expiryFormatted = execSync(`powershell -Command "Get-Date '${expiryDate.toISOString()}' -Format 'dd-MM-yy'"`)
-    .toString().trim();
-  
+
+  const expiryFormatted = isWindows
+    ? execSync(`powershell -Command "Get-Date '${expiryDate.toISOString()}' -Format 'dd-MM-yy'"`).toString().trim()
+    : execSync(`date -j -f "%Y-%m-%dT%H:%M:%S" "${expiryDate.toISOString().split('.')[0]}" +"%d-%m-%y" 2>/dev/null || date -d "${expiryDate.toISOString()}" +"%d-%m-%y"`).toString().trim();
+
   return {
     exportDate: now,
     gitCommit: gitCommit,
@@ -567,7 +575,10 @@ async function exportPlanningContext() {
     await fs.mkdir(exportDir, { recursive: true });
     
     // Write the output file
-    const dateStr = execSync('powershell -Command "Get-Date -Format \'dd-MM-yy\'"').toString().trim();
+    const isWindows = process.platform === 'win32';
+    const dateStr = isWindows
+      ? execSync('powershell -Command "Get-Date -Format \'dd-MM-yy\'"').toString().trim()
+      : execSync('date +"%d-%m-%y"').toString().trim();
     const outputPath = path.join(exportDir, `${dateStr} - External Planning.md`);
     
     await fs.writeFile(outputPath, output, 'utf-8');

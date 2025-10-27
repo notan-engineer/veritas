@@ -7,9 +7,12 @@ Guidelines for creating testing utilities, debugging tools, and automation scrip
 - [ ] Check if utility already exists in `utilities/`
 - [ ] Use numbered naming convention: `XX-purpose.js`
 - [ ] Include comprehensive header documentation
-- [ ] Support both interactive and non-interactive modes
+- [ ] **MANDATORY: Support both interactive and automated modes** (see [Claude Code Automation Compatibility](../claude-code-compatibility.md))
+- [ ] **MANDATORY: Eliminate all blocking operations** (no `read` prompts, password prompts, interactive sessions)
+- [ ] **MANDATORY: Use credential files** (.pgpass, .env) instead of prompts
 - [ ] Update `utilities/README.md` with new tool
 - [ ] Test on both Windows and Unix systems
+- [ ] **MANDATORY: Test in non-interactive subprocess** (simulates Claude Code environment)
 
 ## Utility Structure Template
 
@@ -138,7 +141,7 @@ try {
 - `50+`: Project-specific utilities
 
 ### Current Utilities Reference
-- `01-db-setup.ps1` - Database setup and import
+- `01-db-setup.sh` / `01-db-setup.ps1` - Database setup and import (Mac/Linux and Windows versions)
 - `02-db-clear.js` - Data cleanup utility
 - `03-test-scraper.js` - Scraper testing
 - `04-test-api.js` - API test server
@@ -196,6 +199,136 @@ Update relevant procedures in `keystone/procedures/`:
 - Update testing workflows
 - Add to troubleshooting sections
 
+## Claude Code Automation Compatibility
+
+### **MANDATORY Requirements**
+
+Every utility script MUST satisfy these automation requirements to be compatible with Claude Code. See [Claude Code Automation Compatibility](../claude-code-compatibility.md) for comprehensive guide.
+
+#### ✅ Dual-Mode Support (REQUIRED)
+```bash
+# Automated mode - Claude Code compatible
+./script.sh --operation=test
+node script.js --confirm
+
+# Interactive mode - human-friendly
+./script.sh  # Shows menu, accepts input
+node script.js  # Prompts for confirmation
+```
+
+**Implementation pattern:**
+```javascript
+// Check if arguments provided (automated) or no arguments (interactive)
+const INTERACTIVE_MODE = process.argv.length <= 2;
+
+if (INTERACTIVE_MODE) {
+  // Show menu, prompt for input
+} else {
+  // Parse CLI arguments, execute without prompts
+}
+```
+
+#### ❌ Anti-Patterns to Avoid (BLOCKING)
+
+These patterns will BLOCK Claude Code and must be eliminated:
+
+**1. Interactive Prompts**
+```bash
+# ❌ BLOCKS in Claude Code
+read -p "Enter value: " VAR
+```
+```javascript
+// ❌ BLOCKS in Claude Code
+const readline = require('readline');
+rl.question('Enter value: ', (answer) => { ... });
+```
+
+**Solution:** Use CLI arguments with interactive fallback:
+```bash
+# ✅ Works in Claude Code
+VALUE="${1:-}"
+if [ -z "$VALUE" ]; then
+  read -p "Enter value: " VALUE  # Only prompts in interactive mode
+fi
+```
+
+**2. Password Prompts**
+```bash
+# ❌ BLOCKS in Claude Code
+createdb -U postgres dbname  # Prompts for password
+psql -U postgres  # Prompts for password
+```
+
+**Solution:** Use `.pgpass` file:
+```bash
+# One-time setup
+echo "localhost:5432:*:postgres:localdbpass" > ~/.pgpass
+chmod 600 ~/.pgpass
+
+# ✅ Works in Claude Code - no password prompt
+createdb -U postgres dbname
+psql -U postgres dbname
+```
+
+**3. Interactive CLI Sessions**
+```bash
+# ❌ BLOCKS in Claude Code
+railway connect  # Opens interactive psql session
+```
+
+**Solution:** Use direct database connections:
+```bash
+# ✅ Works in Claude Code
+pg_dump "$RAILWAY_DATABASE_URL" > dump.sql
+psql "$RAILWAY_DATABASE_URL" -c "SELECT COUNT(*) FROM table;"
+```
+
+#### 🔐 Credential Management (REQUIRED)
+
+**For PostgreSQL:**
+```bash
+# Create ~/.pgpass (one-time setup)
+cat > ~/.pgpass <<EOF
+localhost:5432:*:postgres:localdbpass
+EOF
+chmod 600 ~/.pgpass
+```
+
+**For Railway/External Services:**
+```bash
+# Create utilities/.env (one-time setup, NEVER commit)
+cat > utilities/.env <<EOF
+RAILWAY_DATABASE_URL=postgresql://user:pass@host:port/db
+EOF
+
+# Load in scripts
+if [ -f utilities/.env ]; then
+    export $(grep -v '^#' utilities/.env | xargs)
+fi
+```
+
+#### 📋 Automation Testing Checklist
+
+Before considering a utility "automation-compatible":
+
+```bash
+# Test 1: Non-interactive subprocess (simulates Claude Code)
+echo "" | ./script.sh --operation=test
+# Should complete without hanging
+
+# Test 2: Verify no password prompts
+./script.sh --operation=test
+# Should not prompt for any passwords
+
+# Test 3: Help flag works
+./script.sh --help
+# Should display usage and exit
+
+# Test 4: Interactive mode still works
+./script.sh
+# Should show menu for human users
+```
+
 ## Testing Requirements
 
 ### Cross-Platform Testing
@@ -209,11 +342,14 @@ Update relevant procedures in `keystone/procedures/`:
 - Provide helpful error messages
 - Exit with appropriate codes (0=success, 1=error)
 - Handle missing dependencies gracefully
+- **Check for credential files and suggest setup if missing**
 
-### Interactive vs Non-Interactive
-- Support command-line arguments for automation
-- Provide interactive prompts for user-friendly mode
-- Document both modes clearly
+### Interactive vs Automated Mode
+- **MANDATORY: Support command-line arguments for automated mode**
+- **MANDATORY: Provide interactive prompts only when no arguments given**
+- Document both modes clearly with examples
+- Test both modes independently
+- Ensure automated mode works in non-interactive subprocess
 
 ## Common Patterns
 
@@ -257,11 +393,15 @@ console.log(' Done!');
 ```
 
 ## Security Considerations
-- Never hardcode credentials
-- Use environment variables for sensitive data
-- Validate and sanitize all inputs
-- Don't expose internal errors to users
-- Add confirmation prompts for destructive operations
+- **Never hardcode credentials** - Use .pgpass and .env files
+- **Use environment variables for sensitive data**
+- **Validate and sanitize all inputs**
+- **Don't expose internal errors to users**
+- **Add confirmation prompts for destructive operations** (use `--confirm` flag for automated mode)
+- **Store credentials in secure files:**
+  - `~/.pgpass` for PostgreSQL (chmod 600)
+  - `utilities/.env` for Railway/external services (in .gitignore)
+- **Never commit credential files** - Always use .example templates
 
 ## Maintenance
 - Keep utilities focused on single purpose

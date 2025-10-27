@@ -4,7 +4,7 @@ const pg = require('pg');
 require('dotenv').config({ path: '../services/scraper/.env' });
 
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Hariom123@localhost:5432/veritas_local'
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:YOUR_PASSWORD@localhost:5432/veritas_local'
 });
 
 async function checkJobs() {

@@ -36,56 +36,93 @@ A mandatory development methodology for all work in this project. Keystone provi
 - Employ **fetch** for testing and enhancing scraper functionality
 - Use **playwright** for scraper debugging, site structure analysis, and visual validation
 
-**Windows Configuration Requirements:**
-- All MCP servers configured with `cmd /c npx` wrapper for Windows compatibility
-- Automatic PowerShell→CMD fallback for NPM package installation issues
-- Project path uses Windows format: `C:\\Users\\USER\\Veritas\\veritas`
+**MCP Configuration Notes:**
+- All MCP servers use standard `npx` commands (cross-platform)
+- No special wrappers needed on macOS/Linux
+- Project paths use standard Unix-style paths on Mac/Linux
+- Windows users should use `cmd /c npx` wrapper if needed
 
 ## Environment & Platform Awareness
 
-### Windows Development Environment
-**Platform Specifics:**
-- **Operating System**: Windows with PowerShell as default shell
-- **IDE Integration**: Claude Code running within Cursor IDE
-- **Shell Compatibility**: PowerShell has syntax conflicts with some NPM commands (especially `@` symbols)
+### Cross-Platform Development
+**Supported Platforms:**
+- **macOS**: Primary development platform (zsh/bash shells)
+- **Windows**: Supported with PowerShell or CMD
+- **Linux**: Fully supported (bash/zsh shells)
+- **IDE Integration**: Claude Code works within Cursor IDE and standalone
 
-**Critical Windows Considerations:**
-- **MCP Server Configuration**: All MCP servers MUST use `cmd /c` wrapper for Windows compatibility
-- **PowerShell Limitations**:
-  - NPM package names with `@` symbols (e.g., `@modelcontextprotocol/server-memory`) cause PowerShell parsing errors
-  - Use CMD instead of PowerShell for NPM/NPX operations when automated tools fail
-  - Always specify shell type when requesting commands: "I'm using PowerShell on Windows"
+**Platform-Specific Considerations:**
 
-**Cursor IDE Integration:**
-- Claude Code is launched from within Cursor IDE environment
-- File operations may interact with Cursor's file watching and indexing
-- Terminal commands execute within Cursor's integrated terminal context
+**macOS/Linux:**
+- PostgreSQL installation: Use Homebrew (`brew install postgresql@18`) or native package manager
+- Shell scripts use `.sh` extension
+- All standard Unix commands work natively
+- Railway CLI works via npm/npx
+
+**Windows:**
+- PowerShell has syntax conflicts with `@` symbols in NPM packages
+- Use CMD instead of PowerShell for NPM/NPX operations if issues occur
+- MCP servers may need `cmd /c npx` wrapper
+- Shell scripts use `.ps1` extension for PowerShell
+- PostgreSQL installation: Download from postgresql.org/download/windows or use `choco install postgresql`
 
 ### Troubleshooting Guidelines
 
-**When NPM/MCP Commands Fail:**
-1. **Immediate Escalation**: If PowerShell commands fail 2-3 times, switch to manual approach
-2. **Shell Switching**: Try same commands in CMD instead of PowerShell
-3. **Manual Configuration**: Request direct `.claude.json` editing instructions
-4. **Environment Declaration**: Always specify "Windows + PowerShell" or "Windows + CMD" in requests
+**General Approach:**
+1. Verify tools are installed: `node --version`, `npm --version`, `railway --version`
+2. Check PostgreSQL is running (if doing local database work)
+3. Ensure you're in the correct directory before running commands
+4. Use the appropriate script for your platform (`.sh` vs `.ps1`)
 
-**Common Error Patterns:**
-- **PowerShell Splatting Errors**: `@` symbols in NPM packages cause "splatting operator" errors
-- **Path Format Issues**: Windows backslash vs forward slash path formatting
-- **MCP Server Startup**: Windows requires `cmd /c npx` wrapper instead of direct `npx` calls
+**Platform-Specific Issues:**
 
-**Best Practices for Requests:**
+**macOS:**
+- If `psql` not found: Add PostgreSQL to PATH or use full path `/Library/PostgreSQL/18/bin/psql`
+- Port conflicts: Use `./local/cleanup-ports.command` to clear ports (macOS-specific)
+- Permission issues: Use `chmod +x script.sh` to make scripts executable
+
+**Windows:**
+- If `psql` not found: Add PostgreSQL to PATH (typically `C:\Program Files\PostgreSQL\18\bin\`)
+- PowerShell `@` symbol errors: Switch to CMD or use backtick escape
+- Port conflicts: Use Task Manager or `netstat -ano | findstr :3000` to find/kill port processes
+- Script execution policy: Run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` once (enables script execution)
+
+## Environment Setup
+
+### First-Time Setup
+
+Before running either service locally, you need to configure environment variables:
+
+**1. Copy environment templates:**
+```bash
+# Scraper service
+cd services/scraper
+cp .env.example .env
+
+# UI service
+cd services/ui
+cp .env.example .env.local
 ```
-❌ Bad: "Install the MCP servers"
-✅ Good: "Install MCP servers on Windows. I'm using PowerShell. If automated
-        commands fail, provide manual .claude.json editing instructions."
+
+**2. Update database credentials:**
+Both `.env` files contain `DATABASE_URL` with a placeholder password. Replace `YOUR_PASSWORD` with your local PostgreSQL password.
+
+For macOS/Linux users with PostgreSQL installed locally, the default is often the password you set during installation. Check your `~/.pgpass` file if you have one.
+
+**3. Verify PostgreSQL is running:**
+```bash
+# macOS (if installed via Homebrew)
+brew services list | grep postgresql
+
+# All platforms - check if accepting connections
+pg_isready -h localhost -p 5432
 ```
 
-**Fallback Strategy:**
-1. Try automated approach first
-2. If fails, immediately request manual/CMD alternative
-3. Always verify with `claude mcp list` after changes
-4. Specify exact error messages when seeking help
+**Important Notes:**
+- `.env` and `.env.local` files are gitignored for security
+- `.env.example` templates are tracked in git for reference
+- Railway deployments auto-populate `DATABASE_URL` - no manual setup needed
+- Default local database name is `veritas_local`
 
 ## Commands
 
@@ -129,15 +166,29 @@ cd database
 # Apply migrations manually as needed
 ```
 
+### Local Development Scripts
+```bash
+# Port cleanup
+# macOS: Double-click from Finder or run from terminal
+./local/cleanup-ports.command  # Kills processes on ports 3000-3005
+
+# Windows: Find and kill process manually
+netstat -ano | findstr :3000   # Find PID using port 3000
+taskkill /PID <PID> /F          # Kill the process
+
+# Useful when services don't shut down cleanly
+```
+
 ### Testing & Utility Scripts
 ```bash
 # All utilities in utilities/ directory
 cd utilities
 
-# Database setup and import
-.\01-db-setup.ps1        # Setup local DB with Railway data
+# Database setup and import (choose based on OS)
+./01-db-setup.sh         # macOS/Linux: Setup local DB with Railway data
+.\01-db-setup.ps1        # Windows: Setup local DB with Railway data
 
-# Testing utilities
+# Testing utilities (cross-platform)
 node 02-db-clear.js       # Clear scraped data (use --confirm)
 node 03-test-scraper.js   # End-to-end scraper test
 node 04-test-api.js       # Start test API server
@@ -147,7 +198,7 @@ node 07-debug-extraction.js # Debug content extraction issues
 
 # Advanced debugging: Use Playwright MCP through Claude Code for:
 # - Visual site structure analysis
-# - JavaScript-heavy content debugging  
+# - JavaScript-heavy content debugging
 # - Dynamic content extraction testing
 # - Cross-browser compatibility verification
 

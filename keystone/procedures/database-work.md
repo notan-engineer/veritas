@@ -35,9 +35,10 @@ COMMIT;
 # Test on local database first
 psql veritas_local -f migration.sql
 
-# Use utilities for setup and testing
-utilities/01-db-setup.ps1  # Setup/refresh local DB
-utilities/05-test-db-mapping.js  # Verify field mappings
+# Use utilities for setup and testing (OS-specific)
+./utilities/01-db-setup.sh  # Mac/Linux: Setup/refresh local DB
+.\utilities\01-db-setup.ps1  # Windows: Setup/refresh local DB
+node utilities/05-test-db-mapping.js  # Verify field mappings
 
 # Then apply to production
 psql "postgresql://postgres:PASSWORD@mainline.proxy.rlwy.net:PORT/railway" -f migration.sql

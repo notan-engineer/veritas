@@ -88,13 +88,10 @@ const nextConfig: NextConfig = {
   typescript: {
     // Ignore type errors during build (handled by separate type checking)
     ignoreBuildErrors: false
-  },
-
-  // ESLint optimizations
-  eslint: {
-    // Ignore ESLint errors during build (handled by separate linting)
-    ignoreDuringBuilds: false
   }
+
+  // Note: ESLint configuration removed - no longer supported in next.config.ts
+  // Use next lint command directly instead
 };
 
 export default nextConfig;

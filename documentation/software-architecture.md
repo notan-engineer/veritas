@@ -354,7 +354,7 @@ PORT=${{PORT}}              # Automatically set by Railway
 
 ### Testing Infrastructure
 Located in `utilities/` directory, providing comprehensive testing and debugging tools:
-- **Database Management**: `01-db-setup.ps1` for local DB setup with Railway data import
+- **Database Management**: `01-db-setup.sh` (Mac/Linux) and `01-db-setup.ps1` (Windows) for local DB setup with Railway data import
 - **Data Cleanup**: `02-db-clear.js` for clearing test data while preserving configuration (supports production)
 - **End-to-End Testing**: `03-test-scraper.js` for complete scraping workflow validation
 - **API Testing**: `04-test-api.js` standalone test server for API endpoint verification

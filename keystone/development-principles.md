@@ -125,10 +125,71 @@ try {
 
 ### Utility Script Standards
 - **Location**: All utilities in `utilities/` directory
-- **Naming**: `XX-purpose.js` format (e.g., `01-db-setup.ps1`, `03-test-scraper.js`)
+- **Naming**: `XX-purpose.{js,sh,ps1}` format (e.g., `01-db-setup.sh`, `03-test-scraper.js`)
+- **Platform Support**: Provide both `.sh` (Mac/Linux) and `.ps1` (Windows) for shell scripts
 - **Documentation**: Required header with usage instructions
 - **Dependencies**: Minimal, use standard Node.js packages
-- **Modes**: Support both interactive and non-interactive execution
+- **⚠️ MANDATORY: Claude Code Automation Compatibility** - Every utility MUST support automated execution
+
+### Claude Code Automation Requirements (MANDATORY)
+
+**Every utility script MUST satisfy these requirements.** See [Claude Code Automation Compatibility](claude-code-compatibility.md) for comprehensive guide.
+
+#### ✅ Required Features
+1. **Dual-Mode Support**: Must work in both interactive (human) and automated (Claude Code) modes
+2. **CLI Arguments**: Must accept flags/arguments for automated operation
+3. **No Blocking Operations**: No `read` prompts, password prompts, or interactive sessions
+4. **Credential Management**: Use `.pgpass` and `.env` files instead of prompts
+5. **Help Flag**: Must implement `--help` flag showing usage
+
+#### ❌ Anti-Patterns (FORBIDDEN)
+```javascript
+// ❌ FORBIDDEN: Interactive prompts in automated mode
+const readline = require('readline');
+rl.question('Enter value: ', callback);  // BLOCKS Claude Code
+
+// ❌ FORBIDDEN: Password prompts
+createdb -U postgres dbname  // BLOCKS waiting for password
+
+// ❌ FORBIDDEN: Interactive CLI sessions
+railway connect  // BLOCKS in interactive session
+```
+
+#### ✅ Correct Patterns (REQUIRED)
+```javascript
+// ✅ REQUIRED: Dual-mode support
+const INTERACTIVE_MODE = process.argv.length <= 2;
+
+if (INTERACTIVE_MODE) {
+  // Interactive prompts allowed here
+  const answer = await question('Enter value: ');
+} else {
+  // Automated mode - parse CLI arguments
+  const value = parseArgs().value;
+}
+```
+
+```bash
+# ✅ REQUIRED: Credential files eliminate prompts
+# One-time setup: ~/.pgpass
+echo "localhost:5432:*:postgres:localdbpass" > ~/.pgpass
+chmod 600 ~/.pgpass
+
+# ✅ REQUIRED: Direct connections, no interactive sessions
+pg_dump "$RAILWAY_DATABASE_URL" > dump.sql  # Direct connection
+psql "$RAILWAY_DATABASE_URL" -c "SELECT NOW();"  # No interactive session
+```
+
+#### 📋 Pre-Commit Checklist
+Before committing any utility script:
+- [ ] Accepts CLI arguments for automated mode (`--operation`, `--confirm`, etc.)
+- [ ] Shows interactive menu when run without arguments
+- [ ] Has `--help` flag with usage examples
+- [ ] Uses `.pgpass` for PostgreSQL operations (no password prompts)
+- [ ] Uses `.env` file for Railway/external credentials
+- [ ] Tested in non-interactive subprocess: `echo "" | ./script.sh --flag`
+- [ ] No blocking operations (`read`, password prompts, interactive sessions)
+- [ ] Error messages suggest credential setup if files missing
 
 ### Creating New Utilities
 ```javascript

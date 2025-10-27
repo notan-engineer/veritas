@@ -1,9 +1,12 @@
 -- Veritas Database Schema
 -- This is the single source of truth for the current database schema
--- Last Updated: 2025-07-25
--- 
+-- Last Updated: 2025-10-27
+--
 -- This file reflects the actual production database schema on Railway
 -- Verified against Railway database on 2025-07-25
+--
+-- IMPORTANT: Tables are ordered to satisfy foreign key dependencies.
+-- The scraping_jobs table MUST be created before scraped_content.
 
 -- ===============================================
 -- EXTENSIONS
@@ -37,6 +40,28 @@ CREATE TABLE IF NOT EXISTS tags (
     description TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ===============================================
+-- SCRAPER SERVICE TABLES (MUST BE BEFORE scraped_content)
+-- ===============================================
+
+-- Job status enum type (added 2025-07-26)
+CREATE TYPE job_status AS ENUM ('new', 'in-progress', 'successful', 'partial', 'failed');
+
+-- Scraping jobs table: Track scraping job execution
+-- NOTE: This table MUST be created before scraped_content due to foreign key dependency
+CREATE TABLE IF NOT EXISTS scraping_jobs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    triggered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    completed_at TIMESTAMP WITH TIME ZONE,
+    status job_status DEFAULT 'new',
+    sources_requested TEXT[] DEFAULT '{}',
+    articles_per_source INTEGER DEFAULT 3,
+    total_articles_scraped INTEGER DEFAULT 0,
+    total_errors INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Scraped content table: Raw content from sources
@@ -101,13 +126,6 @@ CREATE TABLE IF NOT EXISTS factoid_sources (
     UNIQUE(factoid_id, scraped_content_id)
 );
 
--- ===============================================
--- SCRAPER SERVICE TABLES
--- ===============================================
-
--- Job status enum type (added 2025-07-26)
-CREATE TYPE job_status AS ENUM ('new', 'in-progress', 'successful', 'partial', 'failed');
-
 -- Scraped content archive table: Archive for old content
 CREATE TABLE IF NOT EXISTS scraped_content_archive (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -124,20 +142,6 @@ CREATE TABLE IF NOT EXISTS scraped_content_archive (
     original_size BIGINT,
     compressed_size BIGINT,
     compression_ratio NUMERIC(5,2)
-);
-
--- Scraping jobs table: Track scraping job execution
-CREATE TABLE IF NOT EXISTS scraping_jobs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    triggered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    completed_at TIMESTAMP WITH TIME ZONE,
-    status job_status DEFAULT 'new',
-    sources_requested TEXT[] DEFAULT '{}',
-    articles_per_source INTEGER DEFAULT 3,
-    total_articles_scraped INTEGER DEFAULT 0,
-    total_errors INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Scraping logs table: Detailed logs for each job with structured JSONB logging

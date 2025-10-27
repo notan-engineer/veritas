@@ -39,7 +39,7 @@ Describe how to test this story is complete:
 
 ### Testing Utilities
 Consider using existing utilities:
-- [ ] `utilities/01-db-setup.ps1` - Setup fresh test database
+- [ ] `utilities/01-db-setup.sh` (Mac/Linux) or `utilities/01-db-setup.ps1` (Windows) - Setup fresh test database
 - [ ] `utilities/03-test-scraper.js` - Test scraper functionality
 - [ ] `utilities/04-test-api.js` - Test API endpoints
 - [ ] `utilities/06-test-logs.js` - Analyze job logs for debugging

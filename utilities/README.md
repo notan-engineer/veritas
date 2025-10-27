@@ -6,7 +6,7 @@ A comprehensive suite of testing and debugging tools for the Veritas project. Al
 
 | File | Purpose | Usage |
 |------|---------|-------|
-| `01-db-setup.ps1` | Database setup & Railway import | `.\01-db-setup.ps1` |
+| `01-db-setup.sh` / `.ps1` | Database setup & Railway import | `./01-db-setup.sh` (Mac/Linux) or `.\01-db-setup.ps1` (Windows) |
 | `02-db-clear.js` | Clear all scraped data | `node 02-db-clear.js --confirm [--production]` |
 | `03-test-scraper.js` | End-to-end scraper testing | `node 03-test-scraper.js [source] [count]` |
 | `04-test-api.js` | Simple API test server | `node 04-test-api.js [port]` |
@@ -37,7 +37,12 @@ A comprehensive suite of testing and debugging tools for the Veritas project. Al
 ### Initial Setup
 
 1. **Set up local database with Railway data:**
-   ```powershell
+   ```bash
+   # Mac/Linux
+   ./01-db-setup.sh
+   # Choose option 1 for full setup
+
+   # Windows
    .\01-db-setup.ps1
    # Choose option 1 for full setup
    ```
@@ -58,8 +63,8 @@ A comprehensive suite of testing and debugging tools for the Veritas project. Al
 
 ## 📚 Detailed Tool Documentation
 
-### 01-db-setup.ps1 - Database Setup Tool
-PowerShell script for database initialization and Railway data import.
+### 01-db-setup.sh / 01-db-setup.ps1 - Database Setup Tool
+Cross-platform scripts for database initialization and Railway data import. Use `.sh` on Mac/Linux, `.ps1` on Windows.
 
 **Features:**
 - Create local PostgreSQL database
@@ -74,7 +79,12 @@ PowerShell script for database initialization and Railway data import.
 4. Export Railway data only
 
 **Example:**
-```powershell
+```bash
+# Mac/Linux
+./01-db-setup.sh
+# Select option 1 for complete setup
+
+# Windows
 .\01-db-setup.ps1
 # Select option 1 for complete setup
 ```
@@ -369,7 +379,10 @@ node 11-validate-extraction.js
 
 ### Complete Local Testing Setup
 ```bash
-# 1. Setup database
+# 1. Setup database (OS-specific)
+# Mac/Linux:
+./01-db-setup.sh
+# Windows:
 .\01-db-setup.ps1
 
 # 2. Start scraper service
@@ -516,7 +529,10 @@ node 07-extraction-analyzer.js "BBC News" bbc-debug.html
 # 1. Clear all data
 node 02-db-clear.js --confirm
 
-# 2. Re-import from Railway
+# 2. Re-import from Railway (OS-specific)
+# Mac/Linux:
+./01-db-setup.sh
+# Windows:
 .\01-db-setup.ps1
 # Choose option 3
 
