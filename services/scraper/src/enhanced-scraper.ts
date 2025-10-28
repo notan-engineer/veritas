@@ -1,7 +1,7 @@
-import { CheerioCrawler, Configuration } from 'crawlee';
+import { CheerioCrawler, Configuration, RequestQueue } from 'crawlee';
 import Parser from 'rss-parser';
 import * as crypto from 'crypto';
-import { NewsSource, ScrapedArticle, JobStatus, SourceResult, SourcePersistenceResult, EnhancedJobMetrics } from './types';
+import { NewsSource, ScrapedArticle, JobStatus, SourceResult, SourcePersistenceResult, EnhancedJobMetrics, DatabaseVerificationResult } from './types';
 import { logJobActivity, saveArticle, updateJobProgress, getSourceByName } from './database';
 import { extractArticleContent, detectLanguage, generateContentHash } from './utils';
 import { EnhancedLogger } from './enhanced-logger';
@@ -25,20 +25,23 @@ export class EnhancedRSSScraper {
   async scrapeJob(jobId: string, sources: string[], articlesPerSource: number, enableTracking: boolean = false) {
     const startTime = Date.now();
     await this.logger.logJobStarted(jobId, sources, articlesPerSource, 'api');
-    
+
+    // Story 3: Phase transition - Extraction
+    await this.logger.logPhaseTransition(jobId, 'initialization', 'extraction');
+
     // Process sources with Promise.allSettled for fault tolerance
     const sourceResults = await Promise.allSettled(
       sources.map(sourceName => this.scrapeSourceEnhanced(jobId, sourceName, articlesPerSource, enableTracking))
     );
-    
+
     // Process extraction results
     const successfulExtractions: SourceResult[] = [];
     const extractionFailures: Record<string, string> = {};
-    
+
     sourceResults.forEach((result, index) => {
       const sourceName = sources[index];
       if (!sourceName) return;
-      
+
       if (result.status === 'fulfilled') {
         successfulExtractions.push(result.value);
       } else {
@@ -47,21 +50,39 @@ export class EnhancedRSSScraper {
         this.logger.logSourceExtractionFailed(jobId, sourceName, result.reason);
       }
     });
-    
+
     // Log extraction phase completion
     await this.logger.logExtractionPhaseCompleted(jobId, successfulExtractions, extractionFailures);
-    
+
+    // Story 3: Phase transition - Persistence
+    await this.logger.logPhaseTransition(jobId, 'extraction', 'persistence');
+
     // Phase 2: Persistence - save all articles transactionally
     const persistenceResults = await this.saveArticlesTransactionally(jobId, successfulExtractions, articlesPerSource);
-    
-    // Phase 3: Final logging with accurate metrics
+
+    // Story 3: Phase transition - Verification
+    await this.logger.logPhaseTransition(jobId, 'persistence', 'verification');
+
+    // Story 1: Phase 3: Database Verification - verify actual saved counts
+    const databaseCounts = await this.verifyPersistenceResults(jobId, persistenceResults);
+    await this.logger.logDatabaseVerification(jobId, databaseCounts);
+
+    // Story 5: Reconciliation - compare logged metrics with database reality
+    await this.reconcileJobMetrics(jobId, successfulExtractions, persistenceResults);
+
+    // Story 3: Phase transition - Completion
+    await this.logger.logPhaseTransition(jobId, 'verification', 'completion');
+
+    // Phase 4: Final logging with accurate metrics
     await this.logFinalJobMetrics(jobId, successfulExtractions, persistenceResults, extractionFailures, articlesPerSource, startTime);
   }
   
   private async scrapeSourceEnhanced(jobId: string, sourceName: string, articlesPerSource: number, enableTracking: boolean = false): Promise<SourceResult> {
     const sourceStartTime = Date.now();
     const source = await getSourceByName(sourceName);
-    const scrapedArticles: any[] = [];
+    // Use a Map to ensure articles are stored by the correct source name from userData
+    // This prevents closure scope issues when multiple sources run concurrently
+    const articlesBySource = new Map<string, any[]>();
     let crawler: any = null; // Declare crawler at method scope for finally block access
     
     // Log source start
@@ -154,18 +175,25 @@ export class EnhancedRSSScraper {
 
     // Enhanced crawler configuration
     // Note: Storage is handled in-memory in production (see constructor)
+    // CRITICAL: Use source-specific request queue name to prevent concurrent crawlers
+    // from sharing the same queue and mixing up requests
+    const requestQueueName = `${jobId}-${source.name.replace(/\s+/g, '-').toLowerCase()}`;
+
     crawler = new CheerioCrawler({
       // ENHANCED SETTINGS:
       maxRequestsPerCrawl: articlesPerSource * 3, // Allow 3x requests for retries
       maxConcurrency: 4, // Increased concurrency
       requestHandlerTimeoutSecs: 60, // Doubled timeout
       maxRequestRetries: 3, // Add retry logic
-      
+
       // Enhanced retry settings
       retryOnBlocked: true,
+
+      // Source-specific request queue to prevent cross-contamination
+      requestQueue: await RequestQueue.open(requestQueueName),
       
       requestHandler: async ({ request, $ }) => {
-        const { sourceId, sourceName, articleTitle, correlationId } = request.userData;
+        const { sourceId, sourceName, articleTitle, correlationId, articleTrackingId } = request.userData; // Story 2: Extract tracking ID
         const extractionStartTime = Date.now();
         
         try {
@@ -259,7 +287,7 @@ export class EnhancedRSSScraper {
           }
           
           const language = detectLanguage(article.content);
-          
+
           // Store in memory for batch save
           const articleData = {
             title: article.title,
@@ -268,12 +296,14 @@ export class EnhancedRSSScraper {
             publicationDate: article.date || undefined,
             sourceUrl: request.url,
             sourceId,
+            sourceName, // Story 2: Add source name for logging
             language,
             contentHash: generateContentHash(article.title, article.content),
+            articleTrackingId, // Story 2: Include tracking ID in article data
             // Store extraction traces if tracking is enabled
             ...(article.traces ? { extractionTraces: article.traces } : {})
           };
-          
+
           // Convert to ExtractedArticle format for logger
           const extractedArticle = {
             title: article.title,
@@ -282,9 +312,14 @@ export class EnhancedRSSScraper {
             publicationDate: article.date,
             language
           };
-          
-          scrapedArticles.push(articleData);
-          
+
+          // Store article in source-specific bucket using sourceName from userData
+          // This prevents closure scope issues where concurrent scrapers might mix up articles
+          if (!articlesBySource.has(sourceName)) {
+            articlesBySource.set(sourceName, []);
+          }
+          articlesBySource.get(sourceName)!.push(articleData);
+
           // Log successful extraction
           const extractionTime = Date.now() - extractionStartTime;
           await this.logger.logExtractionResult(
@@ -295,6 +330,19 @@ export class EnhancedRSSScraper {
             extractionTime,
             'primary',
             correlationId
+          );
+
+          // Story 2: Log article lifecycle - extraction success
+          await this.logger.logArticleLifecycle(
+            jobId,
+            sourceId,
+            articleTrackingId,
+            'extracted',
+            {
+              sourceName,
+              sourceUrl: request.url,
+              contentLength: article.content.length
+            }
           );
         } catch (error) {
           await this.logger.logExtractionError(
@@ -378,6 +426,7 @@ export class EnhancedRSSScraper {
       const targetCandidates = Math.min(candidateItems.length, articlesPerSource * 2);
       const articleRequests = candidateItems.slice(0, targetCandidates).map(item => {
         const correlationId = this.logger.createCorrelationId();
+        const articleTrackingId = crypto.randomUUID(); // Story 2: Unique tracking ID
         return {
           url: item.link!,
           userData: {
@@ -385,7 +434,8 @@ export class EnhancedRSSScraper {
             sourceId: source.id,
             sourceName: source.name,
             articleTitle: item.title,
-            correlationId
+            correlationId,
+            articleTrackingId // Story 2: Add tracking ID to userData
           }
         };
       });
@@ -406,9 +456,12 @@ export class EnhancedRSSScraper {
         await crawler.run();
       }
       
+      // Get articles for THIS source (should only be one entry in map with our source name)
+      const scrapedArticles = articlesBySource.get(source.name) || [];
+
       const successRate = Math.round((scrapedArticles.length / articlesPerSource) * 100);
       const actualSuccessRate = articleRequests.length > 0 ? Math.round((scrapedArticles.length / articleRequests.length) * 100) : 0;
-      
+
       // Log source extraction completion
       const sourceDuration = Date.now() - sourceStartTime;
       await this.logger.logSourceExtractionCompleted(
@@ -419,7 +472,7 @@ export class EnhancedRSSScraper {
         articlesPerSource,
         sourceDuration
       );
-      
+
       // Return enhanced source result
       const sourceResult: SourceResult = {
         sourceName: source.name,
@@ -433,7 +486,7 @@ export class EnhancedRSSScraper {
           extractionDuration: Date.now() - sourceStartTime
         }
       };
-      
+
       return sourceResult;
     } finally {
       // Cleanup with error protection
@@ -494,44 +547,129 @@ export class EnhancedRSSScraper {
             if (existingCheck.rows.length > 0) {
               sourcePersistence.duplicatesSkipped++;
               totalDuplicateCount++;
+
+              // Story 2: Log article lifecycle - duplicate skipped
+              if (article.articleTrackingId) {
+                await this.logger.logArticleLifecycle(
+                  jobId,
+                  article.sourceId,
+                  article.articleTrackingId,
+                  'skipped',
+                  {
+                    sourceName: article.sourceName,
+                    sourceUrl: article.sourceUrl,
+                    reason: 'duplicate_detected'
+                  }
+                );
+              }
+
               continue;
             }
-            
-            const result = await client.query(`
-              INSERT INTO scraped_content (
-                source_id, source_url, title, content, author,
-                publication_date, content_hash, language, processing_status, job_id, created_at
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed', $9, NOW())
-              RETURNING id
-            `, [
-              article.sourceId,
-              article.sourceUrl,
-              article.title,
-              article.content,
-              article.author || null,
-              article.publicationDate ? new Date(article.publicationDate) : null,
-              article.contentHash,
-              article.language || 'en',
-              jobId
-            ]);
-            
-            if (result.rows.length > 0) {
-              sourcePersistence.savedCount++;
-              sourcePersistence.articles.push(result.rows[0].id);
-              totalSavedCount++;
+
+            // Story 4: Log source attribution before INSERT
+            const sourceUrlDomain = new URL(article.sourceUrl).hostname;
+
+            const attribution = {
+              sourceName: sourceResult.sourceName,
+              sourceId: article.sourceId,
+              sourceUrl: article.sourceUrl,
+              sourceUrlDomain
+            };
+
+            try {
+              const result = await client.query(`
+                INSERT INTO scraped_content (
+                  source_id, source_url, title, content, author,
+                  publication_date, content_hash, language, processing_status, job_id, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed', $9, NOW())
+                RETURNING id
+              `, [
+                article.sourceId,
+                article.sourceUrl,
+                article.title,
+                article.content,
+                article.author || null,
+                article.publicationDate ? new Date(article.publicationDate) : null,
+                article.contentHash,
+                article.language || 'en',
+                jobId
+              ]);
+
+              if (result.rows.length > 0) {
+                sourcePersistence.savedCount++;
+                sourcePersistence.articles.push(result.rows[0].id);
+                totalSavedCount++;
+
+                // Story 4: Log attribution success with database ID
+                if (article.articleTrackingId) {
+                  await this.logger.logInsertAttribution(
+                    jobId,
+                    article.articleTrackingId,
+                    attribution,
+                    true,
+                    result.rows[0].id
+                  );
+                }
+
+                // Story 2: Log article lifecycle - persistence success
+                if (article.articleTrackingId) {
+                  await this.logger.logArticleLifecycle(
+                    jobId,
+                    article.sourceId,
+                    article.articleTrackingId,
+                    'persisted',
+                    {
+                      sourceName: article.sourceName,
+                      sourceUrl: article.sourceUrl,
+                      databaseArticleId: result.rows[0].id
+                    }
+                  );
+                }
+              }
+            } catch (insertError) {
+              // Story 4: Log attribution failure
+              if (article.articleTrackingId) {
+                await this.logger.logInsertAttribution(
+                  jobId,
+                  article.articleTrackingId,
+                  attribution,
+                  false,
+                  undefined,
+                  insertError instanceof Error ? insertError.message : String(insertError)
+                );
+              }
+              throw insertError; // Re-throw to be caught by outer catch
             }
           } catch (saveError) {
             sourcePersistence.saveFailures++;
+
+            const errorMessage = saveError instanceof Error ? saveError.message : String(saveError);
+
             await logJobActivity({
               jobId,
               sourceId: sourceResult.sourceId,
               level: 'error',
-              message: `Failed to save article: ${saveError instanceof Error ? saveError.message : String(saveError)}`,
+              message: `Failed to save article: ${errorMessage}`,
               additionalData: {
                 article_url: article.sourceUrl,
                 error_type: 'persistence_failure'
               }
             });
+
+            // Story 2: Log article lifecycle - persistence failure
+            if (article.articleTrackingId) {
+              await this.logger.logArticleLifecycle(
+                jobId,
+                article.sourceId,
+                article.articleTrackingId,
+                'failed',
+                {
+                  sourceName: article.sourceName,
+                  sourceUrl: article.sourceUrl,
+                  error: errorMessage
+                }
+              );
+            }
           }
         }
         
@@ -605,7 +743,111 @@ export class EnhancedRSSScraper {
       client.release();
     }
   }
-  
+
+  // Story 1: Database Verification Logging
+  private async verifyPersistenceResults(
+    jobId: string,
+    persistenceResults: Map<string, SourcePersistenceResult>
+  ): Promise<Map<string, DatabaseVerificationResult>> {
+    const { pool } = await import('./database');
+
+    // Query to get counts and ALL article IDs per source
+    // Note: Removed LIMIT from subquery due to PostgreSQL 18 syntax restrictions
+    // We'll slice to first 5 in JavaScript instead
+    const result = await pool.query(`
+      SELECT
+        s.name as source_name,
+        s.id as source_id,
+        COUNT(sc.id) as actual_count,
+        ARRAY(
+          SELECT id FROM scraped_content
+          WHERE source_id = s.id AND job_id = $1
+          ORDER BY created_at
+        ) as all_ids
+      FROM scraped_content sc
+      JOIN sources s ON sc.source_id = s.id
+      WHERE sc.job_id = $1
+      GROUP BY s.name, s.id
+      ORDER BY s.name
+    `, [jobId]);
+
+    return new Map(result.rows.map(row => [
+      row.source_name,
+      {
+        sourceId: row.source_id,
+        actualCount: parseInt(row.actual_count),
+        sampleIds: (row.all_ids || []).slice(0, 5) // Take first 5 IDs in JavaScript
+      }
+    ]));
+  }
+
+  // Story 5: Job Reconciliation Summary
+  private async reconcileJobMetrics(
+    jobId: string,
+    successfulExtractions: SourceResult[],
+    persistenceResults: Map<string, SourcePersistenceResult>
+  ): Promise<void> {
+    const { pool } = await import('./database');
+
+    // Query actual database counts
+    const dbResult = await pool.query(`
+      SELECT s.name, COUNT(sc.id) as count
+      FROM scraped_content sc
+      JOIN sources s ON sc.source_id = s.id
+      WHERE sc.job_id = $1
+      GROUP BY s.name
+    `, [jobId]);
+
+    const databaseCounts = new Map(dbResult.rows.map(r => [r.name, parseInt(r.count)]));
+
+    // Query logged lifecycle events from scraping_logs
+    // This is the source of truth for what was actually logged during extraction/persistence
+    const lifecycleResult = await pool.query(`
+      SELECT
+        additional_data->>'source_name' as source_name,
+        SUM(CASE WHEN additional_data->>'event_name' = 'article_extracted' THEN 1 ELSE 0 END)::int as logged_extracted,
+        SUM(CASE WHEN additional_data->>'event_name' = 'article_persisted' THEN 1 ELSE 0 END)::int as logged_persisted
+      FROM scraping_logs
+      WHERE job_id = $1
+        AND additional_data->>'event_type' = 'article_lifecycle'
+        AND additional_data->>'event_name' IN ('article_extracted', 'article_persisted')
+      GROUP BY additional_data->>'source_name'
+    `, [jobId]);
+
+    const lifecycleCounts = new Map(lifecycleResult.rows.map(r => [
+      r.source_name,
+      { extracted: r.logged_extracted || 0, persisted: r.logged_persisted || 0 }
+    ]));
+
+    // Build reconciliation report
+    const reconciliation: Record<string, any> = {};
+    let hasDiscrepancies = false;
+
+    // Include all sources (extracted, failed, or not processed)
+    for (const extraction of successfulExtractions) {
+      const lifecycle = lifecycleCounts.get(extraction.sourceName);
+      const dbActual = databaseCounts.get(extraction.sourceName) || 0;
+
+      // Use lifecycle logs as source of truth for logged counts
+      const loggedExtracted = lifecycle?.extracted || 0;
+      const loggedPersisted = lifecycle?.persisted || 0;
+
+      const match = loggedPersisted === dbActual;
+      if (!match) hasDiscrepancies = true;
+
+      reconciliation[extraction.sourceName] = {
+        logged_extracted: loggedExtracted,
+        logged_saved: loggedPersisted,
+        database_actual: dbActual,
+        match,
+        discrepancy: match ? 0 : dbActual - loggedPersisted,
+        discrepancy_type: dbActual < loggedPersisted ? 'phantom_saves' : (dbActual > loggedPersisted ? 'missing_logs' : 'none')
+      };
+    }
+
+    await this.logger.logJobReconciliation(jobId, reconciliation, hasDiscrepancies);
+  }
+
   private async logFinalJobMetrics(
     jobId: string,
     successfulExtractions: SourceResult[],

@@ -170,6 +170,13 @@ export interface SourcePersistenceResult {
   articles: string[]; // Article IDs that were saved
 }
 
+// Database verification result (Story 1)
+export interface DatabaseVerificationResult {
+  sourceId: string;
+  actualCount: number;
+  sampleIds: string[]; // Sample article IDs from database for spot-checking
+}
+
 // Enhanced job completion data
 export interface EnhancedJobMetrics {
   sources: Record<string, {

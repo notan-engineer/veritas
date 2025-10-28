@@ -1,6 +1,6 @@
 import { logJobActivity } from './database';
 import * as crypto from 'crypto';
-import { SourceResult, SourcePersistenceResult, EnhancedJobMetrics } from './types';
+import { SourceResult, SourcePersistenceResult, EnhancedJobMetrics, DatabaseVerificationResult } from './types';
 
 interface HttpRequestData {
   url: string;
@@ -143,7 +143,7 @@ export class EnhancedLogger {
     });
   }
   
-  // Renamed for clarity - logs extraction phase completion
+  // Story 3: Renamed for clarity - logs extraction phase completion
   async logSourceExtractionCompleted(
     jobId: string,
     sourceId: string,
@@ -153,20 +153,22 @@ export class EnhancedLogger {
     durationMs: number
   ): Promise<void> {
     const successRate = targetArticles > 0 ? articlesScraped / targetArticles : 0;
-    
+
     await logJobActivity({
       jobId,
       sourceId,
       level: 'info',
-      message: `Source ${sourceName} completed: ${articlesScraped}/${targetArticles} articles in ${this.formatDuration(durationMs)} (${(successRate * 100).toFixed(0)}% success)`,
+      message: `Source ${sourceName} extraction completed: ${articlesScraped} articles extracted (pending persistence) - target was ${targetArticles}`,
       additionalData: {
         event_type: 'source',
-        event_name: 'source_completed',
+        event_name: 'source_extraction_completed',
+        phase: 'extraction',
         source_name: sourceName,
-        articles_scraped: articlesScraped,
+        articles_extracted: articlesScraped,
         target_articles: targetArticles,
-        success_rate: successRate,
-        duration_ms: durationMs
+        extraction_rate: successRate,
+        duration_ms: durationMs,
+        note: 'These articles have not yet been persisted to database'
       }
     });
   }
@@ -528,7 +530,7 @@ export class EnhancedLogger {
     durationMs: number
   ): Promise<void> {
     const successRate = metrics.totals.actualSuccessRate;
-    
+
     await logJobActivity({
       jobId,
       level: 'info',
@@ -538,13 +540,201 @@ export class EnhancedLogger {
         event_name: 'job_completed_enhanced',
         duration_seconds: Math.round(durationMs / 1000),
         enhanced_metrics: metrics,
-        extraction_rate: metrics.totals.candidatesProcessed > 0 
-          ? metrics.totals.extracted / metrics.totals.candidatesProcessed 
+        extraction_rate: metrics.totals.candidatesProcessed > 0
+          ? metrics.totals.extracted / metrics.totals.candidatesProcessed
           : 0,
-        persistence_rate: metrics.totals.extracted > 0 
-          ? metrics.totals.saved / metrics.totals.extracted 
+        persistence_rate: metrics.totals.extracted > 0
+          ? metrics.totals.saved / metrics.totals.extracted
           : 0,
         peak_memory_mb: process.memoryUsage().heapUsed / 1024 / 1024
+      }
+    });
+  }
+
+  // Story 2: Article-Level Lifecycle Tracking
+  async logArticleLifecycle(
+    jobId: string,
+    sourceId: string,
+    articleTrackingId: string,
+    stage: 'queued' | 'extracted' | 'validated' | 'persisted' | 'skipped' | 'failed',
+    details: {
+      sourceName: string;
+      sourceUrl: string;
+      error?: string;
+      databaseArticleId?: string;
+      reason?: string;
+      contentLength?: number;
+      qualityScore?: number;
+    }
+  ): Promise<void> {
+    await logJobActivity({
+      jobId,
+      sourceId,
+      level: stage === 'failed' ? 'error' : 'info',
+      message: `Article ${stage}: ${details.sourceUrl}`,
+      additionalData: {
+        event_type: 'article_lifecycle',
+        event_name: `article_${stage}`,
+        article_tracking_id: articleTrackingId,
+        source_name: details.sourceName,
+        source_id: sourceId,
+        source_url: details.sourceUrl,
+        stage,
+        timestamp_ms: Date.now(),
+        ...details
+      }
+    });
+  }
+
+  // Story 4: Source Attribution Debug Logging
+  async logInsertAttribution(
+    jobId: string,
+    articleTrackingId: string,
+    attribution: {
+      sourceName: string;
+      sourceId: string;
+      sourceUrl: string;
+      sourceUrlDomain: string;
+    },
+    insertSuccess: boolean,
+    databaseArticleId?: string,
+    error?: string
+  ): Promise<void> {
+    await logJobActivity({
+      jobId,
+      level: insertSuccess ? 'info' : 'error',
+      message: insertSuccess
+        ? `Article inserted with source attribution: ${attribution.sourceName}`
+        : `Article INSERT failed: ${error}`,
+      additionalData: {
+        event_type: 'persistence',
+        event_name: insertSuccess ? 'article_insert_success' : 'article_insert_failure',
+        article_tracking_id: articleTrackingId,
+        source_attribution: attribution,
+        insert_success: insertSuccess,
+        database_article_id: databaseArticleId,
+        error
+      }
+    });
+  }
+
+  // Story 3: Phase Transition Logging
+  async logPhaseTransition(
+    jobId: string,
+    phaseFrom: string,
+    phaseTo: string
+  ): Promise<void> {
+    await logJobActivity({
+      jobId,
+      level: 'info',
+      message: `=== ${phaseTo.toUpperCase()} PHASE STARTED ===`,
+      additionalData: {
+        event_type: 'lifecycle',
+        event_name: 'phase_transition',
+        phase_from: phaseFrom,
+        phase_to: phaseTo
+      }
+    });
+  }
+
+  // Story 5: Job Reconciliation Summary
+  async logJobReconciliation(
+    jobId: string,
+    reconciliation: Record<string, any>,
+    hasDiscrepancies: boolean
+  ): Promise<void> {
+    const totalLoggedExtracted = Object.values(reconciliation).reduce((sum: number, s: any) => sum + (s.logged_extracted || 0), 0);
+    const totalLoggedSaved = Object.values(reconciliation).reduce((sum: number, s: any) => sum + (s.logged_saved || 0), 0);
+    const totalActual = Object.values(reconciliation).reduce((sum: number, s: any) => sum + (s.database_actual || 0), 0);
+
+    await logJobActivity({
+      jobId,
+      level: hasDiscrepancies ? 'warning' : 'info',
+      message: hasDiscrepancies
+        ? `Job reconciliation FAILED: Discrepancies found between logs and database (logged: ${totalLoggedSaved}, actual: ${totalActual})`
+        : `Job reconciliation passed: All counts match database (${totalActual} articles confirmed)`,
+      additionalData: {
+        event_type: 'lifecycle',
+        event_name: 'job_reconciliation',
+        reconciliation: {
+          by_source: reconciliation,
+          totals: {
+            total_logged_extracted: totalLoggedExtracted,
+            total_logged_saved: totalLoggedSaved,
+            total_database_actual: totalActual,
+            overall_discrepancy: totalActual - totalLoggedSaved
+          }
+        },
+        has_discrepancies: hasDiscrepancies,
+        discrepancy_severity: hasDiscrepancies ? 'critical' : 'none'
+      }
+    });
+  }
+
+  // Story 1: Database Verification Logging
+  // Updated to use lifecycle logs as source of truth for "claimed" counts
+  async logDatabaseVerification(
+    jobId: string,
+    databaseCounts: Map<string, DatabaseVerificationResult>
+  ): Promise<void> {
+    // Query actual logged persistence counts from scraping_logs (source of truth)
+    const { pool } = await import('./database');
+    const persistedResult = await pool.query(`
+      SELECT
+        additional_data->>'source_name' as source_name,
+        additional_data->>'source_id' as source_id,
+        COUNT(*)::int as logged_persisted
+      FROM scraping_logs
+      WHERE job_id = $1
+        AND additional_data->>'event_name' = 'article_persisted'
+      GROUP BY additional_data->>'source_name', additional_data->>'source_id'
+    `, [jobId]);
+
+    // Build map of source_name → {sourceId, logged count}
+    const persistedCounts = new Map(persistedResult.rows.map(r => [
+      r.source_name,
+      { sourceId: r.source_id, loggedPersisted: r.logged_persisted || 0 }
+    ]));
+
+    const verificationResults: Record<string, any> = {};
+    let hasDiscrepancies = false;
+    let totalClaimed = 0;
+    let totalActual = 0;
+
+    // Build verification results for each source that has database records
+    for (const [sourceName, dbResult] of databaseCounts) {
+      const persisted = persistedCounts.get(sourceName);
+      const claimed = persisted?.loggedPersisted || 0;
+      const actual = dbResult.actualCount;
+      const discrepancy = claimed !== actual;
+
+      if (discrepancy) hasDiscrepancies = true;
+      totalClaimed += claimed;
+      totalActual += actual;
+
+      verificationResults[sourceName] = {
+        source_id: persisted?.sourceId || dbResult.sourceId,
+        persistence_claimed: claimed,
+        database_actual: actual,
+        discrepancy,
+        discrepancy_amount: actual - claimed,
+        sample_article_ids: dbResult.sampleIds || []
+      };
+    }
+
+    await logJobActivity({
+      jobId,
+      level: hasDiscrepancies ? 'warning' : 'info',
+      message: hasDiscrepancies
+        ? `Database verification FAILED: ${totalActual}/${totalClaimed} articles confirmed in database (discrepancy detected)`
+        : `Database verification passed: ${totalActual}/${totalClaimed} articles confirmed in database`,
+      additionalData: {
+        event_type: 'verification',
+        event_name: 'database_verification_completed',
+        verification_results: verificationResults,
+        total_claimed: totalClaimed,
+        total_actual: totalActual,
+        has_discrepancies: hasDiscrepancies
       }
     });
   }

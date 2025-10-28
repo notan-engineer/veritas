@@ -100,7 +100,18 @@
       "Bash(pg_isready:*)",
       "Bash(PGPASSWORD=db0212 psql:*)",
       "Bash(PGPASSWORD=localdbpass psql:*)",
-      "Bash(export PGPASSWORD=localdbpass)"
+      "Bash(export PGPASSWORD=localdbpass)",
+      "Bash(python3:*)",
+      "Bash(source:*)",
+      "Bash(PGPASSWORD=localdbpass /Library/PostgreSQL/18/bin/psql:*)",
+      "Bash(kill:*)",
+      "Bash(git -C /Users/michaeltor/Repos/veritas status)",
+      "Bash(./local/cleanup-ports.command:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(for file in \"/Users/michaeltor/Repos/veritas/projects/4. Logging System Enhancement - 28-10-25 - New/stories\"/*.md)",
+      "Bash(do)",
+      "Bash(done)"
     ],
     "deny": []
   },
